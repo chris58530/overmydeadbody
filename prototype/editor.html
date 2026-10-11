@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>醉隱 · 關卡編輯器</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC&display=swap">
+<style>
+  :root { --ink: #f3e9d2; --dim: rgba(243, 233, 210, .55); --line: rgba(243, 233, 210, .14); --bg: #0e0b1c; --panel: #151127; --accent: #e0a87a; --bad: #f0857a; --warn: #e8c46a; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font: 15px/1.5 "LXGW WenKai TC", "Kaiti TC", "DFKai-SB", "KaiTi", serif; }
+  body { display: grid; grid-template-rows: auto 1fr; overflow: hidden; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button { background: none; border: 1px solid var(--line); padding: 3px 10px; cursor: pointer; }
+  button:hover { border-color: var(--dim); }
+  button.on { border-color: var(--accent); color: var(--accent); }
+  input, select, textarea { background: #0c0918; border: 1px solid var(--line); padding: 3px 6px; width: 100%; }
+  textarea { resize: vertical; min-height: 54px; }
+  label { display: block; color: var(--dim); font-size: 13px; margin: 8px 0 2px; }
+  header { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header b { font-weight: normal; font-size: 20px; margin-right: 10px; letter-spacing: 2px; }
+  header .gap { flex: 1; }
+  #status { color: var(--dim); font-size: 13px; }
+  main { display: grid; grid-template-columns: 220px 1fr 290px; min-height: 0; }
+  aside { overflow: auto; padding: 10px 12px; border-right: 1px solid var(--line); }
+  aside.right { border-right: 0; border-left: 1px solid var(--line); }
+  h3 { font-weight: normal; font-size: 15px; color: var(--accent); margin: 14px 0 6px; letter-spacing: 1px; }
+  h3:first-child { margin-top: 2px; }
+  .list { display: flex; flex-direction: column; gap: 4px; }
+  .item { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border: 1px solid transparent; cursor: pointer; }
+  .item:hover { border-color: var(--line); }
+  .item.sel { border-color: var(--accent); }
+  .item canvas { width: 64px; height: 36px; flex: none; image-rendering: pixelated; border: 1px solid var(--line); }
+  .item span { font-size: 13px; line-height: 1.3; }
+  .item small { display: block; color: var(--dim); }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .row > * { flex: 1; min-width: 0; }
+  .row.tight > * { flex: none; }
+  #center { display: flex; flex-direction: column; min-width: 0; padding: 10px 14px; gap: 8px; }
+  #stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+  #grid { max-width: 100%; max-height: 100%; aspect-ratio: 16 / 9; cursor: crosshair; touch-action: none; }
+  #palette { display: flex; flex-wrap: wrap; gap: 4px; }
+  #palette button { display: flex; align-items: center; gap: 6px; padding: 2px 8px 2px 4px; font-size: 14px; }
+  #palette canvas { width: 22px; height: 22px; }
+  #hint { color: var(--dim); font-size: 13px; min-height: 20px; }
+  .exits { display: grid; grid-template-columns: 34px 1fr; gap: 4px 6px; align-items: center; }
+  .exits span { color: var(--dim); font-size: 13px; }
+  #checks div { font-size: 13px; padding: 2px 0; }
+  #checks .bad { color: var(--bad); }
+  #checks .warn { color: var(--warn); }
+  #checks .ok { color: #9fd3a8; }
+  .abil { display: flex; gap: 14px; }
+  .abil label { display: flex; gap: 6px; align-items: center; color: var(--ink); margin: 2px 0; font-size: 15px; }
+  .abil input { width: auto; }
+  #sheet { position: fixed; inset: 0; background: rgba(8, 6, 18, .82); display: flex; align-items: center; justify-content: center; padding: 20px; }
+  #sheet[hidden] { display: none; }
+  #sheet > div { width: min(760px, 100%); background: var(--panel); border: 1px solid var(--line); padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+  #sheet textarea { height: 50vh; font: 12px/1.4 Consolas, monospace; }
+  #sheet p { margin: 0; color: var(--dim); font-size: 13px; }
+  @media (max-width: 1000px) { main { grid-template-columns: 1fr; overflow: auto; } aside { border: 0; border-bottom: 1px solid var(--line); } #stage { min-height: 50vh; } }
+</style>
+</head>
+<body>
+<header>
+  <b>醉隱 · 關卡編輯器</b>
+  <button id="bNew">新旅程</button>
+  <button id="bSample">載入內建關卡</button>
+  <button id="bImport">匯入 JSON</button>
+  <button id="bExport">匯出 JSON</button>
+  <span class="gap"></span>
+  <button id="bUndo" title="Ctrl+Z">復原</button>
+  <button id="bRedo" title="Ctrl+Y">重做</button>
+  <span id="status"></span>
+</header>
+<main>
+  <aside>
+    <h3>天數</h3>
+    <div class="list" id="maps"></div>
+    <div class="row"><button id="mAdd">＋ 一天</button><button id="mDel">刪除</button></div>
+    <div class="row"><button id="mUp">往前</button><button id="mDown">往後</button></div>
+    <h3>房間</h3>
+    <div class="list" id="rooms"></div>
+    <div class="row"><button id="rAdd">＋ 房間</button><button id="rDup">複製</button><button id="rDel">刪除</button></div>
+    <div class="row"><button id="rUp">往前</button><button id="rDown">往後</button></div>
+  </aside>
+  <section id="center">
+    <div id="palette"></div>
+    <div id="stage"><canvas id="grid" width="960" height="540"></canvas></div>
+    <div id="hint"></div>
+  </section>
+  <aside class="right">
+    <h3>房間</h3>
+    <div class="row"><div><label>名稱</label><input id="fName"></div><div><label>ID</label><input id="fId"></div></div>
+    <label>場景</label><select id="fTheme"></select>
+    <label>出口（走出畫面那一邊會到哪裡）</label>
+    <div class="exits" id="fExits"></div>
+    <label>吉姆第一次進房會說（一行一句）</label><textarea id="fLines"></textarea>
+    <h3>這一天</h3>
+    <div class="row"><div><label>名稱</label><input id="dName"></div><div><label>ID</label><input id="dId"></div></div>
+    <label>能力池</label><div class="abil" id="dAbil"></div>
+    <label>開場一句</label><input id="dIntro">
+    <label>結束一句</label><input id="dOutro">
+    <h3>檢查</h3>
+    <div id="checks"></div>
+    <p style="color:var(--dim);font-size:13px;margin-top:14px">試玩：匯出 JSON 後，在遊戲裡按 Esc → 載入關卡 JSON，或直接把檔案拖進遊戲畫面。</p>
+  </aside>
+</main>
+<div id="sheet" hidden>
+  <div>
+    <b id="sheetTitle"></b>
+    <p id="sheetHint"></p>
+    <textarea id="sheetText" spellcheck="false"></textarea>
+    <div class="row tight"><button id="sheetMain"></button><button id="sheetAlt"></button><button id="sheetClose">關閉</button></div>
+  </div>
+</div>
+<input id="file" type="file" accept=".json,application/json" hidden>
+<script>
+(function () {
+  'use strict';
+  const COLS = 32, ROWS = 18, CELL = 30, W = COLS * CELL, H = ROWS * CELL;
+  const FONT = '"LXGW WenKai TC", "Kaiti TC", "DFKai-SB", "KaiTi", serif';
+  const SOLID = '#BC<>';
+  const TILES = [
+    { ch: '#', name: '地形', tip: '能站、會擋路' },
+    { ch: '^', name: '碎片', tip: '碰到就重來；保鑣扛著可以踩過去' },
+    { ch: '=', name: '木板', tip: '可以從下面跳上來站' },
+    { ch: 'B', name: '箱子', tip: '只有保鑣撞得破，相連的會一起碎' },
+    { ch: 'C', name: '紙箱', tip: '站上去約 0.45 秒就塌，2.5 秒後恢復' },
+    { ch: '>', name: '輸送帶 →', tip: '往右推，起跳時保留推力' },
+    { ch: '<', name: '輸送帶 ←', tip: '往左推，起跳時保留推力' },
+    { ch: 'R', name: '巡邏', tip: '室內是辦公椅、街上是保全；碰到就重來，保鑣可以撞飛' },
+    { ch: 'L', name: '掉落物', tip: '室內是燈管、街上是招牌；走到正下方會掉' },
+    { ch: '*', name: '瓶蓋', tip: '收集品，離開房間才算數' },
+    { ch: 'P', name: '出生點', tip: '每間房剛好一個' },
+    { ch: '.', name: '擦掉', tip: '右鍵也可以擦' },
+  ];
+  const THEMES = [['office', '辦公室'], ['pantry', '茶水間'], ['elevator', '電梯口'], ['lobby', '大廳'], ['street', '街上']];
+  const THEME_BG = { office: '#24474f', pantry: '#5a3b35', elevator: '#4a1f2b', lobby: '#1b1d33', street: '#2b2156' };
+  const ABIL = [['wrestler', '摔角手'], ['bodyguard', '保鑣']];
+  const SIDES = [['left', '左'], ['right', '右'], ['top', '上'], ['bottom', '下']];
+  const SAMPLE = /*SAMPLE*/{"format":"drunken-rooms","version":2,"maps":[{"id":"day-1","name":"第一天","intro":"連假前夕，吉姆又一次加班到失去意識。","outro":"終於下樓了。家，應該不遠吧。","abilities":["wrestler"],"rooms":[{"id":"1-1","name":"工位","theme":"office","tiles":["................................","................................","................................","................................","................................","................................","................................","................................","................................","................................","................................","................................","................................","................................","..........######................","..P.......########......R.......","################################","################################"],"exits":{"right":"1-2"},"lines":["……幾點了？","回家，睡覺。"]},{"id":"1-2","name":"影印機前","theme":"office","tiles":["................................","................................","................................","................................","................................",".............*..................","................................","................................","................................","................................","................................","............###.................","............###.................","............###.................","............###.................","...P........###.................","################################","################################"],"exits":{"right":"1-3"},"lines":["影印機還在印……誰的？"]},{"id":"1-3","name":"茶水間","theme":"pantry","tiles":["................................","................................","................................","................................","................................","................................","................................","................................","................................","................................","................................","..........................######","..........................######","..........................######","..........................######","..P.......................######","######^^^^^^^^^^^^^#############","################################"],"exits":{"right":"1-4"},"lines":["誰把杯子摔了一地？"]},{"id":"1-4","name":"儲藏室","theme":"office","tiles":["................................","................................","................................","................................","................................","................................","................................","................................","................................","................................","...........*....................","................................","................................","................................",".......CCC...CCC...CCC..........","..P....CCC...CCC...CCC..........","#####^^^^^^^^^^^^^^^^^^^^^^#####","################################"],"exits":{"right":"1-5"},"lines":["這些箱子……是我上禮拜要寄的？"]},{"id":"1-5","name":"電梯口","theme":"elevator","tiles":["................................","................................","................................","....*...........................","...........L....................","................................","................................",".....................###########",".....................###########",".....................###########",".....................###########",".....................###########",".....................###########",".....................###########","........#####........###########","...P....#####........###########","#############^^^^^^^^###########","################################"],"exits":{"right":"1-6"},"lines":["電梯又壞了。"]},{"id":"1-6","name":"大樓門口","theme":"lobby","tiles":["................................","................................","................................","................................","................................","................................","................................","................................","................................","................................","................................","................................","................................","................................","................................","..P.............................","################################","################################"],"exits":{"right":null},"lines":["外面怎麼這麼安靜。"]}]},{"id":"day-2","name":"第二天","intro":"下班的路，好像比記憶中長。","outro":"第二天，還是沒到家。","abilities":["wrestler","bodyguard"],"rooms":[{"id":"2-1","name":"保鑣","theme":"street","tiles":["..............##................","..............##................","..............##................","..............##................","..............##................","..............##................","..............##................","..............##................","..............##................","..............##................","..............BB................","..............BB................","..............BB................","..............BB................","..............BB................","..P...........BB................","################################","################################"],"exits":{"right":"2-2"},"lines":["路怎麼被箱子堵住了？"]},{"id":"2-2","name":"碎玻璃路","theme":"street","tiles":["................................","................................","................................","................................","................................","................................","................................","................................","................................","................................","................*...............","................................","................................","................................","................................","..P.............................","######^^^^^^^^^^^^^^^^^^^^^^####","################################"],"exits":{"right":"2-3"},"lines":["這條路以前沒有玻璃吧……"]},{"id":"2-3","name":"保全","theme":"street","tiles":["........#...............#.......","........#...............#.......","........#...............#.......","........#...............#.......","........#...............#.......","........#...............#.......","........#...............#.......","........#...............#.......","........#...............#.......","........#...............#.......","........B...............B.......","........B...............B.......","........B...............B.......","........B...............B.......","........B...............B.......","..P.....B.......R.......B.......","################################","################################"],"exits":{"right":"2-4"},"lines":["保全？這裡又不是公司。"]},{"id":"2-4","name":"捷運站","theme":"street","tiles":["................................","................................","................................","................................","................................","................................","................................","................................","................................","................................",".....####################.......","................................","................................","................................","................................","..P.............................","#####>>>>>>>>>>.......##########","###############.......##########"],"exits":{"right":"2-5"},"lines":["末班車早就走了。"]},{"id":"2-5","name":"高處的箱子","theme":"street","tiles":["................##..............","................##..............","................##..............","................BB..............","................BB..............","................BB..............","................BB..............","................BB..............","................BB..............","................BB..............","................##..............","................##..............","................##..............","................##..............","................##..............","..P.............##..............","################################","################################"],"exits":{"right":"2-6"},"lines":["箱子疊到二樓去了？"]},{"id":"2-6","name":"發射台","theme":"street","tiles":["................................","................................","................................","..............................*.","................................","................................","................................","................................","........................########","........................########","........................########","........................########","........................########","........................########","........................########","..P.....................########","####^^^^^^^^^^^^^^^^^^^^########","################################"],"exits":{"right":"2-7"},"lines":["那棟樓……是不是在長高？"]},{"id":"2-7","name":"巷口","theme":"street","tiles":["............##..................","............##..................","............##..................","............##..................","............##.........L........","............##..................","............##..................","............##..................","............##..................","............##..................","............BB............######","............BB............######","............BB............######","............BB............######","............BB............######","..P.........BB........R...######","#####^^^^^^^##^^^^##############","################################"],"exits":{"right":"2-8"},"lines":["快到了……吧？"]},{"id":"2-8","name":"公園長椅","theme":"street","tiles":["................................","................................","................................","................................","................................","................................","................................","................................","................................","................................","................................","................................","................................","..P.............................","################################","################################","################################","################################"],"exits":{"right":null},"lines":["先睡一下，明天再走。"]}]}]};
+  const JIM = new Image(); JIM.src = 'https://assets.beaverkit.io/8b8492c8-d4c0-4051-abac-cb6fe421fa89/ab1e4d1fb3c46b852221ef67aaeb4bf478a331758bc3d8c2811d0fbabaf93f11.png';
+  const BG = new Image(); BG.src = 'https://assets.beaverkit.io/8b8492c8-d4c0-4051-abac-cb6fe421fa89/b132a32789d4e52b83a682b1b3c8244b45dcf16f4163ed7c9ec513b8fd905ebc.png';
+  JIM.onload = BG.onload = () => render();
+
+  const $ = id => document.getElementById(id);
+  const grid = $('grid'), gx = grid.getContext('2d');
+  const clone = o => JSON.parse(JSON.stringify(o));
+  const E = '.'.repeat(COLS);
+
+  // ---------- data ----------
+  function blankRoom(id, name) {
+    const tiles = Array(ROWS).fill(E);
+    tiles[15] = '..P' + '.'.repeat(COLS - 3);
+    tiles[16] = tiles[17] = '#'.repeat(COLS);
+    return { id, name, theme: 'office', tiles, exits: { right: null }, lines: [] };
+  }
+  function blankMap(n) {
+    return { id: `day-${n}`, name: `第${'一二三四五六七八九十'[n - 1] || n}天`, intro: '', outro: '', abilities: ['wrestler'], rooms: [blankRoom(`${n}-1`, '新房間')] };
+  }
+  function blankCampaign() { return { format: 'drunken-rooms', version: 2, maps: [blankMap(1)] }; }
+
+  let data, mi = 0, ri = 0, tool = '#';
+  const undo = [], redo = [];
+  const map = () => data.maps[mi];
+  const room = () => map().rooms[ri];
+
+  function save() { try { localStorage.setItem('drunk-editor', JSON.stringify(data)); } catch (e) { /* storage blocked in some embeds */ } }
+  function load() { try { const t = localStorage.getItem('drunk-editor'); if (t) return JSON.parse(t); } catch (e) { /* ignore */ } return null; }
+  function snapshot() { undo.push(JSON.stringify(data)); if (undo.length > 120) undo.shift(); redo.length = 0; }
+  function changed(full = true) { save(); if (full) refresh(); else { render(); drawThumbs(); runChecks(); } }
+
+  // ---------- checks (same contract as the game, own copy) ----------
+  function check(d) {
+    const errors = [], warns = [];
+    if (!d || d.format !== 'drunken-rooms' || d.version !== 2) errors.push('不是 drunken-rooms v2 格式');
+    if (!d || !Array.isArray(d.maps) || !d.maps.length) { errors.push('至少要有一天'); return { errors, warns }; }
+    const mapIds = new Set();
+    d.maps.forEach(m => {
+      const at = m.name || m.id;
+      if (mapIds.has(m.id)) errors.push(`${at}：天數 ID 重複`); mapIds.add(m.id);
+      if (!m.abilities || !m.abilities.length) errors.push(`${at}：能力池不能是空的`);
+      const ids = new Set(m.rooms.map(r => r.id));
+      if (ids.size !== m.rooms.length) errors.push(`${at}：有重複的房間 ID`);
+      let ends = 0;
+      m.rooms.forEach(r => {
+        const rat = `${at} ${r.id}`;
+        const spawns = r.tiles.join('').split('P').length - 1;
+        if (spawns !== 1) errors.push(`${rat}：出生點要剛好一個（現在 ${spawns} 個）`);
+        const sides = Object.keys(r.exits || {});
+        if (!sides.length) errors.push(`${rat}：沒有出口`);
+        for (const side of sides) {
+          const to = r.exits[side];
+          if (to === null) ends++;
+          else if (!ids.has(to)) errors.push(`${rat}：${side} 出口指向不存在的房間 ${to}`);
+          if (!sideOpen(r, side)) warns.push(`${rat}：${sideName(side)}邊整排都被擋住，走不出去`);
+        }
+        if (r.tiles.join('').includes('B') && !m.abilities.includes('bodyguard')) warns.push(`${rat}：有箱子，但這天沒有保鑣能撞破`);
+      });
+      if (!ends) warns.push(`${at}：沒有任何出口是「結束這一天」`);
+      const seen = new Set([m.rooms[0] && m.rooms[0].id]), queue = [...seen];
+      while (queue.length) { const id = queue.shift(), r = m.rooms.find(x => x.id === id); if (!r) continue; for (const to of Object.values(r.exits || {})) if (to && !seen.has(to)) { seen.add(to); queue.push(to); } }
+      m.rooms.forEach(r => { if (!seen.has(r.id)) warns.push(`${at} ${r.id}：從第一間房走不到這裡`); });
+    });
+    return { errors, warns };
+  }
+  const sideName = s => SIDES.find(x => x[0] === s)[1];
+  function sideOpen(r, side) {
+    const t = r.tiles, open = ch => !SOLID.includes(ch);
+    if (side === 'left') return t.some(row => open(row[0]));
+    if (side === 'right') return t.some(row => open(row[COLS - 1]));
+    if (side === 'top') return [...t[0]].some(open);
+    return [...t[ROWS - 1]].some(open);
+  }
+  function runChecks() {
+    const { errors, warns } = check(data), box = $('checks');
+    box.innerHTML = '';
+    if (!errors.length && !warns.length) box.innerHTML = '<div class="ok">沒問題，可以匯出試玩。</div>';
+    errors.forEach(e => { const d = document.createElement('div'); d.className = 'bad'; d.textContent = '✕ ' + e; box.appendChild(d); });
+    warns.forEach(e => { const d = document.createElement('div'); d.className = 'warn'; d.textContent = '△ ' + e; box.appendChild(d); });
+    $('status').textContent = errors.length ? `${errors.length} 個錯誤` : warns.length ? `${warns.length} 個提醒` : '可以匯出';
+  }
+
+  // ---------- drawing ----------
+  function drawTile(c, ch, x, y, s, theme) {
+    const px = x * s, py = y * s, q = s / 30;
+    const street = theme === 'street';
+    if (ch === '#') { c.fillStyle = street ? '#6a5f96' : '#8aa6a0'; c.fillRect(px, py, s, s); c.fillStyle = 'rgba(255,255,255,.18)'; c.fillRect(px, py, s, 3 * q); }
+    else if (ch === '^') { c.fillStyle = street ? '#bfe3d6' : '#ece6d8'; for (let i = 0; i < 3; i++) { c.beginPath(); c.moveTo(px + i * 10 * q, py + s); c.lineTo(px + (i * 10 + 5) * q, py + s - 14 * q); c.lineTo(px + (i * 10 + 10) * q, py + s); c.fill(); } }
+    else if (ch === '=') { c.fillStyle = '#9b84c4'; c.fillRect(px, py, s, 7 * q); }
+    else if (ch === 'B') { c.fillStyle = '#a46f47'; c.fillRect(px + q, py + q, s - 2 * q, s - 2 * q); c.strokeStyle = '#3a2618'; c.lineWidth = 2 * q; c.beginPath(); c.moveTo(px + 4 * q, py + 4 * q); c.lineTo(px + s - 4 * q, py + s - 4 * q); c.moveTo(px + s - 4 * q, py + 4 * q); c.lineTo(px + 4 * q, py + s - 4 * q); c.stroke(); }
+    else if (ch === 'C') { c.fillStyle = '#c89a64'; c.fillRect(px + q, py + q, s - 2 * q, s - 2 * q); c.fillStyle = '#e8d6a8'; c.fillRect(px + s / 2 - 3 * q, py + q, 6 * q, s - 2 * q); }
+    else if (ch === '>' || ch === '<') {
+      c.fillStyle = '#2a2d3d'; c.fillRect(px, py, s, s); c.strokeStyle = '#ffd38a'; c.lineWidth = 2 * q; const d = ch === '>' ? 1 : -1;
+      for (const o of [8, 18]) { const cx = px + o * q; c.beginPath(); c.moveTo(cx - 3 * d * q, py + 6 * q); c.lineTo(cx + 3 * d * q, py + s / 2); c.lineTo(cx - 3 * d * q, py + s - 6 * q); c.stroke(); }
+    }
+    else if (ch === 'R') {
+      c.fillStyle = street ? '#2b3560' : '#c0504d';
+      if (street) { c.fillRect(px + 9 * q, py - 26 * q, 12 * q, 56 * q); c.beginPath(); c.arc(px + 15 * q, py - 30 * q, 7 * q, 0, Math.PI * 2); c.fill(); }
+      else { c.fillRect(px + 4 * q, py + 14 * q, 22 * q, 5 * q); c.fillRect(px + 4 * q, py + 2 * q, 5 * q, 14 * q); c.fillRect(px + 13 * q, py + 19 * q, 4 * q, 8 * q); }
+      c.fillStyle = '#f3e9d2'; c.font = `${12 * q}px ${FONT}`; c.textAlign = 'center'; c.fillText('↔', px + s / 2, py + s - 1 * q);
+    }
+    else if (ch === 'L') { c.fillStyle = street ? '#d8343f' : '#d9f3e6'; c.fillRect(px - 6 * q, py + 10 * q, s + 12 * q, street ? 12 * q : 6 * q); c.fillStyle = '#f3e9d2'; c.font = `${13 * q}px ${FONT}`; c.textAlign = 'center'; c.fillText('↓', px + s / 2, py + s); }
+    else if (ch === '*') { c.fillStyle = '#e8b84a'; c.beginPath(); c.arc(px + s / 2, py + s / 2, 9 * q, 0, Math.PI * 2); c.fill(); c.fillStyle = '#c9411f'; c.beginPath(); c.arc(px + s / 2, py + s / 2, 4 * q, 0, Math.PI * 2); c.fill(); }
+    else if (ch === 'P') {
+      if (JIM.complete && JIM.naturalWidth) { const z = s * 2.9; c.drawImage(JIM, px + s / 2 - z / 2, py + s - z * 0.94, z, z); }
+      else { c.fillStyle = '#f3e9d2'; c.fillRect(px + 8 * q, py - 20 * q, 14 * q, 50 * q); }
+    }
+  }
+
+  function render() {
+    if (!data) return;
+    const r = room(), theme = r.theme || 'street';
+    gx.fillStyle = THEME_BG[theme]; gx.fillRect(0, 0, W, H);
+    if (theme === 'street' && BG.complete && BG.naturalWidth) { gx.globalAlpha = 0.45; gx.drawImage(BG, 0, 0, W, H); gx.globalAlpha = 1; }
+    gx.strokeStyle = 'rgba(255,255,255,.06)'; gx.lineWidth = 1;
+    gx.beginPath();
+    for (let x = 0; x <= COLS; x++) { gx.moveTo(x * CELL + .5, 0); gx.lineTo(x * CELL + .5, H); }
+    for (let y = 0; y <= ROWS; y++) { gx.moveTo(0, y * CELL + .5); gx.lineTo(W, y * CELL + .5); }
+    gx.stroke();
+    gx.strokeStyle = 'rgba(255,255,255,.12)'; gx.beginPath(); gx.moveTo(W / 2, 0); gx.lineTo(W / 2, H); gx.moveTo(0, H / 2); gx.lineTo(W, H / 2); gx.stroke();
+    const later = [];
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+      const ch = r.tiles[y][x];
+      if (ch === 'P' || ch === 'R') later.push([ch, x, y]); else if (ch !== '.') drawTile(gx, ch, x, y, CELL, theme);
+    }
+    for (const [ch, x, y] of later) drawTile(gx, ch, x, y, CELL, theme);
+    // exits
+    for (const [side] of SIDES) {
+      if (!r.exits || !(side in r.exits)) continue;
+      const to = r.exits[side], label = to === null ? '結束這天' : '→ ' + to, open = sideOpen(r, side);
+      gx.fillStyle = open ? 'rgba(224,168,122,.9)' : 'rgba(240,133,122,.95)';
+      gx.font = `16px ${FONT}`;
+      if (side === 'right') { gx.fillRect(W - 4, 0, 4, H); gx.textAlign = 'right'; gx.fillText(label, W - 10, 22); }
+      if (side === 'left') { gx.fillRect(0, 0, 4, H); gx.textAlign = 'left'; gx.fillText(label, 10, 22); }
+      if (side === 'top') { gx.fillRect(0, 0, W, 4); gx.textAlign = 'center'; gx.fillText(label, W / 2, 22); }
+      if (side === 'bottom') { gx.fillRect(0, H - 4, W, 4); gx.textAlign = 'center'; gx.fillText(label, W / 2, H - 10); }
+    }
+    if (hover) { gx.strokeStyle = 'rgba(224,168,122,.9)'; gx.lineWidth = 2; const [a, b] = rectFrom(); gx.strokeRect(a[0] * CELL + 1, a[1] * CELL + 1, (b[0] - a[0] + 1) * CELL - 2, (b[1] - a[1] + 1) * CELL - 2); }
+  }
+
+  function thumb(r) {
+    const c = document.createElement('canvas'); c.width = COLS * 2; c.height = ROWS * 2;
+    const x = c.getContext('2d'); x.fillStyle = THEME_BG[r.theme || 'street']; x.fillRect(0, 0, c.width, c.height);
+    const colors = { '#': '#c9d3cf', '^': '#f3e9d2', 'B': '#c98a5a', 'C': '#d9b98a', '<': '#ffd38a', '>': '#ffd38a', '=': '#9b84c4', 'R': '#e0605a', 'L': '#e0f3ec', '*': '#f2c24f', 'P': '#ffffff' };
+    for (let y = 0; y < ROWS; y++) for (let k = 0; k < COLS; k++) { const ch = r.tiles[y][k]; if (colors[ch]) { x.fillStyle = colors[ch]; x.fillRect(k * 2, y * 2, 2, 2); } }
+    return c;
+  }
+  function drawThumbs() { document.querySelectorAll('#rooms .item').forEach((el, i) => { const old = el.querySelector('canvas'); const c = thumb(map().rooms[i]); el.replaceChild(c, old); }); }
+
+  // ---------- panels ----------
+  function refresh() {
+    mi = Math.min(mi, data.maps.length - 1); ri = Math.min(ri, map().rooms.length - 1);
+    const maps = $('maps'); maps.innerHTML = '';
+    data.maps.forEach((m, i) => {
+      const el = document.createElement('div'); el.className = 'item' + (i === mi ? ' sel' : '');
+      el.innerHTML = `<span>${esc(m.name)}<small>${m.rooms.length} 間房 · ${m.abilities.map(a => ABIL.find(x => x[0] === a)[1]).join('、') || '沒有能力'}</small></span>`;
+      el.onclick = () => { mi = i; ri = 0; refresh(); };
+      maps.appendChild(el);
+    });
+    const rooms = $('rooms'); rooms.innerHTML = '';
+    map().rooms.forEach((r, i) => {
+      const el = document.createElement('div'); el.className = 'item' + (i === ri ? ' sel' : '');
+      el.appendChild(thumb(r));
+      const sp = document.createElement('span'); sp.innerHTML = `${esc(r.name)}<small>${esc(r.id)} · ${THEMES.find(t => t[0] === (r.theme || 'street'))[1]}</small>`;
+      el.appendChild(sp);
+      el.onclick = () => { ri = i; refresh(); };
+      rooms.appendChild(el);
+    });
+    const r = room(), m = map();
+    $('fName').value = r.name || ''; $('fId').value = r.id;
+    $('fTheme').value = r.theme || 'street';
+    $('fLines').value = (r.lines || []).join('\n');
+    const ex = $('fExits'); ex.innerHTML = '';
+    for (const [side, label] of SIDES) {
+      const s = document.createElement('span'); s.textContent = label; ex.appendChild(s);
+      const sel = document.createElement('select');
+      sel.innerHTML = `<option value="__none">沒有出口</option><option value="__end">結束這一天</option>` + m.rooms.filter(x => x !== r).map(x => `<option value="${esc(x.id)}">${esc(x.id)} ${esc(x.name)}</option>`).join('');
+      sel.value = !r.exits || !(side in r.exits) ? '__none' : r.exits[side] === null ? '__end' : r.exits[side];
+      sel.onchange = () => { snapshot(); r.exits = r.exits || {}; if (sel.value === '__none') delete r.exits[side]; else r.exits[side] = sel.value === '__end' ? null : sel.value; changed(false); };
+      ex.appendChild(sel);
+    }
+    $('dName').value = m.name || ''; $('dId').value = m.id; $('dIntro').value = m.intro || ''; $('dOutro').value = m.outro || '';
+    const ab = $('dAbil'); ab.innerHTML = '';
+    for (const [id, label] of ABIL) {
+      const l = document.createElement('label'); const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = m.abilities.includes(id);
+      cb.onchange = () => { snapshot(); m.abilities = ABIL.map(a => a[0]).filter(a => a === id ? cb.checked : m.abilities.includes(a)); changed(); };
+      l.append(cb, label); ab.appendChild(l);
+    }
+    render(); runChecks();
+  }
+  const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]);
+
+  // field bindings
+  $('fName').oninput = e => { room().name = e.target.value; changed(false); refreshListsSoon(); };
+  $('fId').onchange = e => {
+    const r = room(), old = r.id, id = e.target.value.trim();
+    if (!id || map().rooms.some(x => x !== r && x.id === id)) { e.target.value = old; flash('這個 ID 已經有了'); return; }
+    snapshot(); r.id = id;
+    for (const x of map().rooms) for (const s in x.exits || {}) if (x.exits[s] === old) x.exits[s] = id;
+    changed();
+  };
+  $('fTheme').innerHTML = THEMES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
+  $('fTheme').onchange = e => { snapshot(); room().theme = e.target.value; changed(); };
+  $('fLines').oninput = e => { room().lines = e.target.value.split('\n').map(s => s.trim()).filter(Boolean); changed(false); };
+  $('dName').oninput = e => { map().name = e.target.value; changed(false); refreshListsSoon(); };
+  $('dId').onchange = e => { const id = e.target.value.trim(); if (!id || data.maps.some(m => m !== map() && m.id === id)) { e.target.value = map().id; flash('這個 ID 已經有了'); return; } snapshot(); map().id = id; changed(); };
+  $('dIntro').oninput = e => { map().intro = e.target.value; changed(false); };
+  $('dOutro').oninput = e => { map().outro = e.target.value; changed(false); };
+  let listTimer = 0;
+  function refreshListsSoon() { clearTimeout(listTimer); listTimer = setTimeout(() => { const a = document.activeElement, id = a && a.id; refresh(); if (id) { $(id).focus(); } }, 500); }
+
+  // map & room management
+  $('mAdd').onclick = () => { snapshot(); let n = data.maps.length + 1; while (data.maps.some(m => m.id === `day-${n}`)) n++; data.maps.push(blankMap(n)); mi = data.maps.length - 1; ri = 0; changed(); };
+  $('mDel').onclick = () => { if (data.maps.length < 2) return flash('至少要留一天'); snapshot(); data.maps.splice(mi, 1); mi = Math.max(0, mi - 1); ri = 0; changed(); };
+  $('mUp').onclick = () => { if (!mi) return; snapshot(); [data.maps[mi - 1], data.maps[mi]] = [data.maps[mi], data.maps[mi - 1]]; mi--; changed(); };
+  $('mDown').onclick = () => { if (mi >= data.maps.length - 1) return; snapshot(); [data.maps[mi + 1], data.maps[mi]] = [data.maps[mi], data.maps[mi + 1]]; mi++; changed(); };
+  function freeRoomId() { const n = mi + 1; let k = map().rooms.length + 1; while (map().rooms.some(r => r.id === `${n}-${k}`)) k++; return `${n}-${k}`; }
+  $('rAdd').onclick = () => {
+    snapshot(); const prev = room(), r = blankRoom(freeRoomId(), '新房間'); r.theme = prev.theme;
+    map().rooms.splice(ri + 1, 0, r);
+    if (prev.exits && prev.exits.right === null) prev.exits.right = r.id;   // chain it after the current room
+    ri++; changed();
+  };
+  $('rDup').onclick = () => { snapshot(); const r = clone(room()); r.id = freeRoomId(); r.name += '（複製）'; map().rooms.splice(ri + 1, 0, r); ri++; changed(); };
+  $('rDel').onclick = () => {
+    if (map().rooms.length < 2) return flash('一天至少要有一間房');
+    snapshot(); const gone = room().id; map().rooms.splice(ri, 1);
+    for (const x of map().rooms) for (const s in x.exits || {}) if (x.exits[s] === gone) delete x.exits[s];
+    ri = Math.max(0, ri - 1); changed();
+  };
+  $('rUp').onclick = () => { const rs = map().rooms; if (!ri) return; snapshot(); [rs[ri - 1], rs[ri]] = [rs[ri], rs[ri - 1]]; ri--; changed(); };
+  $('rDown').onclick = () => { const rs = map().rooms; if (ri >= rs.length - 1) return; snapshot(); [rs[ri + 1], rs[ri]] = [rs[ri], rs[ri + 1]]; ri++; changed(); };
+
+  // ---------- painting ----------
+  const pal = $('palette');
+  TILES.forEach((t, i) => {
+    const b = document.createElement('button'); b.title = `${t.tip}（${i < 9 ? i + 1 : i === 9 ? 0 : ''}）`.replace('（）', '');
+    const c = document.createElement('canvas'); c.width = c.height = 44; const x = c.getContext('2d');
+    if (t.ch === '.') { x.strokeStyle = '#f3e9d2'; x.lineWidth = 3; x.beginPath(); x.moveTo(10, 10); x.lineTo(34, 34); x.moveTo(34, 10); x.lineTo(10, 34); x.stroke(); }
+    else if (t.ch === 'P') { x.fillStyle = '#f3e9d2'; x.beginPath(); x.arc(22, 14, 8, 0, Math.PI * 2); x.fill(); x.fillRect(15, 22, 14, 18); }
+    else if (t.ch === 'R') { x.translate(0, 8); drawTile(x, 'R', 0, 0, 30, 'office'); }
+    else drawTile(x, t.ch, 0.2, 0.2, 30, 'office');
+    b.append(c, t.name); b.dataset.ch = t.ch;
+    b.onclick = () => setTool(t.ch);
+    pal.appendChild(b);
+  });
+  function setTool(ch) { tool = ch; pal.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.ch === ch)); const t = TILES.find(x => x.ch === ch); $('hint').textContent = `${t.name}：${t.tip}。左鍵畫、右鍵擦、Shift 拖曳畫矩形。`; }
+
+  let painting = null, hover = null;
+  function cellAt(e) { const r = grid.getBoundingClientRect(); return [Math.max(0, Math.min(COLS - 1, Math.floor((e.clientX - r.left) / r.width * COLS))), Math.max(0, Math.min(ROWS - 1, Math.floor((e.clientY - r.top) / r.height * ROWS)))]; }
+  function rectFrom() { if (painting && painting.rect) { const a = painting.start, b = hover; return [[Math.min(a[0], b[0]), Math.min(a[1], b[1])], [Math.max(a[0], b[0]), Math.max(a[1], b[1])]]; } return [hover, hover]; }
+  function setCell(x, y, ch) {
+    const r = room();
+    if (ch === 'P') r.tiles = r.tiles.map(row => row.replace(/P/g, '.'));
+    r.tiles[y] = r.tiles[y].slice(0, x) + ch + r.tiles[y].slice(x + 1);
+  }
+  grid.addEventListener('contextmenu', e => e.preventDefault());
+  grid.addEventListener('pointerdown', e => {
+    const [x, y] = cellAt(e);
+    grid.setPointerCapture(e.pointerId);
+    snapshot();
+    const ch = e.button === 2 ? '.' : tool;
+    painting = { ch, rect: e.shiftKey && ch !== 'P', start: [x, y] };
+    hover = [x, y];
+    if (!painting.rect) { setCell(x, y, ch); changed(false); }
+  });
+  grid.addEventListener('pointermove', e => {
+    const c = cellAt(e); hover = c;
+    $('hint').textContent = `x ${c[0]} · y ${c[1]}` + (painting && painting.rect ? '　放開滑鼠填滿矩形' : '');
+    if (painting && !painting.rect && painting.ch !== 'P') { setCell(c[0], c[1], painting.ch); changed(false); return; }
+    render();
+  });
+  grid.addEventListener('pointerleave', () => { if (!painting) { hover = null; render(); } });
+  addEventListener('pointerup', () => {
+    if (!painting) return;
+    if (painting.rect && hover) { const [a, b] = rectFrom(); for (let y = a[1]; y <= b[1]; y++) for (let x = a[0]; x <= b[0]; x++) setCell(x, y, painting.ch); }
+    painting = null; changed(false);
+  });
+
+  // ---------- undo / keys ----------
+  function doUndo() { if (!undo.length) return; redo.push(JSON.stringify(data)); data = JSON.parse(undo.pop()); changed(); }
+  function doRedo() { if (!redo.length) return; undo.push(JSON.stringify(data)); data = JSON.parse(redo.pop()); changed(); }
+  $('bUndo').onclick = doUndo; $('bRedo').onclick = doRedo;
+  addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? doRedo() : doUndo(); return; }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); doRedo(); return; }
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) return;
+    const n = '1234567890'.indexOf(e.key); if (n >= 0 && TILES[n]) setTool(TILES[n].ch);
+  });
+
+  // ---------- import / export ----------
+  let flashTimer = 0;
+  function flash(msg) { $('status').textContent = msg; clearTimeout(flashTimer); flashTimer = setTimeout(runChecks, 2200); }
+  function normalize(d) {
+    for (const m of d.maps) { m.abilities = m.abilities || []; m.intro = m.intro || ''; m.outro = m.outro || ''; for (const r of m.rooms) { r.exits = r.exits || {}; delete r.notes; r.lines = r.lines || []; r.theme = r.theme || 'street'; } }
+    return d;
+  }
+  function accept(text, from) {
+    let d;
+    try { d = JSON.parse(text); } catch (e) { flash(`${from}不是有效的 JSON`); return false; }
+    if (!d || d.format !== 'drunken-rooms' || d.version !== 2 || !Array.isArray(d.maps) || !d.maps.length) { flash(`${from}不是 drunken-rooms v2`); return false; }
+    for (const m of d.maps) for (const r of m.rooms || []) if (!Array.isArray(r.tiles) || r.tiles.length !== ROWS || r.tiles.some(row => typeof row !== 'string' || row.length !== COLS)) { flash(`${from}的 ${r.id} 不是 ${COLS}×${ROWS}`); return false; }
+    snapshot(); data = normalize(d); mi = ri = 0; changed(); flash(`已載入${from}`); return true;
+  }
+  function exportText() {
+    // keep each tile row on its own line so the file stays readable
+    const out = clone(data);
+    for (const m of out.maps) for (const r of m.rooms) { if (!r.lines.length) delete r.lines; delete r.notes; }
+    return JSON.stringify(out, null, 2);
+  }
+  function openSheet(title, hint, text, main, alt) {
+    $('sheetTitle').textContent = title; $('sheetHint').textContent = hint; $('sheetText').value = text; $('sheetText').readOnly = !!text;
+    const [ml, mf] = main, [al, af] = alt || [];
+    $('sheetMain').textContent = ml; $('sheetMain').onclick = mf;
+    $('sheetAlt').hidden = !alt; if (alt) { $('sheetAlt').textContent = al; $('sheetAlt').onclick = af; }
+    $('sheet').hidden = false;
+  }
+  $('sheetClose').onclick = () => { $('sheet').hidden = true; };
+  $('bExport').onclick = () => {
+    const { errors } = check(data), text = exportText();
+    openSheet('匯出 JSON', errors.length ? `還有 ${errors.length} 個錯誤，遊戲會拒絕載入：${errors[0]}` : '下載檔案後，在遊戲按 Esc → 載入關卡 JSON，或把檔案拖進遊戲畫面。下載被擋的話，複製下面的文字存成 .json。', text,
+      ['下載 drunken-rooms.json', () => { try { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' })); a.download = 'drunken-rooms.json'; document.body.appendChild(a); a.click(); a.remove(); } catch (e) { flash('這個環境擋下了下載，請改用複製'); } }],
+      ['複製文字', () => { const t = $('sheetText'); t.select(); try { navigator.clipboard.writeText(text).then(() => flash('已複製'), () => { document.execCommand('copy'); flash('已複製'); }); } catch (e) { document.execCommand('copy'); flash('已複製'); } }]);
+  };
+  $('bImport').onclick = () => openSheet('匯入 JSON', '選一個 .json 檔，或把 JSON 文字貼到下面。', '',
+    ['選擇檔案', () => $('file').click()],
+    ['載入貼上的文字', () => { if (accept($('sheetText').value, '貼上的文字')) $('sheet').hidden = true; }]);
+  $('file').onchange = () => { const f = $('file').files[0]; if (f) f.text().then(t => { if (accept(t, f.name)) $('sheet').hidden = true; }); $('file').value = ''; };
+  addEventListener('dragover', e => e.preventDefault());
+  addEventListener('drop', e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) f.text().then(t => accept(t, f.name)); });
+  $('bNew').onclick = () => { snapshot(); data = blankCampaign(); mi = ri = 0; changed(); flash('開了一段新旅程（復原可以回去）'); };
+  $('bSample').onclick = () => { if (!SAMPLE) return flash('這份編輯器沒有附內建關卡'); snapshot(); data = normalize(clone(SAMPLE)); mi = ri = 0; changed(); flash('已載入遊戲內建的關卡'); };
+
+  data = normalize(load() || (SAMPLE ? clone(SAMPLE) : blankCampaign()));
+  setTool('#');
+  refresh();
+  window.editorDebug = { get data() { return data; }, check };
+})();
+</script>
+</body>
+</html>
