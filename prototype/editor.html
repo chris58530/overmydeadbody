@@ -49,6 +49,11 @@
   #checks .bad { color: var(--bad); }
   #checks .warn { color: var(--warn); }
   #checks .ok { color: #9fd3a8; }
+  .dialogue-node { border:1px solid var(--line); padding:10px; margin:10px 0; border-radius:6px; }
+  .dialogue-node.start { border-color:var(--accent); }
+  .dialogue-node b { color:var(--accent); font-weight:normal; }
+  .dialogue-choice { border-left:2px solid #8fffe2; padding-left:8px; margin:8px 0; }
+  #npcPreview { padding:10px; background:#0c0918; border:1px solid var(--accent); margin-top:8px; white-space:pre-wrap; }
   .abil { display: flex; gap: 14px; }
   .abil label { display: flex; gap: 6px; align-items: center; color: var(--ink); margin: 2px 0; font-size: 15px; }
   .abil input { width: auto; }
@@ -94,7 +99,22 @@
     <label>場景</label><select id="fTheme"></select>
     <label>出口（走出畫面那一邊會到哪裡）</label>
     <div class="exits" id="fExits"></div>
+    <label>傳送門（在工具列選「傳送門」放到格子上）</label>
+    <select id="fPortalCell" aria-label="選擇傳送門"></select>
+    <select id="fPortalTarget" aria-label="傳送門目的地"></select>
+    <p id="portalTarget" style="color:var(--dim);font-size:13px;margin:6px 0"></p>
     <label>吉姆第一次進房會說（一行一句）</label><textarea id="fLines"></textarea>
+    <h3>NPC 對話</h3>
+    <select id="fNpcCell" aria-label="選擇 NPC"></select>
+    <div id="npcVisual"></div>
+    <div id="npcPreview" hidden></div>
+    <details><summary>進階：對話 JSON</summary>
+    <label>對話邏輯 JSON（name / start / nodes）</label>
+    <textarea id="fNpcDialogue" spellcheck="false" style="min-height:180px;font:12px Consolas,monospace"></textarea>
+    <div class="row"><button id="bNpcApply">套用對話</button><button id="bNpcImport">匯入對話檔</button></div>
+    </details>
+    <div class="row"><button id="bNpcImportVisual">匯入對話檔</button><button id="bNpcPreview">試播對話</button></div>
+    <p id="npcStatus" style="font-size:13px;color:var(--dim)">選 NPC 工具並點擊角色來編輯。</p>
     <h3>這一天</h3>
     <div class="row"><div><label>名稱</label><input id="dName"></div><div><label>ID</label><input id="dId"></div></div>
     <label>能力池</label><div class="abil" id="dAbil"></div>
@@ -114,6 +134,7 @@
   </div>
 </div>
 <input id="file" type="file" accept=".json,application/json" hidden>
+<input id="npcFile" type="file" accept=".json,application/json" hidden>
 <script>
 (function () {
   'use strict';
@@ -131,6 +152,8 @@
     { ch: 'R', name: '巡邏', tip: '室內是辦公椅、街上是保全；碰到就重來，保鑣可以撞飛' },
     { ch: 'L', name: '掉落物', tip: '室內是燈管、街上是招牌；走到正下方會掉' },
     { ch: '*', name: '瓶蓋', tip: '收集品，離開房間才算數' },
+    { ch: 'O', name: '傳送門', tip: '碰到前往設定的目的地；在房間設定選擇目的地' },
+    { ch: 'N', name: 'NPC', tip: '放置角色；點擊已放置角色編輯或匯入對話 JSON' },
     { ch: 'P', name: '出生點', tip: '每間房剛好一個' },
     { ch: '.', name: '擦掉', tip: '右鍵也可以擦' },
   ];
@@ -170,7 +193,25 @@
   function snapshot() { undo.push(JSON.stringify(data)); if (undo.length > 120) undo.shift(); redo.length = 0; }
   function changed(full = true) { save(); if (full) refresh(); else { render(); drawThumbs(); runChecks(); } }
 
+  function validateDialogue(d) {
+    if (!d || typeof d.name !== 'string' || !d.nodes || Array.isArray(d.nodes) || typeof d.nodes !== 'object' || typeof d.start !== 'string' || !Object.hasOwn(d.nodes, d.start)) throw Error('Dialogue needs name, start and nodes');
+    const link = id => id === null || (typeof id === 'string' && Object.hasOwn(d.nodes, id));
+    for (const node of Object.values(d.nodes)) {
+      if (!node || typeof node.text !== 'string' || node.text.length > 500) throw Error('Dialogue text must be at most 500 characters');
+      if (node.next !== undefined && !link(node.next)) throw Error('Unknown dialogue next node');
+      if (node.choices !== undefined && (!Array.isArray(node.choices) || !node.choices.length || node.choices.length > 9 || node.choices.some(c => !c || typeof c.text !== 'string' || c.text.length > 100 || !link(c.next)))) throw Error('Dialogue choices need text and next (node id or null), at most 9');
+    }
+    return d;
+  }
   // ---------- checks (same contract as the game, own copy) ----------
+  function portalCells(r) {
+    const cells = [];
+    r.tiles.forEach((row, y) => { for (let x = 0; x < row.length; x++) if (row[x] === 'O') cells.push(`${x},${y}`); });
+    return cells;
+  }
+  function portalDestination(m, r, key) {
+    return r.portalTargets?.[key] !== undefined ? r.portalTargets[key] : r.portalTarget !== undefined ? r.portalTarget : m.rooms[m.rooms.indexOf(r) + 1]?.id ?? null;
+  }
   function check(d) {
     const errors = [], warns = [];
     if (!d || d.format !== 'drunken-rooms' || d.version !== 2) errors.push('不是 drunken-rooms v2 格式');
@@ -185,10 +226,22 @@
       let ends = 0;
       m.rooms.forEach(r => {
         const rat = `${at} ${r.id}`;
+        for (const [key, npc] of Object.entries(r.npcs || {})) {
+          const [x, y] = key.split(',').map(Number);
+          if (key !== `${x},${y}` || r.tiles[y]?.[x] !== 'N') errors.push(`${rat}：NPC ${key} 位置無效`);
+          try { validateDialogue(npc); } catch (e) { errors.push(`${rat}：NPC ${key} ${e.message}`); }
+        }
         const spawns = r.tiles.join('').split('P').length - 1;
         if (spawns !== 1) errors.push(`${rat}：出生點要剛好一個（現在 ${spawns} 個）`);
         const sides = Object.keys(r.exits || {});
-        if (!sides.length) errors.push(`${rat}：沒有出口`);
+        const hasPortal = r.tiles.join('').includes('O');
+        for (const key of portalCells(r)) if (portalDestination(m, r, key) === null) ends++;
+        for (const [key, target] of Object.entries(r.portalTargets || {})) {
+          if (!portalCells(r).includes(key)) errors.push(`${rat}：傳送門位置 ${key} 無效`);
+          if (target !== null && !ids.has(target)) errors.push(`${rat}：傳送門 ${key} 指向不存在的房間 ${target}`);
+        }
+        if (r.portalTarget !== undefined && r.portalTarget !== null && !ids.has(r.portalTarget)) errors.push(`${rat}：傳送門指向不存在的房間 ${r.portalTarget}`);
+        if (!sides.length && !hasPortal) errors.push(`${rat}：沒有出口`);
         for (const side of sides) {
           const to = r.exits[side];
           if (to === null) ends++;
@@ -199,7 +252,7 @@
       });
       if (!ends) warns.push(`${at}：沒有任何出口是「結束這一天」`);
       const seen = new Set([m.rooms[0] && m.rooms[0].id]), queue = [...seen];
-      while (queue.length) { const id = queue.shift(), r = m.rooms.find(x => x.id === id); if (!r) continue; for (const to of Object.values(r.exits || {})) if (to && !seen.has(to)) { seen.add(to); queue.push(to); } }
+      while (queue.length) { const id = queue.shift(), r = m.rooms.find(x => x.id === id); if (!r) continue; for (const to of [...Object.values(r.exits || {}), ...portalCells(r).map(key => portalDestination(m, r, key))]) if (to && !seen.has(to)) { seen.add(to); queue.push(to); } }
       m.rooms.forEach(r => { if (!seen.has(r.id)) warns.push(`${at} ${r.id}：從第一間房走不到這裡`); });
     });
     return { errors, warns };
@@ -242,15 +295,138 @@
     }
     else if (ch === 'L') { c.fillStyle = street ? '#d8343f' : '#d9f3e6'; c.fillRect(px - 6 * q, py + 10 * q, s + 12 * q, street ? 12 * q : 6 * q); c.fillStyle = '#f3e9d2'; c.font = `${13 * q}px ${FONT}`; c.textAlign = 'center'; c.fillText('↓', px + s / 2, py + s); }
     else if (ch === '*') { c.fillStyle = '#e8b84a'; c.beginPath(); c.arc(px + s / 2, py + s / 2, 9 * q, 0, Math.PI * 2); c.fill(); c.fillStyle = '#c9411f'; c.beginPath(); c.arc(px + s / 2, py + s / 2, 4 * q, 0, Math.PI * 2); c.fill(); }
+    else if (ch === 'O') {
+      c.save(); c.shadowColor = '#8fffe2'; c.shadowBlur = 12 * q;
+      c.fillStyle = '#34235f'; c.strokeStyle = '#8fffe2'; c.lineWidth = 3 * q;
+      c.beginPath(); c.ellipse(px + s / 2, py + s / 2, s * .32, s * .44, 0, 0, Math.PI * 2); c.fill(); c.stroke();
+      c.fillStyle = '#8fffe2'; c.font = `${18 * q}px ${FONT}`; c.textAlign = 'center'; c.fillText('→', px + s / 2, py + s * .7);
+      c.restore();
+    }
+    else if (ch === 'N') {
+      c.fillStyle = '#e0a87a'; c.beginPath(); c.arc(px + s / 2, py + s * .25, s * .22, 0, Math.PI * 2); c.fill();
+      c.fillRect(px + s * .25, py + s * .5, s * .5, s * .5);
+    }
     else if (ch === 'P') {
       if (JIM.complete && JIM.naturalWidth) { const z = s * 2.9; c.drawImage(JIM, px + s / 2 - z / 2, py + s - z * 0.94, z, z); }
       else { c.fillStyle = '#f3e9d2'; c.fillRect(px + 8 * q, py - 20 * q, 14 * q, 50 * q); }
     }
   }
 
+  function refreshNpc(r) {
+    const select = $('fNpcCell'), keys = [];
+    r.tiles.forEach((row, y) => { for (let x = 0; x < COLS; x++) if (row[x] === 'N') keys.push(`${x},${y}`); });
+    const identity = `${mi}:${r.id}`, old = select.dataset.room === identity ? select.value : '';
+    select.innerHTML = keys.map(key => `<option value="${key}">NPC (${key}) ${esc(r.npcs?.[key]?.name || '')}</option>`).join('');
+    select.dataset.room = identity;
+    if (keys.includes(old)) select.value = old;
+    const key = select.value, source = JSON.stringify(r.npcs?.[key] || { name: 'NPC', start: 'hello', nodes: { hello: { text: '你好！', next: null } } }, null, 2);
+    const field = $('fNpcDialogue'), token = `${identity}:${key}:${source}`;
+    if (field.dataset.token !== token) {
+      field.value = keys.length ? source : ''; field.dataset.token = token;
+      buildNpcVisual(keys.length ? JSON.parse(source) : null);
+      $('npcPreview').hidden = true;
+    }
+    select.disabled = field.disabled = $('bNpcApply').disabled = $('bNpcImport').disabled = !keys.length;
+    $('bNpcImportVisual').disabled = $('bNpcPreview').disabled = !keys.length;
+  }
+  function selectedNpc() { return room().npcs?.[$('fNpcCell').value]; }
+  function editNpc(edit) {
+    const npc = selectedNpc(); if (!npc) return;
+    const draft = clone(npc); edit(draft);
+    applyNpc(JSON.stringify(draft), room(), $('fNpcCell').value);
+  }
+  function buildNpcVisual(npc) {
+    const panel = $('npcVisual'); panel.replaceChildren();
+    if (!npc) { panel.textContent = '選 NPC 工具放置角色，或點擊已有角色。'; return; }
+    const el = (tag, text, parent = panel) => { const element = document.createElement(tag); if (text !== undefined) element.textContent = text; parent.append(element); return element; };
+    const button = (label, action, parent) => { const b = el('button', label, parent); b.onclick = action; return b; };
+    const destination = (value, change, parent, allowEnd = true) => {
+      const select = el('select', undefined, parent); select.setAttribute('aria-label', '對話目的地');
+      if (allowEnd) { const o = el('option', '結束對話', select); o.value = ''; }
+      Object.keys(npc.nodes).forEach(id => { const o = el('option', id, select); o.value = id; });
+      select.value = value ?? ''; select.onchange = () => change(select.value || null); return select;
+    };
+    el('label', '角色名稱'); const name = el('input'); name.value = npc.name; name.onchange = () => editNpc(d => { d.name = name.value; });
+    el('label', '起始對話'); destination(npc.start, value => editNpc(d => { d.start = value; }), panel, false);
+    const top = el('div'); top.className = 'row';
+    button('＋ 對話段落', () => editNpc(d => {
+      let i = 1; while (Object.hasOwn(d.nodes, `line${i}`)) i++;
+      d.nodes[`line${i}`] = { text: '新的對話', next: null };
+    }), top);
+    for (const [id, node] of Object.entries(npc.nodes)) {
+      const card = el('div'); card.className = 'dialogue-node' + (npc.start === id ? ' start' : '');
+      el('b', id + (npc.start === id ? ' · 開始' : ''), card);
+      el('label', '角色說的話', card); const text = el('textarea', undefined, card); text.value = node.text; text.maxLength = 500;
+      text.onchange = () => editNpc(d => { d.nodes[id].text = text.value; });
+      if (node.choices?.length) {
+        node.choices.forEach((choice, index) => {
+          const row = el('div', undefined, card); row.className = 'dialogue-choice';
+          el('label', `回答 ${index + 1}`, row); const input = el('input', undefined, row); input.value = choice.text; input.maxLength = 100;
+          input.onchange = () => editNpc(d => { d.nodes[id].choices[index].text = input.value; });
+          el('label', '回答後前往', row); destination(choice.next, value => editNpc(d => { d.nodes[id].choices[index].next = value; }), row);
+          button('刪除回答', () => editNpc(d => {
+            d.nodes[id].choices.splice(index, 1);
+            if (!d.nodes[id].choices.length) { delete d.nodes[id].choices; d.nodes[id].next = null; }
+          }), row);
+        });
+      } else {
+        el('label', '繼續後前往', card); destination(node.next, value => editNpc(d => { d.nodes[id].next = value; }), card);
+      }
+      const actions = el('div', undefined, card); actions.className = 'row';
+      const add = button('＋ 回答選項', () => editNpc(d => {
+        d.nodes[id].choices ||= []; d.nodes[id].choices.push({ text: '新的回答', next: d.nodes[id].next ?? null }); delete d.nodes[id].next;
+      }), actions); add.disabled = (node.choices?.length || 0) >= 9;
+      const del = button('刪除段落', () => editNpc(d => {
+        delete d.nodes[id]; if (d.start === id) d.start = Object.keys(d.nodes)[0];
+        for (const n of Object.values(d.nodes)) { if (n.next === id) n.next = null; for (const c of n.choices || []) if (c.next === id) c.next = null; }
+      }), actions); del.disabled = Object.keys(npc.nodes).length === 1;
+    }
+    el('p', '變更欄位後自動儲存。使用目的地下拉選單連接段落；刪除段落會將指向它的連線改為結束對話。');
+  }
+  function previewNpc(data, id) {
+    const panel = $('npcPreview'); panel.hidden = false; panel.replaceChildren();
+    const message = document.createElement('p'); message.textContent = id === null ? '對話結束' : `${data.name}\n${data.nodes[id].text}`; panel.append(message);
+    const add = (label, next) => { const b = document.createElement('button'); b.textContent = label; b.onclick = () => previewNpc(data, next); panel.append(b); };
+    if (id === null) add('重新試播', data.start);
+    else { const node = data.nodes[id]; if (node.choices?.length) node.choices.forEach(c => add(c.text, c.next)); else add('繼續', node.next ?? null); }
+    const close = document.createElement('button'); close.textContent = '關閉試播'; close.onclick = () => { panel.hidden = true; }; panel.append(close);
+  }
+  $('bNpcPreview').onclick = () => { const npc = selectedNpc(); if (npc) previewNpc(clone(npc), npc.start); };
+  $('fNpcCell').onchange = () => render();
+  function applyNpc(text, r, key) {
+    try {
+      const npc = validateDialogue(JSON.parse(text));
+      if (r.tiles[Number(key.split(',')[1])]?.[Number(key.split(',')[0])] !== 'N') throw Error('NPC no longer exists');
+      snapshot(); r.npcs ||= {}; r.npcs[key] = npc; changed(false);
+      $('npcStatus').textContent = '對話已套用';
+    } catch (e) { $('npcStatus').textContent = `未套用：${e.message}`; }
+  }
+  $('bNpcApply').onclick = () => applyNpc($('fNpcDialogue').value, room(), $('fNpcCell').value);
+  let npcImportTarget;
+  $('bNpcImport').onclick = () => { npcImportTarget = { r: room(), key: $('fNpcCell').value }; $('npcFile').click(); };
+  $('bNpcImportVisual').onclick = () => $('bNpcImport').click();
+  $('npcFile').onchange = async () => {
+    const file = $('npcFile').files[0], target = npcImportTarget;
+    if (file) { try { const text = await file.text(); if (data.maps.some(m => m.rooms.includes(target.r))) applyNpc(text, target.r, target.key); } catch (e) { $('npcStatus').textContent = e.message; } }
+    $('npcFile').value = '';
+  };
   function render() {
     if (!data) return;
     const r = room(), theme = r.theme || 'street';
+    refreshNpc(r);
+    const cellSelect = $('fPortalCell'), cells = portalCells(r), identity = `${mi}:${r.id}`;
+    const selected = cellSelect.dataset.room === identity ? cellSelect.value : '';
+    cellSelect.innerHTML = cells.map(key => `<option value="${key}">傳送門 (${key})</option>`).join('');
+    cellSelect.dataset.room = identity;
+    if (cells.includes(selected)) cellSelect.value = selected;
+    cellSelect.disabled = !cells.length;
+    const key = cellSelect.value, target = r.portalTargets?.[key];
+    $('portalTarget').textContent = cells.length ? `傳送門 (${key}) → ${portalDestination(map(), r, key) ?? '結束這一天'}。選傳送門工具並點擊格子可選取。` : '先在地圖放置傳送門，再選擇個別目的地。';
+    const portalSelect = $('fPortalTarget');
+    portalSelect.innerHTML = '<option value="auto">沿用預設目的地</option><option value="end">結束這一天</option>'
+      + map().rooms.map((dest, i) => `<option value="room:${i}">${esc(dest.id)} ${esc(dest.name || '')}</option>`).join('');
+    portalSelect.disabled = !cells.length;
+    portalSelect.value = target === undefined ? 'auto' : target === null ? 'end' : `room:${map().rooms.findIndex(dest => dest.id === target)}`;
     gx.fillStyle = THEME_BG[theme]; gx.fillRect(0, 0, W, H);
     if (theme === 'street' && BG.complete && BG.naturalWidth) { gx.globalAlpha = 0.45; gx.drawImage(BG, 0, 0, W, H); gx.globalAlpha = 1; }
     gx.strokeStyle = 'rgba(255,255,255,.06)'; gx.lineWidth = 1;
@@ -282,7 +458,7 @@
   function thumb(r) {
     const c = document.createElement('canvas'); c.width = COLS * 2; c.height = ROWS * 2;
     const x = c.getContext('2d'); x.fillStyle = THEME_BG[r.theme || 'street']; x.fillRect(0, 0, c.width, c.height);
-    const colors = { '#': '#c9d3cf', '^': '#f3e9d2', 'B': '#c98a5a', 'C': '#d9b98a', '<': '#ffd38a', '>': '#ffd38a', '=': '#9b84c4', 'R': '#e0605a', 'L': '#e0f3ec', '*': '#f2c24f', 'P': '#ffffff' };
+    const colors = { '#': '#c9d3cf', '^': '#f3e9d2', 'B': '#c98a5a', 'C': '#d9b98a', '<': '#ffd38a', '>': '#ffd38a', '=': '#9b84c4', 'R': '#e0605a', 'L': '#e0f3ec', '*': '#f2c24f', 'P': '#ffffff', 'O': '#8fffe2' };
     for (let y = 0; y < ROWS; y++) for (let k = 0; k < COLS; k++) { const ch = r.tiles[y][k]; if (colors[ch]) { x.fillStyle = colors[ch]; x.fillRect(k * 2, y * 2, 2, 2); } }
     return c;
   }
@@ -337,11 +513,22 @@
     const r = room(), old = r.id, id = e.target.value.trim();
     if (!id || map().rooms.some(x => x !== r && x.id === id)) { e.target.value = old; flash('這個 ID 已經有了'); return; }
     snapshot(); r.id = id;
+    for (const x of map().rooms) if (x.portalTarget === old) x.portalTarget = id;
+    for (const x of map().rooms) for (const key in x.portalTargets || {}) if (x.portalTargets[key] === old) x.portalTargets[key] = id;
     for (const x of map().rooms) for (const s in x.exits || {}) if (x.exits[s] === old) x.exits[s] = id;
     changed();
   };
   $('fTheme').innerHTML = THEMES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
   $('fTheme').onchange = e => { snapshot(); room().theme = e.target.value; changed(); };
+  $('fPortalTarget').onchange = e => {
+    snapshot();
+    const r = room(), key = $('fPortalCell').value;
+    r.portalTargets ||= {};
+    if (e.target.value === 'auto') delete r.portalTargets[key];
+    else r.portalTargets[key] = e.target.value === 'end' ? null : map().rooms[Number(e.target.value.slice(5))].id;
+    changed(false);
+  };
+  $('fPortalCell').onchange = () => render();
   $('fLines').oninput = e => { room().lines = e.target.value.split('\n').map(s => s.trim()).filter(Boolean); changed(false); };
   $('dName').oninput = e => { map().name = e.target.value; changed(false); refreshListsSoon(); };
   $('dId').onchange = e => { const id = e.target.value.trim(); if (!id || data.maps.some(m => m !== map() && m.id === id)) { e.target.value = map().id; flash('這個 ID 已經有了'); return; } snapshot(); map().id = id; changed(); };
@@ -366,6 +553,8 @@
   $('rDel').onclick = () => {
     if (map().rooms.length < 2) return flash('一天至少要有一間房');
     snapshot(); const gone = room().id; map().rooms.splice(ri, 1);
+    for (const x of map().rooms) if (x.portalTarget === gone) x.portalTarget = null;
+    for (const x of map().rooms) for (const key in x.portalTargets || {}) if (x.portalTargets[key] === gone) x.portalTargets[key] = null;
     for (const x of map().rooms) for (const s in x.exits || {}) if (x.exits[s] === gone) delete x.exits[s];
     ri = Math.max(0, ri - 1); changed();
   };
@@ -392,12 +581,21 @@
   function rectFrom() { if (painting && painting.rect) { const a = painting.start, b = hover; return [[Math.min(a[0], b[0]), Math.min(a[1], b[1])], [Math.max(a[0], b[0]), Math.max(a[1], b[1])]]; } return [hover, hover]; }
   function setCell(x, y, ch) {
     const r = room();
+    if (ch !== 'N' && r.npcs) delete r.npcs[`${x},${y}`];
+    if (ch === 'N') { r.npcs ||= {}; r.npcs[`${x},${y}`] ||= { name: 'NPC', start: 'hello', nodes: { hello: { text: '你好！', next: null } } }; }
+    if (ch !== 'O' && r.portalTargets) delete r.portalTargets[`${x},${y}`];
     if (ch === 'P') r.tiles = r.tiles.map(row => row.replace(/P/g, '.'));
     r.tiles[y] = r.tiles[y].slice(0, x) + ch + r.tiles[y].slice(x + 1);
   }
   grid.addEventListener('contextmenu', e => e.preventDefault());
   grid.addEventListener('pointerdown', e => {
     const [x, y] = cellAt(e);
+    if (e.button === 0 && tool === 'N' && room().tiles[y][x] === 'N' && !e.shiftKey) {
+      $('fNpcCell').value = `${x},${y}`; render(); return;
+    }
+    if (e.button === 0 && tool === 'O' && room().tiles[y][x] === 'O' && !e.shiftKey) {
+      $('fPortalCell').value = `${x},${y}`; render(); return;
+    }
     grid.setPointerCapture(e.pointerId);
     snapshot();
     const ch = e.button === 2 ? '.' : tool;
