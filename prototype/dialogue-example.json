@@ -1,0 +1,17 @@
+{
+  "name": "Receptionist",
+  "start": "hello",
+  "nodes": {
+    "hello": {
+      "text": "Still here? What do you need?",
+      "choices": [
+        { "text": "How do I get home?", "next": "directions" },
+        { "text": "Goodbye.", "next": null }
+      ]
+    },
+    "directions": {
+      "text": "Follow the glowing entrance. Be careful out there!",
+      "next": null
+    }
+  }
+}

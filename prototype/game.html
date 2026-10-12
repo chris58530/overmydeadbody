@@ -28,6 +28,7 @@
 </head>
 <body>
 <canvas id="game" width="1280" height="720" tabindex="0"></canvas>
+<div id="talk" hidden style="position:fixed;bottom:5%;left:15%;width:70%;max-height:45vh;overflow:auto;background:#151127;color:#f3e9d2;padding:18px;box-sizing:border-box;border:1px solid #e0a87a;white-space:pre-wrap"></div>
 <div id="menu" hidden>
   <h2>暫停</h2>
   <button data-act="resume">繼續</button>
@@ -70,7 +71,17 @@
 
   // . empty  # ground  ^ shards  = plank  B crate (charge breaks)  C crumbling boxes  < > conveyor
   // R patrol (office chair / night guard)  L falling light (tube / sign)  * bottle cap  P spawn
-  const TILE_CHARS = '.#^=BCP<>RL*';
+  const TILE_CHARS = '.#^=BCP<>RL*ON';
+  function validateDialogue(d) {
+    if (!d || typeof d.name !== 'string' || !d.nodes || Array.isArray(d.nodes) || typeof d.nodes !== 'object' || typeof d.start !== 'string' || !Object.hasOwn(d.nodes, d.start)) throw Error('Dialogue needs name, start and nodes');
+    const link = id => id === null || (typeof id === 'string' && Object.hasOwn(d.nodes, id));
+    for (const node of Object.values(d.nodes)) {
+      if (!node || typeof node.text !== 'string' || node.text.length > 500) throw Error('Dialogue text must be at most 500 characters');
+      if (node.next !== undefined && !link(node.next)) throw Error('Unknown dialogue next node');
+      if (node.choices !== undefined && (!Array.isArray(node.choices) || !node.choices.length || node.choices.length > 9 || node.choices.some(c => !c || typeof c.text !== 'string' || c.text.length > 100 || !link(c.next)))) throw Error('Dialogue choices need text and next (node id or null), at most 9');
+    }
+    return d;
+  }
   const GUARD_LINES = ['下班了還想去哪？', '這裡不能過。', '你是不是喝酒了？'];
   const SOLID = '#BC<>';
   const SIDES = ['left', 'right', 'top', 'bottom'];
@@ -99,8 +110,25 @@
         if (spawns !== 1) errors.push(`${rat} 必須剛好有一個出生點 P`);
         if (room.theme !== undefined && !THEMES.includes(room.theme)) errors.push(`${rat} 未知場景 "${room.theme}"`);
         const exits = room.exits || {};
+        if (room.npcs !== undefined) {
+          if (!room.npcs || typeof room.npcs !== 'object' || Array.isArray(room.npcs)) errors.push(`${rat} npcs must be an object`);
+          else for (const [key, npc] of Object.entries(room.npcs)) {
+            const [x, y] = key.split(',').map(Number);
+            if (key !== `${x},${y}` || room.tiles[y]?.[x] !== 'N') errors.push(`${rat} invalid NPC position ${key}`);
+            try { validateDialogue(npc); } catch (e) { errors.push(`${rat} NPC ${key}: ${e.message}`); }
+          }
+        }
+        if (room.portalTargets !== undefined) {
+          if (!room.portalTargets || typeof room.portalTargets !== 'object' || Array.isArray(room.portalTargets)) errors.push(`${rat} portalTargets 必須是物件`);
+          else for (const [key, target] of Object.entries(room.portalTargets)) {
+            const [x, y] = key.split(',').map(Number);
+            if (!/^\d+,\d+$/.test(key) || key !== `${x},${y}` || room.tiles[y]?.[x] !== 'O') errors.push(`${rat} 傳送門位置 ${key} 無效`);
+            if (target !== null && !ids.has(target)) errors.push(`${rat} 傳送門 ${key} 指向不存在的房間 "${target}"`);
+          }
+        }
+        if (room.portalTarget !== undefined && room.portalTarget !== null && !ids.has(room.portalTarget)) errors.push(`${rat} 傳送門指向不存在的房間 "${room.portalTarget}"`);
         const keys = Object.keys(exits);
-        if (!keys.length) errors.push(`${rat} 至少要有一個出口`);
+        if (!keys.length && !room.tiles.join('').includes('O')) errors.push(`${rat} 至少要有一個出口`);
         keys.forEach(side => {
           if (!SIDES.includes(side)) errors.push(`${rat} 出口方向 "${side}" 無效`);
           else if (exits[side] !== null && !ids.has(exits[side])) errors.push(`${rat} 出口指向不存在的房間 "${exits[side]}"`);
@@ -149,6 +177,7 @@
 
     enterRoom(id) {
       this.room = this.map.rooms.find(r => r.id === id);
+      this.dialogue = null;
       this.tiles = this.room.tiles.map(row => row.split(''));
       this.tilesVersion = (this.tilesVersion || 0) + 1;
       this.exits = this.room.exits || {};
@@ -505,17 +534,24 @@
       this.emit(b.x, b.y - BODY_H / 2, '#e0605a', 10, 400, 300);
     }
 
-    leave(side) {
+    leave(side, target = this.exits[side]) {
       for (const k of this.roomCaps) this.capsGot.add(k);
       this.roomCaps = [];
-      const target = this.exits[side];
       if (target === null) { this.phase = 'mapEnd'; this.timer = 0; return; }
       this.phase = 'transition';
       this.transT = TUNING.transition;
       this.nextRoom = target;
     }
 
-    // input: { left, right, jump (held), jumpPressed, kPressed, confirmPressed }
+    nearbyNpc() {
+      let nearest = null, distance = T * 2;
+      for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (this.tiles[y][x] === 'N') {
+        const d = Math.hypot(this.body.x - (x + .5) * T, this.body.y - (y + 1) * T);
+        if (d < distance) { distance = d; nearest = { x, y, data: this.room.npcs?.[`${x},${y}`] }; }
+      }
+      return nearest;
+    }
+    // input also accepts talkPressed and choice (1-9).
     step(dt, input = {}) {
       this.time += dt;
       this.shake = Math.max(0, this.shake - dt * 2.5);
@@ -552,6 +588,18 @@
         this.timer -= dt;
         if (this.timer <= 0) this.enterRoom(this.room.id);
         return;
+      }
+      if (this.dialogue) {
+        const { data, node } = this.dialogue, current = data.nodes[node];
+        let next;
+        if (current.choices?.length && input.choice) next = current.choices[input.choice - 1]?.next;
+        else if (!current.choices?.length && (input.talkPressed || input.confirmPressed)) next = current.next ?? null;
+        if (next !== undefined) this.dialogue = next === null ? null : { data, node: next };
+        return;
+      }
+      if (input.talkPressed && this.state === 'free') {
+        const npc = this.nearbyNpc();
+        if (npc?.data) { this.dialogue = { data: npc.data, node: npc.data.start }; return; }
       }
 
       // the card overlay and the sip run in real time; the world keeps moving, slowly
@@ -671,7 +719,15 @@
     }
 
     checkExits() {
-      const b = this.body;
+      const b = this.body, box = this.box(b);
+      for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+        if (this.tiles[y][x] === 'O' && overlap(box, { x: x * T + 4, y: y * T + 2, w: T - 8, h: T - 4 })) {
+          const next = this.map.rooms[this.map.rooms.indexOf(this.room) + 1];
+          const target = this.room.portalTargets?.[`${x},${y}`];
+          this.leave(null, target !== undefined ? target : this.room.portalTarget !== undefined ? this.room.portalTarget : next ? next.id : null);
+          return;
+        }
+      }
       if (this.exits.right !== undefined && b.x > W) this.leave('right');
       else if (this.exits.left !== undefined && b.x < 0) this.leave('left');
       else if (this.exits.top !== undefined && b.y < 0) this.leave('top');
@@ -679,7 +735,7 @@
     }
   }
 
-  root.Drunk = { T, COLS, ROWS, W, H, BODY_W, BODY_H, TUNING, ABILITIES, THEMES, Game, validateCampaign, parseCampaign };
+  root.Drunk = { T, COLS, ROWS, W, H, BODY_W, BODY_H, TUNING, ABILITIES, THEMES, Game, validateCampaign, parseCampaign, validateDialogue };
 })(typeof window !== 'undefined' ? window : globalThis);
 // Default campaign. Same shape the editor exports (drunken-rooms v2).
 // Tiles: . empty  # ground  ^ broken glass  = plank (jump through)  B breakable  P spawn
@@ -1255,7 +1311,31 @@
     const g = game;
     for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
       const t = g.tiles[y][x], tx = x * T, ty = y * T;
-      if (t === 'C') {
+      if (t === 'N') {
+        drawActor('idle', g.time, tx + T / 2, ty + T, 1, 100, '#e0a87a', 1);
+        text(g.room.npcs?.[`${x},${y}`]?.name || 'NPC', tx + T / 2, ty - T, 16, 'center');
+      } else if (t === 'O') {
+        ctx.save();
+        const pulse = .5 + .5 * Math.sin(g.time * 4), cx = tx + T / 2, cy = ty + T / 2;
+        const halo = ctx.createRadialGradient(cx, cy, 0, cx, cy, T * .95);
+        halo.addColorStop(0, 'rgba(143,255,226,.45)');
+        halo.addColorStop(.45, `rgba(143,255,226,${.12 + pulse * .12})`);
+        halo.addColorStop(1, 'rgba(143,255,226,0)');
+        ctx.fillStyle = halo; ctx.fillRect(tx - T / 2, ty - T / 2, T * 2, T * 2);
+        ctx.fillStyle = '#34235f'; ctx.strokeStyle = '#8fffe2'; ctx.lineWidth = 3;
+        ctx.shadowColor = '#8fffe2'; ctx.shadowBlur = 12 + Math.sin(g.time * 4) * 5;
+        ctx.beginPath(); ctx.ellipse(tx + T / 2, ty + T / 2, T * .32, T * .44, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#8fffe2'; ctx.font = '24px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('→', tx + T / 2, ty + T * .7);
+        ctx.fillStyle = '#e5fff7';
+        for (let i = 0; i < 6; i++) {
+          const phase = (g.time * .45 + i / 6 + x * .13 + y * .07) % 1;
+          const sx = cx + Math.sin(i * 2.4 + g.time) * T * .52;
+          const sy = ty + T - phase * T * 1.4;
+          ctx.globalAlpha = Math.sin(phase * Math.PI);
+          ctx.beginPath(); ctx.arc(sx, sy, 1.5 + pulse, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
+      } else if (t === 'C') {
         const c = g.crumbles.get(x + ',' + y), jx = c ? (Math.random() - 0.5) * 4 : 0, jy = c ? (Math.random() - 0.5) * 2 : 0;
         ctx.save(); ctx.translate(tx + jx, ty + jy);
         ctx.fillStyle = (x + y) % 2 ? '#c89a64' : '#bd8f5a'; ctx.fillRect(1, 1, T - 2, T - 2);
@@ -1498,7 +1578,8 @@
   addEventListener('keydown', e => {
     Sfx.ensure();
     if (e.code === 'KeyM' && !e.repeat) { Sfx.toggle(); return; }
-    const a = bind[e.code]; if (!a) return;
+    if (menu.hidden && /^Digit[1-9]$/.test(e.code) && game.dialogue) { e.preventDefault(); if (!e.repeat) pressed.choice = Number(e.code.slice(5)); return; }
+    const a = e.code === 'KeyE' ? 'talk' : bind[e.code]; if (!a) return;
     e.preventDefault();
     if (a === 'esc') { if (!e.repeat) toggleMenu(); return; }
     if (!menu.hidden) return;
@@ -1517,13 +1598,20 @@
       const n = Math.ceil(frame / (1 / 240)), dt = frame / n;
       if (pressed.r && game.phase === 'play') game.die();
       for (let i = 0; i < n; i++) {
-        game.step(dt, { ...held, jumpPressed: pressed.jump, kPressed: pressed.k, confirmPressed: pressed.confirm });
+        game.step(dt, { ...held, jumpPressed: pressed.jump, kPressed: pressed.k, confirmPressed: pressed.confirm, talkPressed: pressed.talk, choice: pressed.choice });
         pressed = {};
       }
     }
     for (const ev of new Set(game.events)) Sfx.play(ev);
     game.events.length = 0;
     draw();
+    const talk = document.getElementById('talk'), conversation = game.dialogue;
+    const nearby = game.phase === 'play' && game.nearbyNpc();
+    talk.hidden = !menu.hidden || (!conversation && !nearby?.data);
+    if (conversation) {
+      const node = conversation.data.nodes[conversation.node];
+      talk.textContent = `${conversation.data.name}\n${node.text}\n\n` + (node.choices?.length ? node.choices.map((c, i) => `${i + 1}. ${c.text}`).join('\n') : 'E / Enter：繼續');
+    } else talk.textContent = nearby?.data ? `E：與 ${nearby.data.name} 交談` : '';
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);
@@ -1583,6 +1671,24 @@
     if (act === 'load') fileInput.click();
   });
   fileInput.addEventListener('change', () => { const f = fileInput.files[0]; if (f) f.text().then(t => load(t, f.name)); fileInput.value = ''; });
+  if (new URLSearchParams(location.search).get('editorTest') === '1' && parent !== window) {
+    addEventListener('message', e => {
+      if (e.source !== parent || e.data?.type !== 'drunk-editor-test') return;
+      try {
+        const campaign = parseCampaign(e.data.campaign);
+        const map = campaign.maps[e.data.mapIndex];
+        if (!map || !map.rooms.some(r => r.id === e.data.roomId)) throw new Error('找不到試玩房間');
+        const preview = new Game(campaign);
+        preview.startMap(e.data.mapIndex);
+        preview.enterRoom(e.data.roomId);
+        preview.phase = 'play';
+        game = preview;
+        roomKey = '';
+        toggleMenu(false);
+      } catch (err) { toggleMenu(true); menuMsg.textContent = `試玩讀不進來：\n${err.message}`; }
+    });
+    parent.postMessage({ type: 'drunk-test-ready' }, '*');
+  }
   addEventListener('dragover', e => e.preventDefault());
   addEventListener('drop', e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) f.text().then(t => load(t, f.name)); });
 })();

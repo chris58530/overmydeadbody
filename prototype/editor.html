@@ -72,6 +72,7 @@
   <button id="bSample">載入內建關卡</button>
   <button id="bImport">匯入 JSON</button>
   <button id="bExport">匯出 JSON</button>
+  <button id="bTest">試玩目前房間</button>
   <span class="gap"></span>
   <button id="bUndo" title="Ctrl+Z">復原</button>
   <button id="bRedo" title="Ctrl+Y">重做</button>
@@ -135,6 +136,10 @@
 </div>
 <input id="file" type="file" accept=".json,application/json" hidden>
 <input id="npcFile" type="file" accept=".json,application/json" hidden>
+<dialog id="testScene" style="width:94vw;max-width:1400px;height:90vh;background:#111;color:white;border:1px solid #555;padding:12px">
+  <button id="bCloseTest">結束試玩 · 返回編輯</button>
+  <iframe id="testFrame" title="目前房間試玩" style="display:block;width:100%;height:calc(100% - 42px);border:0;margin-top:8px"></iframe>
+</dialog>
 <script>
 (function () {
   'use strict';
@@ -647,6 +652,25 @@
     for (const m of out.maps) for (const r of m.rooms) { if (!r.lines.length) delete r.lines; delete r.notes; }
     return JSON.stringify(out, null, 2);
   }
+  let testSnapshot = null;
+  $('bTest').onclick = () => {
+    const { errors } = check(data);
+    if (errors.length) return flash(`無法試玩：${errors[0]}`);
+    testSnapshot = { type: 'drunk-editor-test', campaign: exportText(), mapIndex: mi, roomId: room().id };
+    $('testScene').showModal();
+    $('testFrame').src = 'game.html?editorTest=1';
+  };
+  addEventListener('message', e => {
+    if (e.source !== $('testFrame').contentWindow || e.data?.type !== 'drunk-test-ready' || !testSnapshot) return;
+    e.source.postMessage(testSnapshot, '*');
+    $('testFrame').focus();
+  });
+  $('bCloseTest').onclick = () => $('testScene').close();
+  $('testScene').addEventListener('close', () => {
+    testSnapshot = null;
+    $('testFrame').src = 'about:blank';
+    $('bTest').focus();
+  });
   function openSheet(title, hint, text, main, alt) {
     $('sheetTitle').textContent = title; $('sheetHint').textContent = hint; $('sheetText').value = text; $('sheetText').readOnly = !!text;
     const [ml, mf] = main, [al, af] = alt || [];

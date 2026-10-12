@@ -1,0 +1,41 @@
+{
+  "name": "夜班保全",
+  "start": "hello",
+  "nodes": {
+    "hello": {
+      "text": "吉姆？這麼晚還沒下班？你看起來快睡著了。",
+      "choices": [
+        { "text": "我想回家，出口在哪？", "next": "directions" },
+        { "text": "你怎麼還在這裡？", "next": "guard" },
+        { "text": "沒事，我先走了。", "next": null }
+      ]
+    },
+    "directions": {
+      "text": "往發光的傳送門走就對了。地上的碎玻璃別踩，明天清潔人員才會來。",
+      "next": "tips"
+    },
+    "tips": {
+      "text": "還有什麼想問的？",
+      "choices": [
+        { "text": "遇到箱子擋路怎麼辦？", "next": "boxes" },
+        { "text": "再說一次出口在哪。", "next": "directions" },
+        { "text": "謝謝，我回家了。", "next": "goodbye" }
+      ]
+    },
+    "boxes": {
+      "text": "保鑣能幫你撞開木箱。記得先抽卡、鎖定，再等喝完後發動。",
+      "next": "tips"
+    },
+    "guard": {
+      "text": "我值夜班啊。倒是你，連假前還加班成這樣，回去好好睡一覺吧。",
+      "choices": [
+        { "text": "那我該往哪走？", "next": "directions" },
+        { "text": "辛苦了，晚安。", "next": "goodbye" }
+      ]
+    },
+    "goodbye": {
+      "text": "晚安，吉姆。路上小心。",
+      "next": null
+    }
+  }
+}
