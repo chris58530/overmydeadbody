@@ -37,7 +37,7 @@
   <button data-act="load">載入關卡 JSON</button>
   <button data-act="default">換回內建關卡</button>
   <p id="menuMsg"></p>
-  <small>A D 走　W 跳　K 抽卡 → K 鎖定 → 喝完 5 秒內按 K 發動　R 重來　M 靜音　` 調手感<br>也可以直接把 JSON 拖進畫面</small>
+  <small>A D 走　W 跳　J 摔角手　L 保鑣　R 重來　M 靜音　` 調手感<br>舉起時按住 W 高拋、S 低飛，飛行中 A D 轉向　衝刺中 W 跳離　撞破箱子或撞飛保全可以再叫一次<br>抽卡模式（手感面板「直按模式」設 0）：K 抽卡 → K 鎖定 → 喝完 5 秒內按 K 發動<br>也可以直接把 JSON 拖進畫面</small>
 </div>
 <div id="tune" hidden></div>
 <input id="file" type="file" accept=".json,application/json" hidden>
@@ -52,21 +52,27 @@
   // px and seconds. Throw speeds start from the BeaverKit skill lab (throwVX 980 shrunk to fit a 32-tile room).
   // Every value here can be changed live in the tuning panel (backquote key).
   const TUNING = {
-    run: 330, accelGround: 3200, accelAir: 1900,
-    jump: 660, gravity: 2000, apexHang: 0.5, releaseGravity: 2.4, maxFall: 950,
+    run: 370, accelGround: 3200, accelAir: 1900,
+    jump: 660, gravity: 2000, apexHang: 0.5, releaseGravity: 2.4, fallGravity: 1.5, maxFall: 950,
+    // airDrag: share of accelAir that bleeds speed with no input; overDecel: how fast extra speed (a charge jump-out) fades
+    airDrag: 0.35, overDecel: 500,
     coyote: 0.1, jumpBuffer: 0.12,
     cardInterval: 0.32, drink: 0.8,
-    liftTime: 0.45, liftRise: 0.12, liftHeight: 84, throwVX: 640, throwVY: 960, recover: 0.1,
-    chargeSpeed: 700, chargeTime: 4.2, chargeTurn: 0.42,
+    // the wrestler's arc is picked by what is held when he lets go: W steep, nothing the regular arc, S low and fast
+    liftTime: 0.22, liftRise: 0.12, liftHeight: 84, throwVX: 640, throwVY: 960, recover: 0.1,
+    throwUpVX: 240, throwUpVY: 1150, throwLowVX: 900, throwLowVY: 520, throwSteer: 900,
+    chargeSpeed: 700, chargeTime: 1.0, chargeTurn: 9, chargeJumpOut: 0.85,
     carryOffset: 80, releaseVY: 260,
-    patrolSpeed: 110, belt: 180, crumbleDelay: 0.45, crumbleRespawn: 2.5, fallTrigger: 60, fallWarn: 0.18,
+    patrolSpeed: 110, belt: 180, crumbleDelay: 0.45, crumbleRespawn: 2.5, fallTrigger: 60, fallWarn: 0.3,
     slowmo: 0.2, airDraws: 1, airCharge: 0.5, hitStop: 0.06, holdTime: 5,
-    deathDelay: 0.55, transition: 0.5,
+    deathDelay: 0.45, transition: 0.5,
+    // 1: each skill has its own key and fires at once; 0: the K card draw
+    directMode: 1,
   };
 
   const ABILITIES = {
-    wrestler: { name: '摔角手', bottle: 0, tint: '#e0605a', ink: '#b8433c' },
-    bodyguard: { name: '保鑣', bottle: 1, tint: '#5aa7d6', ink: '#2f6f9c' },
+    wrestler: { name: '摔角手', bottle: 0, tint: '#e0605a', ink: '#b8433c', key: 'J' },
+    bodyguard: { name: '保鑣', bottle: 1, tint: '#5aa7d6', ink: '#2f6f9c', key: 'L' },
   };
 
   // . empty  # ground  ^ shards  = plank  B crate (charge breaks)  C crumbling boxes  < > conveyor
@@ -82,6 +88,14 @@
     }
     return d;
   }
+  // Death quips by cause; Jim is already dead, so they are complaints rather than screams.
+  const DEATH_LINES = {
+    glass: ['腳底不痛，因為我已經死了', '這玻璃誰要賠？'],
+    pit: ['這坑比我的年終還深', '我只是想回家……'],
+    guard: ['我有識別證！', '我就住這附近！'],
+    sign: ['招牌也太不牢了', '這是工傷嗎？'],
+    other: ['我早就死了啊', '再一杯……', '嗝。', '這不算！'],
+  };
   const GUARD_LINES = ['下班了還想去哪？', '這裡不能過。', '你是不是喝酒了？'];
   const SOLID = '#BC<>';
   const SIDES = ['left', 'right', 'top', 'bottom'];
@@ -204,7 +218,7 @@
       this.bubbles = [];
       if (!this.seen.has(this.map.id + ':' + id)) {
         this.seen.add(this.map.id + ':' + id);
-        (this.room.lines || []).forEach((text, i) => this.bubbles.push({ who: 'body', text, delay: 0.6 + i * 2.4, t: 2.2 }));
+        (this.room.lines || []).forEach((text, i) => this.bubbles.push({ who: 'body', text, delay: 0.2 + i * 0.8, t: 2.2 }));
       }
       this.body = { x: this.spawn.x, y: this.spawn.y, vx: 0, vy: 0, face: 1, grounded: true, anim: 'idle', animTime: 0 };
       this.state = 'free';
@@ -292,13 +306,49 @@
       const pool = this.map.abilities.filter(a => a !== this.activeSkill);
       const airborne = !this.body.grounded || ['lift', 'thrown', 'charge'].includes(this.state);
       if (!pool.length || (airborne && this.airDraws >= TUNING.airDraws)) {
-        this.bubbles.push({ who: 'body', text: '現在抽不了', delay: 0, t: 0.8 });
+        this.bubbles = this.bubbles.filter(bub => !bub.deny);
+        this.bubbles.push({ who: 'body', text: '現在抽不了', delay: 0, t: 0.8, deny: true });
         this.events.push('deny');
         return;
       }
       if (airborne) this.airDraws++;
       this.slot = { pool, mode: 'spin', index: 0, t: 0, age: 0, flip: 0, ticks: 0, braked: 0, brakeSteps: 0 };
       this.events.push('slotOpen');
+    }
+
+    // Direct mode: the skill's own key fires it at once, under the same day-pool and air rules as the draw.
+    pressSkill(id) {
+      if (this.state === 'dead') return;
+      const airborne = !this.body.grounded || ['lift', 'thrown', 'charge'].includes(this.state);
+      const why = !this.map.abilities.includes(id) ? '今天沒有這招'
+        : id === this.activeSkill ? '正在用'
+        : airborne && this.airDraws >= TUNING.airDraws ? '現在用不了' : null;
+      if (why) {
+        this.bubbles = this.bubbles.filter(bub => !bub.deny);
+        this.bubbles.push({ who: 'body', text: why, delay: 0, t: 0.8, deny: true });
+        this.events.push('deny');
+        return;
+      }
+      // a charge spends the air use even from the ground, so chaining off it takes a smash or a knock
+      if (airborne || id === 'bodyguard') this.airDraws++;
+      this.flash = { color: ABILITIES[id].tint, t: 0.2 };
+      this.events.push('drink');
+      this.fire(id);
+    }
+
+    // A helper's shout rides on the helper itself, so it follows a charge across the room.
+    shout(who, lines) { this.bubbles.push({ who, text: lines[Math.floor(Math.random() * lines.length)], delay: 0, t: 0.9 }); }
+
+    // Velocity of the wrestler's throw for the arc chosen while lifted.
+    throwVel(kind = this.throwKind) {
+      const [vx, vy] = kind === 'up' ? [TUNING.throwUpVX, TUNING.throwUpVY] : kind === 'low' ? [TUNING.throwLowVX, TUNING.throwLowVY] : [TUNING.throwVX, TUNING.throwVY];
+      return { vx: this.aim * vx, vy: -vy };
+    }
+
+    // A crate smashed or a guard knocked mid-charge earns the air use back, so chains can continue.
+    refreshAir() {
+      if (this.airDraws || this.activeSkill) { this.events.push('ready'); this.flash = { color: '#f2c24f', t: 0.15 }; if (this.stand) this.shout(this.stand, ['下一位！', '再來！']); }
+      this.airDraws = 0; this.activeSkill = null;
     }
 
     // Pick a Card: the cards cycle in real time while the world crawls at TUNING.slowmo;
@@ -354,6 +404,7 @@
       this.carry();
       this.setAnim('fall');
       this.emit(b.x, s.y, ABILITIES.bodyguard.tint, 14);
+      this.shout(s, ['讓開讓開！', '老闆借過！', '衝啊——']);
     }
 
     carry() {
@@ -380,6 +431,7 @@
         this.shake = 0.35;
         this.hitStop = TUNING.hitStop;
         this.events.push('break');
+        this.refreshAir();
       }
       if (!wall) return false;
       const col = dx > 0 ? x1 : x0;
@@ -403,15 +455,38 @@
       if (n) this.tilesVersion++;
     }
 
-    finishCharge() {
+    // Running out of time tosses Jim forward; slamming into a wall bounces him back with a thud.
+    finishCharge(hitWall) {
       const st = this.stand, b = this.body;
       this.state = 'thrown';
-      this.events.push('throw');
+      this.events.push(hitWall ? 'knock' : 'throw');
       b.x = st.x;
       b.y = st.y - TUNING.carryOffset;
-      b.vx = this.chargeDir * Math.max(360, this.speed * 0.55);
-      b.vy = -TUNING.releaseVY;
+      if (hitWall) {
+        b.vx = -this.chargeDir * 260; b.vy = -420;
+        this.shake = 0.35; this.hitStop = 0.08;
+        this.shout(st, ['老闆，牆比較硬', '痛痛痛……']);
+        this.emit(b.x + this.chargeDir * 30, b.y - 20, '#f2c24f', 14, 420, 300);
+      } else {
+        b.vx = this.chargeDir * Math.max(360, this.speed * 0.55);
+        b.vy = -TUNING.releaseVY;
+      }
       st.leaving = true;
+      this.setAnim('jump');
+    }
+
+    // Jump mid-charge: Jim leaps off the bodyguard's shoulders and keeps most of the speed.
+    jumpOut() {
+      const b = this.body;
+      this.state = 'free';
+      this.stand.leaving = true;
+      this.shout(this.stand, ['欸！你去哪？', '不用送了？']);
+      b.vx = this.chargeDir * TUNING.chargeSpeed * TUNING.chargeJumpOut;
+      b.vy = -TUNING.jump;
+      b.grounded = false;
+      this.jumpBuf = this.coyote = 0;
+      this.events.push('jump');
+      this.emit(b.x, b.y, ABILITIES.bodyguard.tint, 10, 260, 120);
       this.setAnim('jump');
     }
 
@@ -422,7 +497,9 @@
       this.state = 'lift';
       this.timer = TUNING.liftTime;
       this.aim = b.face;
-      this.stand = { x: b.x, y: b.y, face: b.face, ability: 'wrestler', alpha: 1, leaving: false };
+      this.throwKind = 'mid';
+      this.stand = { x: b.x, y: b.y, h: 150, face: b.face, ability: 'wrestler', alpha: 1, leaving: false };
+      this.shout(this.stand, ['喝！', '飛吧社畜！', '下班囉——']);
       b.vx = b.vy = 0;
       let h = 0;
       while (h < TUNING.liftHeight && !this.hitsSolid(this.box(b, b.y - h - 4))) h += 4;
@@ -485,11 +562,12 @@
           if (this.state === 'charge' && overlap(this.box(this.stand), box)) {
             e.alive = false; e.vx = this.chargeDir * 520; e.vy = -620; this.shake = 0.3;
             this.hitStop = TUNING.hitStop * 1.5; this.events.push('knock');
-            this.bubbles.push({ who: e, text: '哇啊——', delay: 0, t: 0.9 });
+            this.refreshAir();
+            this.shout(e, ['我只是約聘的——', '哇啊——', '我要申訴——']);
             this.emit(e.x, e.y - e.h / 2, '#f3e9d2', 12, 380, 260);
             continue;
           }
-          if (this.state !== 'dead' && overlap(hurt, box)) this.die();
+          if (this.state !== 'dead' && overlap(hurt, box)) this.die('guard');
           if (e.skin === 'guard' && Math.abs(e.x - b.x) < 320 && (e.said || -9) < e.t - 4) {
             e.said = e.t;
             this.bubbles.push({ who: e, text: GUARD_LINES[Math.floor(Math.random() * GUARD_LINES.length)], delay: 0, t: 1.8 });
@@ -507,7 +585,7 @@
           } else if (e.phase === 'fall') {
             e.vy += 3000 * dt; e.y += e.vy * dt;
             const box = { x: e.x - e.w / 2, y: e.y, w: e.w, h: e.h };
-            if (this.state !== 'dead' && overlap(hurt, box)) this.die();
+            if (this.state !== 'dead' && overlap(hurt, box)) this.die('sign');
             const row = Math.floor((e.y + e.h) / T);
             let land = e.y > H;
             for (let c = Math.floor(box.x / T); c <= Math.floor((box.x + box.w - 1e-6) / T); c++) if (this.solid(c, row)) land = true;
@@ -517,7 +595,7 @@
       }
     }
 
-    die() {
+    die(cause) {
       if (this.state === 'dead') return;
       const b = this.body;
       this.state = 'dead';
@@ -530,6 +608,9 @@
       this.drinkT = 0;
       this.ready = null;
       this.events.push('die');
+      // Jim is already dead, so a death is a punchline: his ghost floats up and complains
+      this.ghost = { x: b.x, y: b.y, face: b.face, t: 0 };
+      this.shout('body', this.deaths % 5 === 0 ? [`第 ${this.deaths} 次下班`] : DEATH_LINES[cause] || DEATH_LINES.other);
       this.emit(b.x, b.y - BODY_H / 2, '#f3e9d2', 26, 520, 420);
       this.emit(b.x, b.y - BODY_H / 2, '#e0605a', 10, 400, 300);
     }
@@ -541,6 +622,14 @@
       this.phase = 'transition';
       this.transT = TUNING.transition;
       this.nextRoom = target;
+    }
+
+    // A hard landing near an NPC half-wakes them.
+    wakeNpcs() {
+      for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+        if (this.tiles[y][x] !== 'N' || Math.hypot(this.body.x - (x + .5) * T, this.body.y - (y + 1) * T) > 200) continue;
+        this.shout({ x: (x + .5) * T, y: (y + 1) * T, h: 90 }, ['……誰？……算了，再五分鐘。', '……地震？', '……下班了？']);
+      }
     }
 
     nearbyNpc() {
@@ -586,7 +675,13 @@
 
       if (this.state === 'dead') {
         this.timer -= dt;
-        if (this.timer <= 0) this.enterRoom(this.room.id);
+        this.ghost.t += dt;
+        if (this.timer <= 0) {
+          const said = this.bubbles.filter(bub => bub.who === 'body');
+          this.enterRoom(this.room.id);
+          this.bubbles.push(...said);
+          this.body.landT = 0.15;
+        }
         return;
       }
       if (this.dialogue) {
@@ -607,7 +702,8 @@
       if (this.slot) { this.updateSlot(dt, input.kPressed); kTaken = true; }
       if (this.drinkT > 0) { kTaken = true; this.drinkT -= dt; if (this.drinkT <= 0) { this.drinkT = 0; this.ready = { id: this.pending, t: TUNING.holdTime }; this.pending = null; this.events.push('ready'); } }
       if (this.ready && (this.ready.t -= dt) <= 0) { this.ready = null; this.events.push('deny'); this.bubbles.push({ who: 'body', text: '酒退了……', delay: 0, t: 1 }); }
-      if (!kTaken && input.kPressed) this.pressK();
+      if (TUNING.directMode) { if (input.skill) this.pressSkill(input.skill); }
+      else if (!kTaken && input.kPressed) this.pressK();
       if (this.hitStop > 0) { this.hitStop -= dt; return; }
       const slowed = !!this.slot || this.drinkT > 0;
       if (slowed) { input = { ...input, jumpPressed: false }; dt *= TUNING.slowmo; }   // A/D still steer, at the slowed pace
@@ -624,9 +720,13 @@
         // conveyors push while grounded and keep pushing through the jump (like Celeste's lift boost)
         if (b.grounded) b.carry = this.beltUnder(b);
         const push = b.carry || 0;
-        const acc = (b.grounded ? TUNING.accelGround : TUNING.accelAir) * dt;
-        b.vx += clamp(dir * TUNING.run + push - b.vx, -acc, acc);
-        if (!dir && !push) b.vx *= Math.pow(0.001, dt);
+        // in the air, speed above a run (a charge jump-out) fades slowly while held; letting go only drifts to a stop
+        if (!b.grounded && dir && Math.sign(b.vx) === dir && Math.abs(b.vx) > TUNING.run) b.vx -= dir * Math.min(Math.abs(b.vx) - TUNING.run, TUNING.overDecel * dt);
+        else {
+          const acc = (b.grounded ? TUNING.accelGround : TUNING.accelAir * (dir || push ? 1 : TUNING.airDrag)) * dt;
+          b.vx += clamp(dir * TUNING.run + push - b.vx, -acc, acc);
+        }
+        if (b.grounded && !dir && !push) b.vx *= Math.pow(0.001, dt);
         this.coyote = b.grounded ? TUNING.coyote : Math.max(0, this.coyote - dt);
         if (this.jumpBuf > 0 && this.coyote > 0) {
           b.vy = -TUNING.jump;
@@ -638,6 +738,7 @@
         // Celeste-style: lighter gravity near the apex while jump is held, heavier when released early.
         if (input.jump && Math.abs(b.vy) < 110) b.vy -= TUNING.gravity * (1 - TUNING.apexHang) * dt;
         else if (!input.jump && b.vy < 0) b.vy += TUNING.gravity * (TUNING.releaseGravity - 1) * dt;
+        if (b.vy > 0) b.vy += TUNING.gravity * (TUNING.fallGravity - 1) * dt;
         const wasGrounded = b.grounded;
         this.physics(dt);
         if (b.grounded && !wasGrounded) { this.emit(b.x, b.y, '#b9aee0', 4, 140, 40); this.events.push('land'); b.landT = 0.08; }
@@ -648,17 +749,22 @@
         const e = 1 - Math.pow(1 - this.liftT, 3);
         b.y = this.liftFrom + (this.liftTo - this.liftFrom) * e;
         if (dir) { this.aim = dir; b.face = dir; this.stand.face = dir; }
+        this.throwKind = input.jump ? 'up' : input.down ? 'low' : 'mid';
         if (this.timer <= 0) {
           this.state = 'thrown';
           b.y = this.liftTo;
-          b.vx = this.aim * TUNING.throwVX;
-          b.vy = -TUNING.throwVY;
+          ({ vx: b.vx, vy: b.vy } = this.throwVel());
           this.stand.leaving = true;
           this.setAnim('jump');
           this.events.push('throw');
+          this.hitStop = 0.04; this.shake = Math.max(this.shake, 0.15);
+          if (this.throwKind !== 'mid') this.shout(this.stand, this.throwKind === 'up' ? ['上去——！'] : ['滾地球！']);
           this.emit(b.x, b.y, ABILITIES.wrestler.tint, 16, 300, 200);
         }
       } else if (this.state === 'thrown') {
+        // A/D steer the flight: pull toward the held side, never slower than the throw already is
+        if (dir) { const a = TUNING.throwSteer * dt; b.vx += clamp(dir * Math.max(TUNING.throwVX, Math.abs(b.vx)) - b.vx, -a, a); b.face = dir; }
+        const impact = b.vy;
         this.physics(dt);
         if (b.vy > 0) this.setAnim('fall');
         if (b.grounded) {
@@ -667,8 +773,11 @@
           this.events.push('land');
           this.timer = TUNING.recover;
           b.vx *= 0.3;
+          b.landT = 0.12;
+          this.shake = Math.max(this.shake, Math.min(0.4, impact / 2500));
+          if (impact > 750) this.wakeNpcs();
           this.setAnim('idle');
-          this.emit(b.x, b.y, '#b9aee0', 10, 260, 80);
+          this.emit(b.x, b.y, '#b9aee0', 20, 320, 100);
         }
       } else if (this.state === 'recover') {
         this.timer -= dt;
@@ -676,7 +785,8 @@
         b.vx = belt + (b.vx - belt) * Math.pow(0.0005, dt);
         this.physics(dt);
         if (this.timer <= 0) this.state = 'free';
-      } else if (this.state === 'charge') {
+      } else if (this.state === 'charge' && input.jumpPressed && this.stand.grounded) this.jumpOut();
+      else if (this.state === 'charge') {
         this.timer -= dt;
         const st = this.stand;
         if (dir && dir !== this.chargeDir) {
@@ -690,7 +800,7 @@
         const stopped = this.chargeMove(st, this.chargeDir * this.speed * dt);
         this.moveY(st, st.vy * dt);
         this.carry();
-        if (stopped || this.timer <= 0) this.finishCharge();
+        if (stopped || this.timer <= 0) this.finishCharge(stopped);
       }
 
       if (this.state === 'free' || this.state === 'recover') {
@@ -713,9 +823,9 @@
       const x0 = Math.floor(inner.x / T), x1 = Math.floor((inner.x + inner.w) / T);
       const y0 = Math.floor(inner.y / T), y1 = Math.floor((inner.y + inner.h) / T);
       for (let y = Math.max(0, y0); y <= Math.min(ROWS - 1, y1); y++) for (let x = Math.max(0, x0); x <= Math.min(COLS - 1, x1); x++) {
-        if (this.tiles[y][x] === '^' && overlap(inner, { x: x * T + 6, y: y * T + 16, w: T - 12, h: T - 16 })) { this.die(); return; }
+        if (this.tiles[y][x] === '^' && overlap(inner, { x: x * T + 6, y: y * T + 16, w: T - 12, h: T - 16 })) { this.die('glass'); return; }
       }
-      if (b.y - BODY_H > H + 10 && this.exits.bottom === undefined) this.die();
+      if (b.y - BODY_H > H + 10 && this.exits.bottom === undefined) this.die('pit');
     }
 
     checkExits() {
@@ -737,200 +847,507 @@
 
   root.Drunk = { T, COLS, ROWS, W, H, BODY_W, BODY_H, TUNING, ABILITIES, THEMES, Game, validateCampaign, parseCampaign, validateDialogue };
 })(typeof window !== 'undefined' ? window : globalThis);
-// Default campaign. Same shape the editor exports (drunken-rooms v2).
-// Tiles: . empty  # ground  ^ broken glass  = plank (jump through)  B breakable  P spawn
+// Default campaign. Same shape the editor exports (drunken-rooms v2). The previous day 1-2 rooms are kept in legacy-days.json.
 (function (root) {
   'use strict';
-  const E = '................................';
-  const rows = (top, ...rest) => Array(top).fill(E).concat(rest);
-  const many = (n, row) => Array(n).fill(row);
-
   root.DEFAULT_CAMPAIGN = {
-    format: 'drunken-rooms',
-    version: 2,
-    maps: [{
-      id: 'day-1',
-      name: '第一天',
-      intro: '連假前夕，吉姆又一次加班到失去意識。',
-      outro: '終於下樓了。家，應該不遠吧。',
-      abilities: ['wrestler'],
-      rooms: [
-        {
-          id: '1-1', name: '工位', theme: 'office',
-          tiles: rows(14,
-            '..........######................',
-            '..P.......########......R.......',
-            '################################',
-            '################################'),
-          exits: { right: '1-2' },
-          lines: ['……幾點了？', '回家，睡覺。'],
-        },
-        {
-          id: '1-2', name: '影印機前', theme: 'office',
-          tiles: [
-            ...many(5, E),
-            '.............*..................',
-            ...many(5, E),
-            '............###.................',
-            '............###.................',
-            '............###.................',
-            '............###.................',
-            '...P........###.................',
-            '################################',
-            '################################'],
-          exits: { right: '1-3' },
-          lines: ['影印機還在印……誰的？'],
-        },
-        {
-          id: '1-3', name: '茶水間', theme: 'pantry',
-          tiles: rows(11,
-            '..........................######',
-            '..........................######',
-            '..........................######',
-            '..........................######',
-            '..P.......................######',
-            '######^^^^^^^^^^^^^#############',
-            '################################'),
-          exits: { right: '1-4' },
-          lines: ['誰把杯子摔了一地？'],
-        },
-        {
-          id: '1-4', name: '儲藏室', theme: 'office',
-          tiles: [
-            ...many(10, E),
-            '...........*....................',
-            ...many(3, E),
-            '.......CCC...CCC...CCC..........',
-            '..P....CCC...CCC...CCC..........',
-            '#####^^^^^^^^^^^^^^^^^^^^^^#####',
-            '################################'],
-          exits: { right: '1-5' },
-          lines: ['這些箱子……是我上禮拜要寄的？'],
-        },
-        {
-          id: '1-5', name: '電梯口', theme: 'elevator',
-          tiles: [
-            ...many(3, E),
-            '....*...........................',
-            '...........L....................',
-            ...many(2, E),
-            ...many(7, '.....................###########'),
-            '........#####........###########',
-            '...P....#####........###########',
-            '#############^^^^^^^^###########',
-            '################################'],
-          exits: { right: '1-6' },
-          lines: ['電梯又壞了。'],
-        },
-        {
-          id: '1-6', name: '大樓門口', theme: 'lobby',
-          tiles: rows(15,
-            '..P.............................',
-            '################################',
-            '################################'),
-          exits: { right: null },
-          lines: ['外面怎麼這麼安靜。'],
-        },
-      ],
-    }, {
-      id: 'day-2',
-      name: '第二天',
-      intro: '下班的路，好像比記憶中長。',
-      outro: '第二天，還是沒到家。',
-      abilities: ['wrestler', 'bodyguard'],
-      rooms: [
-        {
-          id: '2-1', name: '保鑣', theme: 'street',
-          tiles: [
-            ...many(10, '..............##................'),
-            ...many(5, '..............BB................'),
-            '..P...........BB................',
-            ...many(2, '################################')],
-          exits: { right: '2-2' },
-          lines: ['路怎麼被箱子堵住了？'],
-        },
-        {
-          id: '2-2', name: '碎玻璃路', theme: 'street',
-          tiles: [
-            ...many(10, E),
-            '................*...............',
-            ...many(4, E),
-            '..P.............................',
-            '######^^^^^^^^^^^^^^^^^^^^^^####',
-            '################################'],
-          exits: { right: '2-3' },
-          lines: ['這條路以前沒有玻璃吧……'],
-        },
-        {
-          id: '2-3', name: '保全', theme: 'street',
-          tiles: [
-            ...many(10, '........#...............#.......'),
-            ...many(5, '........B...............B.......'),
-            '..P.....B.......R.......B.......',
-            ...many(2, '################################')],
-          exits: { right: '2-4' },
-          lines: ['保全？這裡又不是公司。'],
-        },
-        {
-          id: '2-4', name: '捷運站', theme: 'street',
-          tiles: [
-            ...many(10, E),
-            '.....####################.......',
-            ...many(4, E),
-            '..P.............................',
-            '#####>>>>>>>>>>.......##########',
-            '###############.......##########'],
-          exits: { right: '2-5' },
-          lines: ['末班車早就走了。'],
-        },
-        {
-          id: '2-5', name: '高處的箱子', theme: 'street',
-          tiles: [
-            ...many(3, '................##..............'),
-            ...many(7, '................BB..............'),
-            ...many(5, '................##..............'),
-            '..P.............##..............',
-            ...many(2, '################################')],
-          exits: { right: '2-6' },
-          lines: ['箱子疊到二樓去了？'],
-        },
-        {
-          id: '2-6', name: '發射台', theme: 'street',
-          tiles: [
-            ...many(3, E),
-            '..............................*.',
-            ...many(4, E),
-            ...many(7, '........................########'),
-            '..P.....................########',
-            '####^^^^^^^^^^^^^^^^^^^^########',
-            '################################'],
-          exits: { right: '2-7' },
-          lines: ['那棟樓……是不是在長高？'],
-        },
-        {
-          id: '2-7', name: '巷口', theme: 'street',
-          tiles: [
-            ...many(4, '............##..................'),
-            '............##.........L........',
-            ...many(5, '............##..................'),
-            ...many(5, '............BB............######'),
-            '..P.........BB........R...######',
-            '#####^^^^^^^##^^^^##############',
-            '################################'],
-          exits: { right: '2-8' },
-          lines: ['快到了……吧？'],
-        },
-        {
-          id: '2-8', name: '公園長椅', theme: 'street',
-          tiles: [
-            ...many(13, E),
-            '..P.............................',
-            ...many(4, '################################')],
-          exits: { right: null },
-          lines: ['先睡一下，明天再走。'],
-        },
-      ],
-    }],
+    "format": "drunken-rooms",
+    "version": 2,
+    "maps": [
+      {
+        "id": "day-1",
+        "name": "第一天",
+        "intro": "連假前夕，吉姆又一次加班到失去意識。",
+        "outro": "終於下樓了。家，應該不遠吧。",
+        "abilities": [
+          "wrestler"
+        ],
+        "rooms": [
+          {
+            "id": "1-1",
+            "name": "工位",
+            "theme": "office",
+            "exits": {
+              "right": "1-2"
+            },
+            "tiles": [
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "...........................*....",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              ".....................##.........",
+              ".....................##.........",
+              ".....................##.........",
+              ".....................##.........",
+              "...........##........##.........",
+              "..P....#...##...R....##.........",
+              "################################",
+              "################################"
+            ],
+            "lines": [
+              "……幾點了？",
+              "櫃子太高了。叫摔角手來（J）。"
+            ]
+          },
+          {
+            "id": "1-2",
+            "name": "影印機走道",
+            "theme": "office",
+            "exits": {
+              "right": "1-3"
+            },
+            "tiles": [
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              ".........*......................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              ".........######.................",
+              ".........######.................",
+              "..P......######.................",
+              "######^^^######^^^^^^^^^^^^^^^##",
+              "################################"
+            ],
+            "lines": [
+              "影印機上……站得住吧？",
+              "按住 W 再叫摔角手（J）：丟高。飛行中按反方向煞車。"
+            ]
+          },
+          {
+            "id": "1-3",
+            "name": "茶水間",
+            "theme": "pantry",
+            "exits": {
+              "right": "1-4"
+            },
+            "tiles": [
+              ".....############...............",
+              ".....############...............",
+              ".....############...............",
+              ".....############........*......",
+              ".....############...............",
+              ".....############...............",
+              ".....############...............",
+              ".....############...............",
+              ".....############.....##........",
+              ".....############.....##........",
+              "......................##........",
+              "......................##........",
+              "......................##........",
+              "......................##........",
+              "...................##.##........",
+              "..P................##.##........",
+              "######^^^^^^^^^^################",
+              "################################"
+            ],
+            "lines": [
+              "誰把杯子摔了一地？",
+              "櫃子好低……丟低一點（按住 S）。"
+            ]
+          },
+          {
+            "id": "1-4",
+            "name": "儲藏室",
+            "theme": "office",
+            "exits": {
+              "right": "1-5"
+            },
+            "tiles": [
+              "................................",
+              "................................",
+              "................................",
+              "............................####",
+              "............................####",
+              "............................####",
+              "............*...............####",
+              "............................####",
+              "............................####",
+              "............................####",
+              "............................####",
+              "............................####",
+              ".....................CCCC...####",
+              "..............CCCC...CCCC...####",
+              ".......CCCC...CCCC...CCCC...####",
+              "..P....CCCC...CCCC...CCCC...####",
+              "#####^^^^^^^^^^^^^^^^^^^^^^^####",
+              "################################"
+            ],
+            "lines": [
+              "這些箱子……是我上禮拜要寄的？",
+              "跳起來，再丟一次。"
+            ]
+          },
+          {
+            "id": "1-5",
+            "name": "電梯井",
+            "theme": "elevator",
+            "exits": {
+              "top": "1-6"
+            },
+            "tiles": [
+              "######....................######",
+              "######....................######",
+              "######..................*.######",
+              "######....................######",
+              "######....................######",
+              "######....................######",
+              "######....................######",
+              "######=======.............######",
+              "######....................######",
+              "######....................######",
+              "######....................######",
+              "######.........=====......######",
+              "######....................######",
+              "######....................######",
+              "######....................######",
+              "######................P...######",
+              "######^^^^^^^^##################",
+              "################################"
+            ],
+            "lines": [
+              "電梯又壞了。",
+              "下樓最快的方法……是先上樓？"
+            ]
+          },
+          {
+            "id": "1-6",
+            "name": "大廳",
+            "theme": "lobby",
+            "exits": {
+              "right": null
+            },
+            "tiles": [
+              "......##########................",
+              "......##########................",
+              "......##########................",
+              "......##########........*.......",
+              "......##########................",
+              "......##########................",
+              "......##########................",
+              "......##########................",
+              "......##########......##########",
+              "......##########......##########",
+              "......................##########",
+              "......................##########",
+              "......................##########",
+              "......................##########",
+              "......................##########",
+              "..P...............N...##########",
+              "#######^^^^^^^^^################",
+              "################################"
+            ],
+            "npcs": {
+              "18,15": {
+                "name": "夜班警衛",
+                "start": "a",
+                "nodes": {
+                  "a": {
+                    "text": "……呼……（他睡著了，桌上的監視器裡有一個人被丟來丟去）",
+                    "choices": [
+                      {
+                        "text": "那是我。",
+                        "next": "b"
+                      },
+                      {
+                        "text": "不要吵醒他。",
+                        "next": null
+                      }
+                    ]
+                  },
+                  "b": {
+                    "text": "……嗯……加班辛苦了……",
+                    "next": null
+                  }
+                }
+              }
+            },
+            "lines": [
+              "外面怎麼這麼安靜。",
+              "警衛在睡覺。落地輕一點。"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "day-2",
+        "name": "第二天",
+        "intro": "下班的路，好像比記憶中長。",
+        "outro": "第二天，還是沒到家。",
+        "abilities": [
+          "wrestler",
+          "bodyguard"
+        ],
+        "rooms": [
+          {
+            "id": "2-1",
+            "name": "後巷",
+            "theme": "street",
+            "exits": {
+              "right": "2-2"
+            },
+            "tiles": [
+              ".......BB................BB.....",
+              ".......BB................BB.....",
+              ".......BB................BB.....",
+              ".......BB................BB.....",
+              ".......BB................BB.....",
+              ".......BB................BB.....",
+              ".......BB........*.......BB.....",
+              ".......BB................BB.....",
+              ".......BB......#####.....BB.....",
+              ".......BB................BB.....",
+              ".......BB................BB.....",
+              ".......BB................BB.....",
+              ".......BB................BB.....",
+              ".......BB................BB.....",
+              ".......BB................BB.....",
+              "..P....BB....R...........BB.....",
+              "################################",
+              "################################"
+            ],
+            "lines": [
+              "路怎麼被箱子堵住了？",
+              "叫保鑣（L）。他不怕痛。"
+            ]
+          },
+          {
+            "id": "2-2",
+            "name": "鷹架人行道",
+            "theme": "street",
+            "exits": {
+              "right": "2-3"
+            },
+            "tiles": [
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "..............*.................",
+              "#######################.........",
+              "........L...L...L...............",
+              "................................",
+              "................................",
+              "..P.............................",
+              "####^^^^^^^^^^^^^^^^^###########",
+              "################################"
+            ],
+            "lines": [
+              "這條路以前沒有玻璃吧……",
+              "保鑣踩玻璃，不痛。"
+            ]
+          },
+          {
+            "id": "2-3",
+            "name": "保全亭",
+            "theme": "street",
+            "exits": {
+              "right": "2-4"
+            },
+            "tiles": [
+              "..............................BB",
+              "..............................BB",
+              "..............................BB",
+              "..............................BB",
+              "..............................BB",
+              "..............................BB",
+              "..............................BB",
+              "..............................BB",
+              "..............................BB",
+              "..............................BB",
+              "..............................BB",
+              "..............................BB",
+              "...................*..........BB",
+              "..............................BB",
+              "..............................BB",
+              "..P..........R........R.......BB",
+              "####^^^^^^^^###^^^^^^###^^^^^^##",
+              "################################"
+            ],
+            "lines": [
+              "保全？這裡又不是公司。",
+              "撞飛一個，就能再叫一次。",
+              "衝刺中按 W：從保鑣肩上跳下來。"
+            ]
+          },
+          {
+            "id": "2-4",
+            "name": "天橋",
+            "theme": "street",
+            "exits": {
+              "right": "2-5"
+            },
+            "tiles": [
+              ".....................L..........",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "...................*............",
+              "................................",
+              "........######....#######.......",
+              "..........BB..........BB........",
+              "..........BB..........BB........",
+              "..........BB..........BB........",
+              "..........BB..........BB........",
+              "..........BB..........BB........",
+              "..........BB..........BB........",
+              "..P.......BB....R.....BB........",
+              "################################",
+              "################################"
+            ],
+            "lines": [
+              "上面走，還是下面撞？"
+            ]
+          },
+          {
+            "id": "2-5",
+            "name": "工地",
+            "theme": "street",
+            "exits": {
+              "right": "2-6"
+            },
+            "tiles": [
+              "..........................BB....",
+              "..........................BB....",
+              "..........................BB....",
+              ".............*............BB....",
+              "..........................BB....",
+              "..........................BB....",
+              "..........................BB....",
+              "..........................BB....",
+              "..........................BB....",
+              "..........................BB....",
+              "..........................BB....",
+              "..........................BB....",
+              "..........................BB....",
+              "..........................BB....",
+              "..........................BB....",
+              "..P.......................BB....",
+              "####......................######",
+              "####......................######"
+            ],
+            "lines": [
+              "坑太寬了。",
+              "空中也能叫保鑣（L）？"
+            ]
+          },
+          {
+            "id": "2-6",
+            "name": "停車場",
+            "theme": "street",
+            "exits": {
+              "right": "2-7"
+            },
+            "tiles": [
+              "......BB........................",
+              "......BB........................",
+              "......BB........................",
+              "......BB........................",
+              "......BB.......*................",
+              "......BB........................",
+              "......BB........................",
+              "......BB..............##########",
+              "......BB..............##########",
+              "......BB..............##########",
+              "......BB..............##########",
+              "......BB..............##########",
+              "......BB..............##########",
+              "......BB..............##########",
+              "......BB..............##########",
+              "..P...BB..............##########",
+              "########^^^^^^^^^^^^^^##########",
+              "################################"
+            ],
+            "lines": [
+              "撞過去……然後呢？",
+              "衝刺中按 J：叫摔角手接手。"
+            ]
+          },
+          {
+            "id": "2-7",
+            "name": "回家的路",
+            "theme": "street",
+            "exits": {
+              "right": null
+            },
+            "tiles": [
+              "................................",
+              "..............BB....*...........",
+              "..............BB................",
+              "..............BB............N...",
+              "..............BB........########",
+              "..............BB........########",
+              "..............BB........########",
+              "..............BB........########",
+              "........................########",
+              "........................########",
+              "........................########",
+              "........................########",
+              "........................########",
+              "........................########",
+              "........................########",
+              "..P.....................########",
+              "######..................########",
+              "######..................########"
+            ],
+            "npcs": {
+              "28,3": {
+                "name": "頂樓的鴿子",
+                "start": "a",
+                "nodes": {
+                  "a": {
+                    "text": "咕。",
+                    "choices": [
+                      {
+                        "text": "這是我家嗎？",
+                        "next": "b"
+                      },
+                      {
+                        "text": "咕。",
+                        "next": "c"
+                      }
+                    ]
+                  },
+                  "b": {
+                    "text": "咕咕。（不是。）",
+                    "next": null
+                  },
+                  "c": {
+                    "text": "咕！（他好像很感動。）",
+                    "next": null
+                  }
+                }
+              }
+            },
+            "lines": [
+              "只差一點點了。",
+              "丟上去、撞過去、再丟一次。"
+            ]
+          }
+        ]
+      }
+    ]
   };
 })(typeof window !== 'undefined' ? window : globalThis);
 </script>
@@ -1034,18 +1451,24 @@
           c.lineWidth = 2; c.strokeStyle = '#1c1636'; c.stroke();
           c.strokeStyle = 'rgba(255,255,255,.75)'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(peak - 1, ty + T - h + 5); c.lineTo(peak - 3, ty + T - 4); c.stroke();
         }
-      } else if (t === 'B') {
-        const j = (k) => (rnd(x, y, k) - 0.5) * 3;
-        c.fillStyle = (x + y) % 2 ? '#b07a4f' : '#a46f47';
-        c.beginPath(); c.moveTo(tx + 1 + j(1), ty + 1 + j(2)); c.lineTo(tx + T - 1 + j(3), ty + 1 + j(4)); c.lineTo(tx + T - 1 + j(5), ty + T - 1 + j(6)); c.lineTo(tx + 1 + j(7), ty + T - 1 + j(8)); c.closePath();
-        c.fill(); c.strokeStyle = '#2a1b2e'; c.lineWidth = 2.5; c.stroke();
-        c.strokeStyle = 'rgba(60,34,30,.75)'; c.lineWidth = 2;
-        c.beginPath(); c.moveTo(tx + 6, ty + 6); c.lineTo(tx + T - 6, ty + T - 6); c.moveTo(tx + 5, ty + T / 2 + j(9)); c.lineTo(tx + T - 5, ty + T / 2 + j(10)); c.stroke();
-        c.fillStyle = 'rgba(255,220,170,.25)'; c.fillRect(tx + 4, ty + 3, T - 8, 3);
-      } else if (t === '=') {
-        c.fillStyle = '#7b6a9c'; c.fillRect(tx, ty, T, 10);
-        c.strokeStyle = '#1c1636'; c.lineWidth = 2; c.strokeRect(tx + 1, ty + 1, T - 2, 9);
-      }
+      } else drawProp(c, t, x, y, '#1c1636', '#7b6a9c');
+    }
+  }
+
+  // Crates and planks look the same on every theme; only the plank colours follow the palette.
+  function drawProp(c, t, x, y, ink, plank) {
+    const tx = x * T, ty = y * T;
+    if (t === 'B') {
+      const j = (k) => (rnd(x, y, k) - 0.5) * 3;
+      c.fillStyle = (x + y) % 2 ? '#b07a4f' : '#a46f47';
+      c.beginPath(); c.moveTo(tx + 1 + j(1), ty + 1 + j(2)); c.lineTo(tx + T - 1 + j(3), ty + 1 + j(4)); c.lineTo(tx + T - 1 + j(5), ty + T - 1 + j(6)); c.lineTo(tx + 1 + j(7), ty + T - 1 + j(8)); c.closePath();
+      c.fill(); c.strokeStyle = '#2a1b2e'; c.lineWidth = 2.5; c.stroke();
+      c.strokeStyle = 'rgba(60,34,30,.75)'; c.lineWidth = 2;
+      c.beginPath(); c.moveTo(tx + 6, ty + 6); c.lineTo(tx + T - 6, ty + T - 6); c.moveTo(tx + 5, ty + T / 2 + j(9)); c.lineTo(tx + T - 5, ty + T / 2 + j(10)); c.stroke();
+      c.fillStyle = 'rgba(255,220,170,.25)'; c.fillRect(tx + 4, ty + 3, T - 8, 3);
+    } else if (t === '=') {
+      c.fillStyle = plank; c.fillRect(tx, ty, T, 10);
+      c.strokeStyle = ink; c.lineWidth = 2; c.strokeRect(tx + 1, ty + 1, T - 2, 9);
     }
   }
 
@@ -1085,7 +1508,7 @@
     }
     // broken mugs instead of glass
     for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
-      if (tiles[y][x] !== '^') continue;
+      if (tiles[y][x] !== '^') { drawProp(c, tiles[y][x], x, y, ink, pal.top); continue; }
       const tx = x * T, ty = y * T;
       for (let i = 0; i < 3; i++) {
         const bx = tx + 2 + i * 12 + rnd(x, y, i) * 3, w = 11 + rnd(x, y, i + 5) * 5, h = 10 + rnd(x, y, i + 9) * 10;
@@ -1226,9 +1649,10 @@
     return ['idle', Math.floor(b.animTime / 0.14) % 3];
   }
 
-  function drawFrame(anim, f, x, y, face, size, color, alpha) {
+  // squash > 1 stretches tall and thin, < 1 flattens; scaled about the feet
+  function drawFrame(anim, f, x, y, face, size, color, alpha, squash = 1) {
     const [im, sx] = sprite(anim, f);
-    ctx.save(); ctx.translate(x, y); if (face < 0) ctx.scale(-1, 1);
+    ctx.save(); ctx.translate(x, y); ctx.scale((face < 0 ? -1 : 1) / squash, squash);
     if (!ok(im)) { ctx.globalAlpha = alpha; ctx.fillStyle = color || '#f3e9d2'; ctx.fillRect(-16, -64, 32, 64); ctx.restore(); return; }
     if (color) {
       tctx.globalCompositeOperation = 'source-over'; tctx.globalAlpha = 1; tctx.clearRect(0, 0, 512, 512);
@@ -1400,13 +1824,21 @@
 
   function drawBubbles() {
     const g = game;
+    const placed = [];
     for (const bub of g.bubbles) {
       if (bub.delay > 0) continue;
-      const tx = bub.who === 'body' ? g.body.x : bub.who.x, ty = bub.who === 'body' ? g.body.y - 128 : bub.who.y - bub.who.h - 34;
+      const tx = bub.who === 'body' ? g.body.x : bub.who.x;
+      let ty = bub.who === 'body' ? g.body.y - 128 : bub.who.y - bub.who.h - 34;
       ctx.save();
       ctx.globalAlpha = Math.min(1, bub.t / 0.25);
       ctx.font = `20px ${FONT}`;
-      const w = ctx.measureText(bub.text).width + 28, x = Math.max(8, Math.min(W - w - 8, tx - w / 2)), y = Math.max(8, ty - 44);
+      const w = ctx.measureText(bub.text).width + 28, x = Math.max(8, Math.min(W - w - 8, tx - w / 2));
+      // bubbles from different speakers stack upward instead of covering each other
+      const base = ty;
+      while (placed.some(p => x < p.x + p.w && x + w > p.x && Math.abs(ty - p.ty) < 46)) ty -= 46;
+      if (ty !== base && ty - 44 < 8) continue;   // a stacked bubble with no room above is dropped rather than piled at the top edge
+      placed.push({ x, w, ty });
+      const y = Math.max(8, ty - 44);
       ctx.fillStyle = '#f6efdd'; ctx.strokeStyle = '#1c1636'; ctx.lineWidth = 2.5;
       ctx.beginPath(); ctx.moveTo(x + 3, y); ctx.lineTo(x + w, y + 2); ctx.lineTo(x + w - 2, y + 38); ctx.lineTo(tx + 8, y + 37); ctx.lineTo(tx - 2, y + 50); ctx.lineTo(tx - 6, y + 38); ctx.lineTo(x, y + 37); ctx.closePath(); ctx.fill(); ctx.stroke();
       ctx.fillStyle = '#2a2244'; ctx.textAlign = 'left'; ctx.fillText(bub.text, x + 14, y + 26);
@@ -1428,7 +1860,7 @@
 
   function drawAim() {
     const g = game, b = g.body;
-    let x = b.x, y = b.y, vx = g.aim * TUNING.throwVX, vy = -TUNING.throwVY;
+    let x = b.x, y = b.y, { vx, vy } = g.throwVel();
     ctx.fillStyle = '#f3e9d2';
     for (let i = 0; i < 26; i++) {
       for (let k = 0; k < 4; k++) { vy += TUNING.gravity / 120; x += vx / 120; y += vy / 120; }
@@ -1471,12 +1903,16 @@
           ctx.beginPath(); ctx.moveTo(st.x - g.chargeDir * (40 + i * 6), yy); ctx.lineTo(st.x - g.chargeDir * (40 + i * 6 + len), yy); ctx.stroke();
         }
       }
-      drawActor(charging ? 'run' : 'idle', g.time, st.x, st.y, st.face, 132, ABILITIES[st.ability].tint, 0.62 * st.alpha);
+      drawActor(charging ? 'run' : 'idle', g.time, st.x, st.y, st.face, st.ability === 'wrestler' ? 170 : 152, ABILITIES[st.ability].tint, 0.85 * st.alpha);
     }
     if (g.state === 'lift') drawAim();
     if (g.state !== 'dead') {
       const [anim, f] = bodyPose(g);
-      drawFrame(anim, f, b.x, b.y, b.face, 118, null, 1);
+      const squash = b.landT > 0 ? 0.85 : b.grounded ? 1 : 1 + Math.max(-0.2, Math.min(0.25, -b.vy / 3000));
+      drawFrame(anim, f, b.x, b.y, b.face, 118, null, 1, squash);
+    } else if (g.ghost) {
+      const gh = g.ghost;
+      drawFrame('fall', 0, gh.x + Math.sin(gh.t * 9) * 6, gh.y - gh.t * 120, gh.face, 118, '#cfe6f2', 0.5);
     }
     drawBubbles();
     for (const p of g.particles) { ctx.globalAlpha = Math.max(0, p.life / p.max); ctx.fillStyle = p.color; ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size); }
@@ -1492,6 +1928,19 @@
     drawReady();
     if (g.flash) { ctx.globalAlpha = (g.flash.t / 0.45) * 0.4; ctx.fillStyle = g.flash.color; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
     text(`${g.map.name}　${g.room.id}`, 22, 36, 20, 'left', 0.7);
+    if (TUNING.directMode) {
+      const air = !b.grounded || ['lift', 'thrown', 'charge'].includes(g.state);
+      g.map.abilities.forEach((id, i) => {
+        const usable = id !== g.activeSkill && !(air && g.airDraws >= TUNING.airDraws);
+        text(`${ABILITIES[id].key} ${ABILITIES[id].name}`, 22 + i * 130, H - 22, 18, 'left', usable ? 0.9 : 0.25, usable ? ABILITIES[id].tint : '#f3e9d2');
+      });
+      // 2: room lines that name a key stay on screen as the room's hint
+      const hint = (g.room.lines || []).filter(l => /[A-Z]/.test(l)).at(-1);
+      if (hint) text(hint, W / 2, H - 22, 18, 'center', 0.55);
+      // 3/4: the moves that only exist mid-action are named while they are possible
+      if (g.state === 'lift') text('W 高拋　S 低飛', W / 2, H - 52, 20, 'center', 0.95, '#f2c24f');
+      if (g.state === 'charge' && g.stand && g.stand.grounded) text('W 跳離', W / 2, H - 52, 20, 'center', 0.95, '#f2c24f');
+    }
     if (g.roomTitle > 0) {
       const a = Math.min(1, g.roomTitle / 0.6);
       if (g.room === g.map.rooms[0]) text(g.map.name, W / 2, 52, 24, 'center', a * 0.8);
@@ -1508,7 +1957,7 @@
       const got = [...g.capsGot].filter(k => k.startsWith(g.map.id + ':')).length;
       text(`${g.map.name}　完`, W / 2, H / 2 - 60, 64, 'center', a);
       if (g.map.outro) text(g.map.outro, W / 2, H / 2 - 4, 24, 'center', a * 0.85);
-      text(`跌倒 ${g.mapDeaths} 次　·　${fmt(g.mapTime)}${total ? `　·　瓶蓋 ${got} / ${total}` : ''}`, W / 2, H / 2 + 40, 20, 'center', a * 0.7);
+      text(`倒下 ${g.mapDeaths} 次（無加班費）　·　${fmt(g.mapTime)}${total ? `　·　瓶蓋 ${got} / ${total}（可兌換：無）` : ''}`, W / 2, H / 2 + 40, 20, 'center', a * 0.7);
       const more = g.mapIndex + 1 < g.campaign.maps.length;
       if (g.timer > 0.6) text(more ? 'Enter 繼續' : 'Enter 再走一次', W / 2, H / 2 + 92, 20, 'center', 0.6 + 0.3 * Math.sin(g.time * 3));
     }
@@ -1520,7 +1969,7 @@
       if (g.timer > 0.5) text('K 繼續', W / 2, H - 60, 18, 'center', 0.45 + 0.25 * Math.sin(g.time * 3));
     }
     if (loaded < Object.keys(SRC).length) text('…', W - 40, 36, 24, 'right', 0.6);
-    if (!document.hasFocus()) text('點一下畫面就能玩', W / 2, H - 22, 22, 'center', 0.85);
+    if (!document.hasFocus()) text('點一下畫面就能玩', W / 2, H / 2, 26, 'center', 0.9);
   }
 
   // ---------- sound (WebAudio synth, nothing to download) ----------
@@ -1572,13 +2021,15 @@
   })();
 
   // ---------- input & loop ----------
-  const held = { left: false, right: false, jump: false };
+  const held = { left: false, right: false, jump: false, down: false };
   let pressed = {};
-  const bind = { KeyA: 'left', ArrowLeft: 'left', KeyD: 'right', ArrowRight: 'right', KeyW: 'jump', ArrowUp: 'jump', Space: 'jump', KeyK: 'k', KeyR: 'r', Enter: 'confirm', Escape: 'esc' };
+  const bind = { KeyA: 'left', ArrowLeft: 'left', KeyD: 'right', ArrowRight: 'right', KeyW: 'jump', ArrowUp: 'jump', KeyS: 'down', ArrowDown: 'down', Space: 'jump', KeyK: 'k', KeyR: 'r', Enter: 'confirm', Escape: 'esc' };
+  const skillKeys = Object.fromEntries(Object.entries(ABILITIES).map(([id, ab]) => ['Key' + ab.key, id]));
   addEventListener('keydown', e => {
     Sfx.ensure();
     if (e.code === 'KeyM' && !e.repeat) { Sfx.toggle(); return; }
     if (menu.hidden && /^Digit[1-9]$/.test(e.code) && game.dialogue) { e.preventDefault(); if (!e.repeat) pressed.choice = Number(e.code.slice(5)); return; }
+    if (menu.hidden && skillKeys[e.code]) { e.preventDefault(); if (!e.repeat) pressed.skill = skillKeys[e.code]; return; }
     const a = e.code === 'KeyE' ? 'talk' : bind[e.code]; if (!a) return;
     e.preventDefault();
     if (a === 'esc') { if (!e.repeat) toggleMenu(); return; }
@@ -1587,7 +2038,7 @@
     if (!e.repeat) pressed[a] = true;
   });
   addEventListener('keyup', e => { const a = bind[e.code]; if (a in held) held[a] = false; });
-  addEventListener('blur', () => { held.left = held.right = held.jump = false; });
+  addEventListener('blur', () => { held.left = held.right = held.jump = held.down = false; });
   canvas.addEventListener('pointerdown', () => window.focus());
 
   // Simulate exactly the elapsed frame time, split into small sub-steps, so motion matches the display refresh.
@@ -1598,7 +2049,7 @@
       const n = Math.ceil(frame / (1 / 240)), dt = frame / n;
       if (pressed.r && game.phase === 'play') game.die();
       for (let i = 0; i < n; i++) {
-        game.step(dt, { ...held, jumpPressed: pressed.jump, kPressed: pressed.k, confirmPressed: pressed.confirm, talkPressed: pressed.talk, choice: pressed.choice });
+        game.step(dt, { ...held, jumpPressed: pressed.jump, kPressed: pressed.k, skill: pressed.skill, confirmPressed: pressed.confirm, talkPressed: pressed.talk, choice: pressed.choice });
         pressed = {};
       }
     }
@@ -1625,11 +2076,11 @@
     ['accelAir', '空中轉向', 600, 4000, 50], ['cardInterval', '換卡間隔', 0.08, 0.6, 0.01],
     ['liftTime', '舉起停留', 0.1, 1.2, 0.05], ['throwVX', '投擲水平', 300, 1100, 10], ['throwVY', '投擲向上', 500, 1300, 10], ['recover', '落地硬直', 0, 0.5, 0.02],
     ['chargeSpeed', '衝刺速度', 300, 1400, 10], ['chargeTurn', '掉頭所需時間', 0, 1, 0.02],
-    ['slowmo', '抽卡時世界速度', 0.05, 1, 0.05], ['airDraws', '空中可抽次數', 0, 3, 1], ['airCharge', '空中衝刺滯空', 0, 1.2, 0.05], ['holdTime', '喝完可等幾秒', 1, 10, 0.5],
+    ['directMode', '直按模式（1 J/L 直按，0 K 抽卡）', 0, 1, 1], ['slowmo', '抽卡時世界速度', 0.05, 1, 0.05], ['airDraws', '空中可抽次數', 0, 3, 1], ['airCharge', '空中衝刺滯空', 0, 1.2, 0.05], ['holdTime', '喝完可等幾秒', 1, 10, 0.5],
     ['patrolSpeed', '巡邏速度', 40, 300, 5], ['belt', '輸送帶速度', 60, 400, 10], ['crumbleDelay', '紙箱撐多久', 0.1, 1.2, 0.05],
   ];
   const DEFAULTS = { ...TUNING };
-  try { Object.assign(TUNING, JSON.parse(localStorage.getItem('drunk-tuning') || '{}')); } catch (e) { /* storage blocked in some embeds */ }
+  try { Object.assign(TUNING, JSON.parse(localStorage.getItem('drunk-tuning-v3') || '{}')); } catch (e) { /* storage blocked in some embeds */ }
   function buildTune() {
     tune.innerHTML = '<b>手感</b>' + KNOBS.map(([k, label, min, max, step]) =>
       `<label>${label}<input type="range" data-k="${k}" min="${min}" max="${max}" step="${step}" value="${TUNING[k]}"><span>${TUNING[k]}</span></label>`).join('') +
@@ -1638,11 +2089,11 @@
   tune.addEventListener('input', e => {
     const k = e.target.dataset.k; if (!k) return;
     TUNING[k] = +e.target.value; e.target.nextElementSibling.textContent = e.target.value;
-    try { localStorage.setItem('drunk-tuning', JSON.stringify(TUNING)); } catch (err) { /* ignore */ }
+    try { localStorage.setItem('drunk-tuning-v3', JSON.stringify(TUNING)); } catch (err) { /* ignore */ }
   });
   tune.addEventListener('click', e => {
     const t = e.target.dataset.t; if (!t) return;
-    if (t === 'reset') { Object.assign(TUNING, DEFAULTS); try { localStorage.removeItem('drunk-tuning'); } catch (err) { /* ignore */ } buildTune(); }
+    if (t === 'reset') { Object.assign(TUNING, DEFAULTS); try { localStorage.removeItem('drunk-tuning-v3'); } catch (err) { /* ignore */ } buildTune(); }
     if (t === 'copy') {
       const json = JSON.stringify(Object.fromEntries(KNOBS.map(([k]) => [k, TUNING[k]])));
       const area = tune.querySelector('textarea'); area.hidden = false; area.value = json; area.select();
@@ -1655,7 +2106,7 @@
   // ---------- menu & level loading ----------
   function toggleMenu(force) {
     menu.hidden = force !== undefined ? !force : !menu.hidden;
-    held.left = held.right = held.jump = false; pressed = {};
+    held.left = held.right = held.jump = held.down = false; pressed = {};
     menuMsg.textContent = '';
   }
   function load(textData, name) {

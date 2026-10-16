@@ -68,6 +68,48 @@ test('two portals in one room use their own destinations after JSON round trip',
   assert.throws(() => parseCampaign(JSON.stringify(data)), /5,15/);
 });
 
+test('direct mode fires a skill from its own key, within the day pool and air limit', () => {
+  const { TUNING } = context.Drunk;
+  const game = new Game(campaign()); game.phase = 'play';
+  assert.equal(TUNING.directMode, 1);
+  game.step(.01, { kPressed: true }); assert.equal(game.slot, null);
+  game.step(.01, { skill: 'bodyguard' }); assert.equal(game.state, 'free');
+  game.step(.01, { skill: 'wrestler' }); assert.equal(game.state, 'lift'); assert.equal(game.slot, null);
+  for (let i = 0; i < 60; i++) game.step(1 / 120);
+  assert.equal(game.state, 'thrown');
+  game.step(.01, { skill: 'wrestler' }); assert.equal(game.state, 'thrown');
+  TUNING.directMode = 0;
+  try {
+    const draw = new Game(campaign()); draw.phase = 'play';
+    draw.step(.01, { skill: 'wrestler' }); assert.equal(draw.state, 'free');
+    draw.step(.01, { kPressed: true }); assert.ok(draw.slot);
+  } finally { TUNING.directMode = 1; }
+});
+
+test('a ground charge spends the air use, a smash refreshes it, and jump leaps off the charge', () => {
+  const room = row => ({ id: 'r', tiles: Array.from({ length: 18 }, (_, y) => y === 15 ? row : y >= 16 ? '#'.repeat(32) : '.'.repeat(32)), exits: { right: null } });
+  const make = row => { const g = new Game(parseCampaign(JSON.stringify({ format: 'drunken-rooms', version: 2, maps: [{ id: 'm', abilities: ['wrestler', 'bodyguard'], rooms: [room(row)] }] }))); g.phase = 'play'; return g; };
+  const plain = make('..P.............................');
+  plain.step(.01, { skill: 'bodyguard' }); assert.equal(plain.state, 'charge');
+  plain.step(.01, { skill: 'wrestler' }); assert.equal(plain.state, 'charge');
+  const crates = make('..P...B.........................');
+  crates.step(.01, { skill: 'bodyguard' });
+  for (let i = 0; i < 40 && crates.airDraws; i++) crates.step(1 / 120);
+  assert.equal(crates.airDraws, 0); assert.equal(crates.activeSkill, null);
+  crates.step(.01, { skill: 'wrestler' }); assert.equal(crates.state, 'lift');
+  const leap = make('..P.............................');
+  leap.step(.01, { skill: 'bodyguard' }); leap.step(.05);
+  leap.step(.01, { jumpPressed: true, jump: true });
+  assert.equal(leap.state, 'free'); assert.ok(leap.body.vy < 0); assert.ok(leap.body.vx > 500);
+});
+
+test('the shipped days load and every room keeps one spawn', () => {
+  const { DEFAULT_CAMPAIGN } = context;
+  const data = parseCampaign(JSON.stringify(DEFAULT_CAMPAIGN));
+  assert.equal(data.maps.map(m => m.rooms.length).join(), '6,7');
+  for (const r of data.maps.flatMap(m => m.rooms)) assert.equal(r.tiles.join('').split('P').length - 1, 1, r.id);
+});
+
 test('NPC conversations branch, pause movement, end, and remain independent', async () => {
   const data = campaign(), r = data.maps[0].rooms[0];
   r.tiles[15] = '..P.N.O.N.......................';
