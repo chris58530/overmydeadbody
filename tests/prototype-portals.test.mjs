@@ -110,6 +110,20 @@ test('the shipped days load and every room keeps one spawn', () => {
   for (const r of data.maps.flatMap(m => m.rooms)) assert.equal(r.tiles.join('').split('P').length - 1, 1, r.id);
 });
 
+test('auto-clear (P) leaves every shipped room from the spawn with its cap, and skips edited rooms', () => {
+  const { DEFAULT_CAMPAIGN } = context, { AUTO } = context.Drunk;
+  DEFAULT_CAMPAIGN.maps.forEach((map, mi) => map.rooms.forEach(room => {
+    const game = new Game(DEFAULT_CAMPAIGN); game.startMap(mi); game.enterRoom(room.id); game.phase = 'play';
+    const steps = AUTO.route(game); assert.ok(steps, room.id);
+    for (let f = 0; f < 240 * 15 && game.phase === 'play' && game.room === room && game.state !== 'dead'; f++) game.step(AUTO.STEP_DT, AUTO.input(steps, f));
+    assert.notEqual(game.state, 'dead', room.id); assert.notEqual(game.phase, 'play', room.id);
+    const caps = room.tiles.flatMap((row, y) => [...row].map((c, x) => c === '*' ? `${map.id}:${room.id}:${x},${y}` : null)).filter(Boolean);
+    for (const k of caps) assert.ok(game.capsGot.has(k), `${room.id} cap ${k}`);
+  }));
+  const edited = JSON.parse(JSON.stringify(DEFAULT_CAMPAIGN)); edited.maps[0].rooms[0].tiles[0] = '#'.repeat(32);
+  assert.equal(AUTO.route(new Game(parseCampaign(JSON.stringify(edited)))), null);
+});
+
 test('NPC conversations branch, pause movement, end, and remain independent', async () => {
   const data = campaign(), r = data.maps[0].rooms[0];
   r.tiles[15] = '..P.N.O.N.......................';

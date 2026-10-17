@@ -37,7 +37,7 @@
   <button data-act="load">載入關卡 JSON</button>
   <button data-act="default">換回內建關卡</button>
   <p id="menuMsg"></p>
-  <small>A D 走　W 跳　J 摔角手　L 保鑣　R 重來　M 靜音　` 調手感<br>舉起時按住 W 高拋、S 低飛，飛行中 A D 轉向　衝刺中 W 跳離　撞破箱子或撞飛保全可以再叫一次<br>抽卡模式（手感面板「直按模式」設 0）：K 抽卡 → K 鎖定 → 喝完 5 秒內按 K 發動<br>也可以直接把 JSON 拖進畫面</small>
+  <small>A D 走　W 跳　J 摔角手　L 保鑣　R 重來　P 自動通關本間　M 靜音　` 調手感<br>舉起時按住 W 高拋、S 低飛，飛行中 A D 轉向　衝刺中 W 跳離　撞破箱子或撞飛保全可以再叫一次<br>抽卡模式（手感面板「直按模式」設 0）：K 抽卡 → K 鎖定 → 喝完 5 秒內按 K 發動<br>也可以直接把 JSON 拖進畫面</small>
 </div>
 <div id="tune" hidden></div>
 <input id="file" type="file" accept=".json,application/json" hidden>
@@ -1350,11 +1350,54 @@
     ]
   };
 })(typeof window !== 'undefined' ? window : globalThis);
+// Auto-clear (P): one solver-found route per default room that also takes the room's cap.
+// A route is 0.1 s steps; each step presses `first` on its first frame and holds `hold`, replayed at a fixed 240 Hz from the spawn.
+(function (root) {
+  'use strict';
+  const STEPS = {
+    R: [{}, { right: true }], L: [{}, { left: true }], N: [{}, {}],
+    RJ: [{ jumpPressed: true }, { right: true, jump: true }], LJ: [{ jumpPressed: true }, { left: true, jump: true }], NJ: [{ jumpPressed: true }, { jump: true }],
+    RH: [{}, { right: true, jump: true }], LH: [{}, { left: true, jump: true }], NH: [{}, { jump: true }],
+    RD: [{}, { right: true, down: true }], ND: [{}, { down: true }],
+    RW: [{ skill: 'wrestler' }, { right: true }], LW: [{ skill: 'wrestler' }, { left: true }], NW: [{ skill: 'wrestler' }, { jump: true }],
+    RG: [{ skill: 'bodyguard' }, { right: true }], LG: [{ skill: 'bodyguard' }, { left: true }],
+  };
+  const ROUTES = {
+    'day-1:1-1': 'Rx4 RJx4 Rx2 RJ R RJ LW Rx13',
+    'day-1:1-2': 'RW R RJ Rx4 L R Lx4 R RW R RD Rx8',
+    'day-1:1-3': 'RW R RD Rx7 RJ RW R RJ Rx10',
+    'day-1:1-4': 'Rx2 RJx2 R RJx2 RW R RD Rx7 RW L RJ Rx7',
+    'day-1:1-5': 'Rx2 RJ RW L ND Rx7 RJx2 R LW L RJ Rx3',
+    'day-1:1-6': 'RW R RD Rx8 RJ RW R RJ Rx10',
+    'day-2:2-1': 'RG Rx2 RJx2 LJ NJ RW R RD Rx4 RG Rx7',
+    'day-2:2-2': 'RG Rx9 RJ Rx2 RJx2 RW L ND R L R L R L Rx20',
+    'day-2:2-3': 'RG Rx9 RJ RG Rx7',
+    'day-2:2-4': 'RJ RW Rx10 RJ Rx9 RJ R RJ Rx4 N Rx2',
+    'day-2:2-5': 'RW R RJ Rx7 RG Rx12',
+    'day-2:2-6': 'RG Rx4 RJx2 R RW L Rx16',
+    'day-2:2-7': 'RW Rx6 RG Rx4 RW L RD Rx5 RG Rx2',
+  };
+  const expand = route => route.split(' ').flatMap(s => { const [k, n] = s.split('x'); return Array(+(n || 1)).fill(k); });
+  root.Drunk.AUTO = {
+    STEP_DT: 1 / 240,
+    // Only rooms identical to the shipped ones have a route; edited or imported rooms return null.
+    route(game) {
+      const key = game.map.id + ':' + game.room.id, route = ROUTES[key];
+      const ship = root.DEFAULT_CAMPAIGN.maps.find(m => m.id === game.map.id)?.rooms.find(r => r.id === game.room.id);
+      return route && ship && ship.tiles.join('') === game.room.tiles.join('') ? expand(route) : null;
+    },
+    // Past the end the last step repeats, so a route that lands a frame late still walks out.
+    input(steps, frame) {
+      const i = Math.floor(frame / 24), [first, hold] = STEPS[steps[Math.min(i, steps.length - 1)]];
+      return frame % 24 === 0 ? { ...hold, ...first } : hold;
+    },
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
 </script>
 <script>
 (function () {
   'use strict';
-  const { T, COLS, ROWS, W, H, TUNING, ABILITIES, Game, parseCampaign } = window.Drunk;
+  const { T, COLS, ROWS, W, H, TUNING, ABILITIES, Game, parseCampaign, AUTO } = window.Drunk;
   const canvas = document.getElementById('game'), ctx = canvas.getContext('2d');
   const menu = document.getElementById('menu'), fileInput = document.getElementById('file'), menuMsg = document.getElementById('menuMsg');
   const FONT = '"LXGW WenKai TC", "Kaiti TC", "DFKai-SB", "KaiTi", serif';
@@ -1940,6 +1983,7 @@
       // 3/4: the moves that only exist mid-action are named while they are possible
       if (g.state === 'lift') text('W 高拋　S 低飛', W / 2, H - 52, 20, 'center', 0.95, '#f2c24f');
       if (g.state === 'charge' && g.stand && g.stand.grounded) text('W 跳離', W / 2, H - 52, 20, 'center', 0.95, '#f2c24f');
+      if (g.autoplay) text('自動通關中　P 取消', W / 2, H - 82, 20, 'center', 0.95, '#f2c24f');
     }
     if (g.roomTitle > 0) {
       const a = Math.min(1, g.roomTitle / 0.6);
@@ -2023,7 +2067,7 @@
   // ---------- input & loop ----------
   const held = { left: false, right: false, jump: false, down: false };
   let pressed = {};
-  const bind = { KeyA: 'left', ArrowLeft: 'left', KeyD: 'right', ArrowRight: 'right', KeyW: 'jump', ArrowUp: 'jump', KeyS: 'down', ArrowDown: 'down', Space: 'jump', KeyK: 'k', KeyR: 'r', Enter: 'confirm', Escape: 'esc' };
+  const bind = { KeyA: 'left', ArrowLeft: 'left', KeyD: 'right', ArrowRight: 'right', KeyW: 'jump', ArrowUp: 'jump', KeyS: 'down', ArrowDown: 'down', Space: 'jump', KeyK: 'k', KeyR: 'r', KeyP: 'auto', Enter: 'confirm', Escape: 'esc' };
   const skillKeys = Object.fromEntries(Object.entries(ABILITIES).map(([id, ab]) => ['Key' + ab.key, id]));
   addEventListener('keydown', e => {
     Sfx.ensure();
@@ -2041,11 +2085,35 @@
   addEventListener('blur', () => { held.left = held.right = held.jump = held.down = false; });
   canvas.addEventListener('pointerdown', () => window.focus());
 
+  // P: replay the shipped route for this room from the spawn (it takes the cap too); P again or R hands control back.
+  let auto = null;
+  function toggleAuto() {
+    if (auto) { auto = null; game.autoplay = false; return; }
+    if (game.phase !== 'play' || game.dialogue) return;
+    const steps = AUTO.route(game);
+    if (!steps) { game.shout('body', ['這間我也不知道怎麼過。']); return; }
+    game.enterRoom(game.room.id);
+    auto = { steps, frame: 0, acc: 0, room: game.room };
+    game.autoplay = true;
+  }
+  // Fixed 240 Hz steps, so the replay matches the run the route was verified with.
+  function runAuto(frame) {
+    auto.acc += frame;
+    while (auto && auto.acc >= AUTO.STEP_DT) {
+      auto.acc -= AUTO.STEP_DT;
+      game.step(AUTO.STEP_DT, AUTO.input(auto.steps, auto.frame++));
+      if (game.phase !== 'play' || game.room !== auto.room || game.state === 'dead') { auto = null; game.autoplay = false; }
+    }
+  }
+
   // Simulate exactly the elapsed frame time, split into small sub-steps, so motion matches the display refresh.
   let last = performance.now();
   function loop(now) {
     const frame = Math.min((now - last) / 1000, 1 / 20); last = now;
-    if (menu.hidden && frame > 0) {
+    if (menu.hidden && frame > 0 && pressed.auto) toggleAuto();
+    if (menu.hidden && frame > 0 && auto && pressed.r) { auto = null; game.autoplay = false; }
+    if (menu.hidden && frame > 0 && auto) { pressed = {}; runAuto(frame); }
+    else if (menu.hidden && frame > 0) {
       const n = Math.ceil(frame / (1 / 240)), dt = frame / n;
       if (pressed.r && game.phase === 'play') game.die();
       for (let i = 0; i < n; i++) {
