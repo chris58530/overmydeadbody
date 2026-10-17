@@ -137,7 +137,8 @@ test('drunk mode: booze comes back by itself, a stage change is announced and la
 test('the shipped days load and every room keeps one spawn', () => {
   const { DEFAULT_CAMPAIGN } = context;
   const data = parseCampaign(JSON.stringify(DEFAULT_CAMPAIGN));
-  assert.equal(data.maps.map(m => m.rooms.length).join(), '6,7');
+  assert.equal(data.maps.map(m => m.rooms.length).join(), '5,4,3');
+  assert.equal(data.maps.map(m => m.cells).join(), '1,2,3');
   for (const r of data.maps.flatMap(m => m.rooms)) assert.equal(r.tiles.join('').split('P').length - 1, 1, r.id);
 });
 
@@ -146,13 +147,29 @@ test('auto-clear (P) leaves every shipped room from the spawn with its cap, and 
   DEFAULT_CAMPAIGN.maps.forEach((map, mi) => map.rooms.forEach(room => {
     const game = new Game(DEFAULT_CAMPAIGN); game.startMap(mi); game.enterRoom(room.id); game.phase = 'play';
     const steps = AUTO.route(game); assert.ok(steps, room.id);
-    for (let f = 0; f < 240 * 15 && game.phase === 'play' && game.room === room && game.state !== 'dead'; f++) game.step(AUTO.STEP_DT, AUTO.input(steps, f));
+    const events = new Set();
+    for (let f = 0; f < 240 * 15 && game.phase === 'play' && game.room === room && game.state !== 'dead'; f++) {
+      game.step(AUTO.STEP_DT, AUTO.input(steps, f));
+      for (const event of game.events) events.add(event);
+    }
     assert.notEqual(game.state, 'dead', room.id); assert.notEqual(game.phase, 'play', room.id);
+    if (mi === 0 && ['1-1', '1-2'].includes(room.id)) { assert.ok(events.has('fart'), room.id); assert.ok(!events.has('lift'), room.id); }
+    if (mi === 1) assert.ok(events.has('charge'), `${room.id} must demonstrate the two-cell charge`);
+    if (mi === 2) for (const e of ['bigfart', 'charge', 'lift', 'throw']) assert.ok(events.has(e), `${room.id}: ${e}`);
     const caps = room.tiles.flatMap((row, y) => [...row].map((c, x) => c === '*' ? `${map.id}:${room.id}:${x},${y}` : null)).filter(Boolean);
     for (const k of caps) assert.ok(game.capsGot.has(k), `${room.id} cap ${k}`);
   }));
   const edited = JSON.parse(JSON.stringify(DEFAULT_CAMPAIGN)); edited.maps[0].rooms[0].tiles[0] = '#'.repeat(32);
   assert.equal(AUTO.route(new Game(parseCampaign(JSON.stringify(edited)))), null);
+  for (const change of [
+    c => { c.maps[0].cells = 2; },
+    c => { c.maps[0].rooms[0].booze = 0; },
+    c => { c.maps[0].rooms[0].stages = { 1: Array(18).fill('#'.repeat(32)) }; },
+    c => { c.maps[0].rooms[0].exits = { left: null }; },
+  ]) {
+    const modified = JSON.parse(JSON.stringify(DEFAULT_CAMPAIGN)); change(modified);
+    assert.equal(AUTO.route(new Game(parseCampaign(JSON.stringify(modified)))), null);
+  }
 });
 
 test('NPC conversations branch, pause movement, end, and remain independent', async () => {
