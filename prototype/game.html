@@ -37,7 +37,7 @@
   <button data-act="load">載入關卡 JSON</button>
   <button data-act="default">換回內建關卡</button>
   <p id="menuMsg"></p>
-  <small>A D 走　W 跳　J 摔角手　L 保鑣　R 重來　P 自動通關本間　M 靜音　` 調手感<br>舉起時按住 W 高拋、S 低飛，飛行中 A D 轉向　衝刺中 W 跳離　撞破箱子或撞飛保全可以再叫一次<br>抽卡模式（手感面板「直按模式」設 0）：K 抽卡 → K 鎖定 → 喝完 5 秒內按 K 發動<br>也可以直接把 JSON 拖進畫面</small>
+  <small>A D 走　W 跳　K 放屁（按住 A/D 是加速，不按方向或按 W 往上噴，要一直點）　J 叫醉影　R 重來　P 自動通關本間　M 靜音　` 調手感<br>醉意會自己回滿。J 一次用掉全部滿格，自動連段：一格 丟、兩格 衝→丟、三格 升天→衝→丟；放屁扣小格<br>滿格越多越醉：醉影越強，地圖也越危險（先預告，落地才變；預告時放屁可以取消）<br>舊關卡（沒有 cells）沿用 J 摔角手、L 保鑣　·　也可以直接把 JSON 拖進畫面</small>
 </div>
 <div id="tune" hidden></div>
 <input id="file" type="file" accept=".json,application/json" hidden>
@@ -68,6 +68,11 @@
     deathDelay: 0.45, transition: 0.5,
     // 1: each skill has its own key and fires at once; 0: the K card draw
     directMode: 1,
+    // drunk mode (a map with "cells"): K farts a small share of a cell, J spends a whole cell on the drunk shadow's move
+    fartCost: 1 / 6, fartCooldown: 0.14, fartUp: 300, fartDash: 560, fartDashLift: 60,
+    ascendVY: 1200, ascendBreak: 0.45, stageWarn: 0.9,
+    // booze comes back by itself (cells per second), after a pause once J has spent it; a chain runs on its own
+    regen: 0.4, regenDelay: 0.8, chainAscend: 0.45, chainCharge: 0.7,
   };
 
   const ABILITIES = {
@@ -78,6 +83,10 @@
   // . empty  # ground  ^ shards  = plank  B crate (charge breaks)  C crumbling boxes  < > conveyor
   // R patrol (office chair / night guard)  L falling light (tube / sign)  * bottle cap  P spawn
   const TILE_CHARS = '.#^=BCP<>RL*ON';
+  // stage overlays: '.' keeps the tile below, '_' clears it, anything else replaces it
+  const STAGE_CHARS = '.#^=BC<>_';
+  // the drunk shadow's moves, one per cell: the last cell left is always the throw
+  const ZUI = { 1: { name: '丟', tint: '#e0605a' }, 2: { name: '衝', tint: '#5aa7d6' }, 3: { name: '升天', tint: '#b5c25a' } };
   function validateDialogue(d) {
     if (!d || typeof d.name !== 'string' || !d.nodes || Array.isArray(d.nodes) || typeof d.nodes !== 'object' || typeof d.start !== 'string' || !Object.hasOwn(d.nodes, d.start)) throw Error('Dialogue needs name, start and nodes');
     const link = id => id === null || (typeof id === 'string' && Object.hasOwn(d.nodes, id));
@@ -108,8 +117,9 @@
     if (!data || !Array.isArray(data.maps) || !data.maps.length) { errors.push('maps 至少要有一張地圖'); return errors; }
     data.maps.forEach((map, mi) => {
       const at = `maps[${mi}]`;
-      if (!Array.isArray(map.abilities) || !map.abilities.length) errors.push(`${at}.abilities 不可為空`);
-      else map.abilities.forEach(a => { if (!ABILITIES[a]) errors.push(`${at} 未知能力 "${a}"`); });
+      if (map.cells !== undefined && ![1, 2, 3].includes(map.cells)) errors.push(`${at}.cells 必須是 1、2 或 3`);
+      if (map.cells === undefined && (!Array.isArray(map.abilities) || !map.abilities.length)) errors.push(`${at}.abilities 不可為空`);
+      else (map.abilities || []).forEach(a => { if (!ABILITIES[a]) errors.push(`${at} 未知能力 "${a}"`); });
       if (!Array.isArray(map.rooms) || !map.rooms.length) { errors.push(`${at}.rooms 不可為空`); return; }
       const ids = new Set(map.rooms.map(r => r.id));
       if (ids.size !== map.rooms.length) errors.push(`${at} 有重複的房間 id`);
@@ -122,6 +132,14 @@
           else for (const ch of row) { if (!TILE_CHARS.includes(ch)) errors.push(`${rat} 第 ${y} 列有未知格子 "${ch}"`); if (ch === 'P') spawns++; }
         });
         if (spawns !== 1) errors.push(`${rat} 必須剛好有一個出生點 P`);
+        if (room.booze !== undefined && !(typeof room.booze === 'number' && room.booze >= 0 && room.booze <= 3)) errors.push(`${rat} booze 必須是 0～3`);
+        if (room.stages !== undefined) {
+          if (!room.stages || typeof room.stages !== 'object' || Array.isArray(room.stages)) errors.push(`${rat} stages 必須是物件`);
+          else for (const [k, rows] of Object.entries(room.stages)) {
+            if (!['1', '2', '3'].includes(k)) errors.push(`${rat} stages 只能有 1、2、3`);
+            else if (!Array.isArray(rows) || rows.length !== ROWS || rows.some(r => typeof r !== 'string' || r.length !== COLS || [...r].some(ch => !STAGE_CHARS.includes(ch)))) errors.push(`${rat} stages.${k} 必須是 ${ROWS} 列 ${COLS} 字元，只能用 ${STAGE_CHARS}`);
+          }
+        }
         if (room.theme !== undefined && !THEMES.includes(room.theme)) errors.push(`${rat} 未知場景 "${room.theme}"`);
         const exits = room.exits || {};
         if (room.npcs !== undefined) {
@@ -186,6 +204,7 @@
       this.mapTime = 0;
       this.phase = this.map.intro ? 'intro' : 'play';
       this.timer = 0;
+      this.carryBooze = this.map.booze || 0;
       this.enterRoom(this.map.rooms[0].id);
     }
 
@@ -231,6 +250,108 @@
       this.stand = null;
       this.aim = 1;
       this.roomTitle = 2.4;
+      // drunk mode: a room starts from its own booze, or what was carried in; a death returns to that amount
+      this.cells = this.map.cells || 0;
+      this.booze = Math.min(this.cells, this.room.booze ?? this.carryBooze ?? 0);
+      this.stage = 0; this.stageWarn = null; this.hallu = new Set();
+      this.fartCd = 0; this.ascendT = 0; this.chain = []; this.chainT = 0; this.regenWait = 0;
+      if (this.cells) this.applyStage(this.targetStage(), true);
+    }
+
+    // ---------- drunk mode ----------
+    get drunk() { return !!this.map.cells; }
+    targetStage() { return Math.min(this.cells, Math.floor(this.booze + 1e-9)); }
+    // The static tile of a cell at a drunk stage: the room, then every overlay up to that stage.
+    stageChar(x, y, k) {
+      let t = this.room.tiles[y][x];
+      if (!STAGE_CHARS.includes(t)) return t;
+      for (let s = 1; s <= k; s++) { const o = this.room.stages?.[s]?.[y][x]; if (o && o !== '.') t = o === '_' ? '.' : o; }
+      return t;
+    }
+    stageDiff(from, to) {
+      const out = [];
+      if (this.room.stages) for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) { const c = this.stageChar(x, y, to); if (this.stageChar(x, y, from) !== c) out.push([x, y, c]); }
+      return out;
+    }
+    // Swaps in the stage's tiles; refuses (returns false) while a new solid would land on Jim or his shadow.
+    applyStage(k, force = false) {
+      const diff = this.stageDiff(this.stage, k);
+      if (!force) {
+        const boxes = [this.box(this.body)].concat(this.stand && !this.stand.leaving ? [this.box(this.stand)] : []);
+        if (diff.some(([x, y, c]) => SOLID.includes(c) && boxes.some(bx => overlap(bx, { x: x * T, y: y * T, w: T, h: T })))) return false;
+      }
+      for (const [x, y, c] of diff) { this.tiles[y][x] = c; this.crumbles.delete(x + ',' + y); }
+      if (diff.length) this.tilesVersion++;
+      if (!force && k !== this.stage) { this.events.push(k > this.stage ? 'stageUp' : 'stageDown'); this.shake = Math.max(this.shake, 0.25); }
+      this.stage = k; this.stageWarn = null;
+      this.hallu = new Set();
+      if (this.room.stages) for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (this.stageChar(x, y, k) !== this.stageChar(x, y, 0)) this.hallu.add(x + ',' + y);
+      return true;
+    }
+    // The map follows the full cells: a change is announced first (fart it away in time to cancel it) and lands with Jim.
+    updateStage(dt) {
+      const k = this.targetStage();
+      if (k === this.stage) { this.stageWarn = null; return; }
+      if (!this.stageWarn || this.stageWarn.to !== k) { this.stageWarn = { to: k, t: TUNING.stageWarn, cells: this.stageDiff(this.stage, k) }; this.events.push('warn'); }
+      this.stageWarn.t -= dt;
+      const settled = (this.state === 'free' || this.state === 'recover') && this.body.grounded;
+      if (this.stageWarn.t <= 0 && settled) this.applyStage(k);
+    }
+
+    // K in drunk mode: a short fart. Forward is a burst of speed, nothing or W lifts Jim like a flap.
+    fart(input, dir) {
+      if (this.fartCd > 0 || !['free', 'thrown', 'recover'].includes(this.state)) return;
+      const b = this.body;
+      if (this.booze < TUNING.fartCost - 1e-9) {
+        this.fartCd = 0.3; this.events.push('deny');
+        this.bubbles = this.bubbles.filter(bub => !bub.deny);
+        this.bubbles.push({ who: 'body', text: '……擠不出來', delay: 0, t: 0.7, deny: true });
+        return;
+      }
+      this.booze = Math.max(0, this.booze - TUNING.fartCost);
+      this.fartCd = TUNING.fartCooldown;
+      if (this.state === 'recover') this.state = 'free';
+      const dash = dir && !input.jump;
+      if (dash) { b.vx = dir * Math.max(dir * b.vx, TUNING.fartDash); b.vy = Math.min(b.vy, -TUNING.fartDashLift); b.face = dir; }
+      else b.vy = -TUNING.fartUp;
+      b.grounded = false; b.puff = true; this.coyote = 0; this.jumpBuf = 0;
+      this.events.push('fart');
+      const back = dash ? -dir : 0;
+      for (let i = 0; i < 6 && this.particles.length < 300; i++) this.particles.push({ x: b.x + back * 22, y: b.y - 18, vx: back * (120 + Math.random() * 160) + (Math.random() - 0.5) * 90, vy: back ? (Math.random() - 0.5) * 80 : 140 + Math.random() * 160, life: 0.35 + Math.random() * 0.25, max: 0.6, size: 6 + Math.random() * 8, color: i % 2 ? '#b5c25a' : '#8e9a4a' });
+    }
+
+    // J in drunk mode: every full cell goes at once and the shadow plays the whole chain by itself:
+    // 3 cells 升天 → 衝 → 丟, 2 cells 衝 → 丟, 1 cell 丟. A/D and W/S still steer each part as it starts.
+    pressZui() {
+      if (this.state === 'dead' || this.chain.length || this.state === 'lift' || this.state === 'charge') return;
+      const n = Math.min(this.cells, Math.floor(this.booze + 1e-9));
+      if (n < 1) {
+        this.bubbles = this.bubbles.filter(bub => !bub.deny);
+        this.bubbles.push({ who: 'body', text: '還不夠醉……', delay: 0, t: 0.8, deny: true });
+        this.events.push('deny');
+        return;
+      }
+      if (n === 2 && this.hitsSolid(this.box({ x: this.body.x, h: BODY_H + TUNING.carryOffset }, this.body.y))) { this.events.push('deny'); return; }
+      this.booze = 0;
+      this.regenWait = TUNING.regenDelay;
+      this.flash = { color: ZUI[n].tint, t: 0.25 };
+      this.events.push('drink');
+      if (n === 3) { this.chain = ['charge', 'throw']; this.chainT = TUNING.chainAscend; this.ascend(); }
+      else if (n === 2) { this.chain = ['throw']; this.startCharge(); this.timer = TUNING.chainCharge; }
+      else this.startLift();
+    }
+
+    // The third cell: Jim's own enormous fart. Straight up, high, and through crates overhead.
+    ascend() {
+      const b = this.body;
+      if (this.stand) this.stand.leaving = true;
+      this.state = 'free';
+      b.vy = -TUNING.ascendVY; b.vx *= 0.4; b.grounded = false; b.puff = true;
+      this.ascendT = TUNING.ascendBreak; this.coyote = 0;
+      this.hitStop = 0.07; this.shake = 0.4;
+      this.events.push('bigfart');
+      this.shout('body', ['噗————！！', '對不起大家！', '升天啦——']);
+      for (let i = 0; i < 34 && this.particles.length < 300; i++) this.particles.push({ x: b.x + (Math.random() - 0.5) * 50, y: b.y - 6, vx: (Math.random() - 0.5) * 520, vy: 60 + Math.random() * 260, life: 0.5 + Math.random() * 0.4, max: 0.9, size: 8 + Math.random() * 14, color: i % 3 ? '#b5c25a' : '#e8e2a0' });
     }
 
     tileAt(cx, cy) {
@@ -318,6 +439,7 @@
 
     // Direct mode: the skill's own key fires it at once, under the same day-pool and air rules as the draw.
     pressSkill(id) {
+      if (this.drunk) { if (id === 'wrestler') this.pressZui(); return; }
       if (this.state === 'dead') return;
       const airborne = !this.body.grounded || ['lift', 'thrown', 'charge'].includes(this.state);
       const why = !this.map.abilities.includes(id) ? '今天沒有這招'
@@ -347,6 +469,7 @@
 
     // A crate smashed or a guard knocked mid-charge earns the air use back, so chains can continue.
     refreshAir() {
+      if (this.drunk) return;
       if (this.airDraws || this.activeSkill) { this.events.push('ready'); this.flash = { color: '#f2c24f', t: 0.15 }; if (this.stand) this.shout(this.stand, ['下一位！', '再來！']); }
       this.airDraws = 0; this.activeSkill = null;
     }
@@ -478,6 +601,7 @@
     // Jump mid-charge: Jim leaps off the bodyguard's shoulders and keeps most of the speed.
     jumpOut() {
       const b = this.body;
+      this.chain = [];
       this.state = 'free';
       this.stand.leaving = true;
       this.shout(this.stand, ['欸！你去哪？', '不用送了？']);
@@ -616,6 +740,7 @@
     }
 
     leave(side, target = this.exits[side]) {
+      this.carryBooze = this.booze;
       for (const k of this.roomCaps) this.capsGot.add(k);
       this.roomCaps = [];
       if (target === null) { this.phase = 'mapEnd'; this.timer = 0; return; }
@@ -702,7 +827,9 @@
       if (this.slot) { this.updateSlot(dt, input.kPressed); kTaken = true; }
       if (this.drinkT > 0) { kTaken = true; this.drinkT -= dt; if (this.drinkT <= 0) { this.drinkT = 0; this.ready = { id: this.pending, t: TUNING.holdTime }; this.pending = null; this.events.push('ready'); } }
       if (this.ready && (this.ready.t -= dt) <= 0) { this.ready = null; this.events.push('deny'); this.bubbles.push({ who: 'body', text: '酒退了……', delay: 0, t: 1 }); }
-      if (TUNING.directMode) { if (input.skill) this.pressSkill(input.skill); }
+      this.fartCd = Math.max(0, (this.fartCd || 0) - dt);
+      if (this.drunk) { if (input.skill) this.pressSkill(input.skill); if (input.kPressed) this.fart(input, (input.right ? 1 : 0) - (input.left ? 1 : 0)); }
+      else if (TUNING.directMode) { if (input.skill) this.pressSkill(input.skill); }
       else if (!kTaken && input.kPressed) this.pressK();
       if (this.hitStop > 0) { this.hitStop -= dt; return; }
       const slowed = !!this.slot || this.drinkT > 0;
@@ -736,8 +863,21 @@
           this.emit(b.x, b.y, '#b9aee0', 5, 160, 60);
         }
         // Celeste-style: lighter gravity near the apex while jump is held, heavier when released early.
+        // a fart's rise is not a jump: letting go of W does not cut it short
+        if (b.vy >= 0) b.puff = false;
         if (input.jump && Math.abs(b.vy) < 110) b.vy -= TUNING.gravity * (1 - TUNING.apexHang) * dt;
-        else if (!input.jump && b.vy < 0) b.vy += TUNING.gravity * (TUNING.releaseGravity - 1) * dt;
+        else if (!input.jump && b.vy < 0 && !b.puff) b.vy += TUNING.gravity * (TUNING.releaseGravity - 1) * dt;
+        if (this.chain[0] === 'charge' && (this.chainT -= dt) <= 0) {
+          this.chain.shift();
+          this.startCharge();
+          if (this.state === 'charge') this.timer = TUNING.chainCharge; else this.chain = [];
+        }
+        if (this.ascendT > 0) {
+          this.ascendT -= dt;
+          const head = this.box(b, b.y + Math.min(0, b.vy * dt) - 2), hit = [];
+          for (let y = Math.floor(head.y / T); y <= Math.floor((head.y + 8) / T); y++) for (let x = Math.floor(head.x / T); x <= Math.floor((head.x + head.w - 1e-6) / T); x++) if ('BC'.includes(this.tileAt(x, y))) hit.push([x, y]);
+          if (hit.length) { for (const [x, y] of hit) this.breakFrom(x, y); this.shake = 0.35; this.hitStop = TUNING.hitStop; this.events.push('break'); }
+        }
         if (b.vy > 0) b.vy += TUNING.gravity * (TUNING.fallGravity - 1) * dt;
         const wasGrounded = b.grounded;
         this.physics(dt);
@@ -800,7 +940,8 @@
         const stopped = this.chargeMove(st, this.chargeDir * this.speed * dt);
         this.moveY(st, st.vy * dt);
         this.carry();
-        if (stopped || this.timer <= 0) this.finishCharge(stopped);
+        if ((stopped || this.timer <= 0) && this.chain[0] === 'throw') { this.chain.shift(); this.stand.leaving = true; this.state = 'free'; this.startLift(); }
+        else if (stopped || this.timer <= 0) this.finishCharge(stopped);
       }
 
       if (this.state === 'free' || this.state === 'recover') {
@@ -812,6 +953,11 @@
         if (this.state === 'charge') this.touchCrumble(this.stand);
         this.updateCrumbles(dt);
         this.updateEntities(dt);
+      }
+      if (this.state !== 'dead' && this.drunk) {
+        const busy = this.chain.length || this.state === 'lift' || this.state === 'charge';
+        if (!busy && (this.regenWait -= dt) <= 0) this.booze = Math.min(this.cells, this.booze + TUNING.regen * dt);
+        this.updateStage(dt);
       }
       if (this.state !== 'dead') this.checkHazards();
       if (this.state !== 'dead') this.checkExits();
@@ -845,7 +991,7 @@
     }
   }
 
-  root.Drunk = { T, COLS, ROWS, W, H, BODY_W, BODY_H, TUNING, ABILITIES, THEMES, Game, validateCampaign, parseCampaign, validateDialogue };
+  root.Drunk = { T, COLS, ROWS, W, H, BODY_W, BODY_H, TUNING, ABILITIES, ZUI, THEMES, Game, validateCampaign, parseCampaign, validateDialogue };
 })(typeof window !== 'undefined' ? window : globalThis);
 // Default campaign. Same shape the editor exports (drunken-rooms v2). The previous day 1-2 rooms are kept in legacy-days.json.
 (function (root) {
@@ -1355,12 +1501,14 @@
 (function (root) {
   'use strict';
   const STEPS = {
-    R: [{}, { right: true }], L: [{}, { left: true }], N: [{}, {}],
+    N: [{}, {}], R: [{}, { right: true }], L: [{}, { left: true }],
     RJ: [{ jumpPressed: true }, { right: true, jump: true }], LJ: [{ jumpPressed: true }, { left: true, jump: true }], NJ: [{ jumpPressed: true }, { jump: true }],
     RH: [{}, { right: true, jump: true }], LH: [{}, { left: true, jump: true }], NH: [{}, { jump: true }],
     RD: [{}, { right: true, down: true }], ND: [{}, { down: true }],
-    RW: [{ skill: 'wrestler' }, { right: true }], LW: [{ skill: 'wrestler' }, { left: true }], NW: [{ skill: 'wrestler' }, { jump: true }],
-    RG: [{ skill: 'bodyguard' }, { right: true }], LG: [{ skill: 'bodyguard' }, { left: true }],
+    NF: [{ kPressed: true }, {}], RF: [{ kPressed: true }, { right: true }], LF: [{ kPressed: true }, { left: true }],
+    RUF: [{ kPressed: true }, { right: true, jump: true }], LUF: [{ kPressed: true }, { left: true, jump: true }],
+    S: [{ skill: 'wrestler' }, {}], RS: [{ skill: 'wrestler' }, { right: true }], LS: [{ skill: 'wrestler' }, { left: true }],
+    US: [{ skill: 'wrestler' }, { jump: true }], RUS: [{ skill: 'wrestler' }, { right: true, jump: true }], RDS: [{ skill: 'wrestler' }, { right: true, down: true }],
   };
   const ROUTES = {
     'day-1:1-1': 'Rx4 RJx4 Rx2 RJ R RJ LW Rx13',
@@ -1397,7 +1545,7 @@
 <script>
 (function () {
   'use strict';
-  const { T, COLS, ROWS, W, H, TUNING, ABILITIES, Game, parseCampaign, AUTO } = window.Drunk;
+  const { T, COLS, ROWS, W, H, TUNING, ABILITIES, ZUI, Game, parseCampaign, AUTO } = window.Drunk;
   const canvas = document.getElementById('game'), ctx = canvas.getContext('2d');
   const menu = document.getElementById('menu'), fileInput = document.getElementById('file'), menuMsg = document.getElementById('menuMsg');
   const FONT = '"LXGW WenKai TC", "Kaiti TC", "DFKai-SB", "KaiTi", serif';
@@ -1889,6 +2037,65 @@
     }
   }
 
+  // Hallucinated tiles glow; tiles about to change blink before the stage swaps.
+  function drawHallucination() {
+    const g = game;
+    if (!g.drunk) return;
+    const pulse = 0.5 + 0.5 * Math.sin(g.time * 5);
+    ctx.save();
+    for (const key of g.hallu) {
+      const [x, y] = key.split(',').map(Number), t = g.tiles[y][x], tx = x * T, ty = y * T;
+      if (t === '.') { ctx.setLineDash([5, 6]); ctx.strokeStyle = 'rgba(190,150,255,.28)'; ctx.lineWidth = 2; ctx.strokeRect(tx + 3, ty + 3, T - 6, T - 6); ctx.setLineDash([]); continue; }
+      ctx.fillStyle = `rgba(170,120,255,${0.16 + pulse * 0.1})`; ctx.fillRect(tx, ty, T, T);
+      ctx.strokeStyle = `rgba(220,190,255,${0.5 + pulse * 0.3})`; ctx.lineWidth = 2; ctx.strokeRect(tx + 1, ty + 1, T - 2, T - 2);
+    }
+    if (g.stageWarn) {
+      const on = Math.sin(g.time * 22) > 0;
+      for (const [x, y, c] of g.stageWarn.cells) {
+        const tx = x * T, ty = y * T;
+        if (c === '.') { if (on) { ctx.fillStyle = 'rgba(20,10,40,.55)'; ctx.fillRect(tx, ty, T, T); } }
+        else { ctx.setLineDash([6, 5]); ctx.strokeStyle = on ? 'rgba(255,220,120,.95)' : 'rgba(190,150,255,.7)'; ctx.lineWidth = 3; ctx.strokeRect(tx + 2, ty + 2, T - 4, T - 4); ctx.setLineDash([]);
+          if (c === '^') { ctx.fillStyle = 'rgba(255,110,110,.35)'; ctx.fillRect(tx + 4, ty + 20, T - 8, T - 22); } }
+      }
+    }
+    ctx.restore();
+  }
+
+  // Drunk stage tint: the more cells full, the more the world swims.
+  function drawDrunkGrade() {
+    const g = game;
+    if (!g.drunk || (!g.stage && !g.stageWarn)) return;
+    const s = g.stage, warn = g.stageWarn ? 0.5 + 0.5 * Math.sin(g.time * 14) : 0;
+    const v = ctx.createRadialGradient(W / 2, H / 2, 260 - s * 40, W / 2, H / 2, 780);
+    v.addColorStop(0, 'rgba(120,60,200,0)'); v.addColorStop(1, `rgba(120,60,200,${0.12 * s + 0.18 * warn})`);
+    ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+    if (s >= 2) { ctx.fillStyle = `rgba(255,120,200,${0.03 * (s - 1) * (0.5 + 0.5 * Math.sin(g.time * 2))})`; ctx.fillRect(0, 0, W, H); }
+  }
+
+  // The booze gauge: one cell per move, drained from the right. The cell J will spend is ringed.
+  function drawGauge() {
+    const g = game, cw = 78, ch = 20, x0 = 22, y0 = H - 66, n = Math.floor(g.booze + 1e-9);
+    for (let i = 0; i < 3; i++) {
+      const x = x0 + i * (cw + 10), fill = Math.max(0, Math.min(1, g.booze - i)), z = ZUI[i + 1];
+      ctx.save();
+      if (i >= g.cells) {
+        ctx.globalAlpha = 0.35; ctx.fillStyle = '#1a1430'; ctx.fillRect(x, y0, cw, ch);
+        ctx.strokeStyle = '#5a5070'; ctx.lineWidth = 2; ctx.strokeRect(x, y0, cw, ch);
+        ctx.restore(); text('？', x + cw / 2, y0 + ch + 22, 16, 'center', 0.3); continue;
+      }
+      ctx.fillStyle = 'rgba(16,12,36,.7)'; ctx.fillRect(x, y0, cw, ch);
+      ctx.fillStyle = fill >= 1 ? z.tint : 'rgba(181,194,90,.55)'; ctx.fillRect(x, y0, cw * fill, ch);
+      const next = i < n;
+      ctx.strokeStyle = next ? '#f2c24f' : '#f3e9d2'; ctx.lineWidth = next ? 3 : 1.5; ctx.strokeRect(x, y0, cw, ch);
+      if (g.stageWarn && i === Math.max(g.stageWarn.to, g.stage) - 1 && Math.sin(g.time * 22) > 0) { ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(x, y0, cw, ch); }
+      ctx.restore();
+      text(z.name, x + cw / 2, y0 + ch + 22, 17, 'center', fill >= 1 ? 0.95 : 0.4, next ? '#f2c24f' : '#f3e9d2');
+    }
+    if (n) text('J ' + Array.from({ length: n }, (_, i) => ZUI[n - i].name).join('→'), x0, y0 - 36, 17, 'left', 0.95, '#f2c24f');
+    text('K 放屁', x0 + 3 * (cw + 10) + 6, y0 + 16, 17, 'left', g.booze >= TUNING.fartCost - 1e-9 ? 0.8 : 0.3, '#b5c25a');
+    text(['清醒', '微醺', '大醉', '爛醉'][g.stage] + (g.stageWarn ? (g.stageWarn.to > g.stage ? '　醉意上湧…' : '　酒醒中…') : ''), x0, y0 - 12, 17, 'left', 0.85, g.stageWarn ? '#f2c24f' : '#cdb8ff');
+  }
+
   function drawCap(e, t) {
     const y = e.y + Math.sin(t * 3 + e.x) * 3;
     ctx.save(); ctx.translate(e.x, y); ctx.rotate(Math.sin(t * 2) * 0.2);
@@ -1936,6 +2143,7 @@
     ctx.fillStyle = pit; ctx.fillRect(-8, 560, W + 16, H - 552);
     ctx.drawImage(layer, 0, 0);
     drawDynamicTiles();
+    drawHallucination();
     drawEntities();
     if (g.stand) {
       const st = g.stand, charging = g.state === 'charge';
@@ -1946,7 +2154,7 @@
           ctx.beginPath(); ctx.moveTo(st.x - g.chargeDir * (40 + i * 6), yy); ctx.lineTo(st.x - g.chargeDir * (40 + i * 6 + len), yy); ctx.stroke();
         }
       }
-      drawActor(charging ? 'run' : 'idle', g.time, st.x, st.y, st.face, st.ability === 'wrestler' ? 170 : 152, ABILITIES[st.ability].tint, 0.85 * st.alpha);
+      drawActor(charging ? 'run' : 'idle', g.time, st.x, st.y, st.face, st.ability === 'wrestler' ? 170 : 152, g.drunk ? '#9b7be0' : ABILITIES[st.ability].tint, (g.drunk ? 0.75 : 0.85) * st.alpha);
     }
     if (g.state === 'lift') drawAim();
     if (g.state !== 'dead') {
@@ -1967,11 +2175,20 @@
       v.addColorStop(0, 'rgba(14,11,28,0)'); v.addColorStop(1, 'rgba(14,11,28,.45)');
       ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
     }
+    drawDrunkGrade();
     drawSlot();
     drawReady();
     if (g.flash) { ctx.globalAlpha = (g.flash.t / 0.45) * 0.4; ctx.fillStyle = g.flash.color; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
     text(`${g.map.name}　${g.room.id}`, 22, 36, 20, 'left', 0.7);
-    if (TUNING.directMode) {
+    if (g.drunk) {
+      drawGauge();
+      const hint = (g.room.lines || []).filter(l => /[A-Z]/.test(l)).at(-1);
+      if (hint) text(hint, W / 2, H - 22, 18, 'center', 0.55);
+      const n = Math.floor(g.booze + 1e-9);
+      if (g.state === 'lift') text('W 高拋　S 低飛', W / 2, H - 52, 20, 'center', 0.95, '#f2c24f');
+      if (g.state === 'charge' && g.stand && g.stand.grounded) text('W 跳離', W / 2, H - 52, 20, 'center', 0.95, '#f2c24f');
+      if (g.autoplay) text('自動通關中　P 取消', W / 2, H - 82, 20, 'center', 0.95, '#f2c24f');
+    } else if (TUNING.directMode) {
       const air = !b.grounded || ['lift', 'thrown', 'charge'].includes(g.state);
       g.map.abilities.forEach((id, i) => {
         const usable = id !== g.activeSkill && !(air && g.airDraws >= TUNING.airDraws);
@@ -2056,6 +2273,11 @@
       crash: () => noise(0.4, 0.38, 3200, 'highpass'),
       deny: () => tone(150, 0.14, 'square', 0.08),
       ready: () => tone(988, 0.12, 'triangle', 0.1),
+      fart: () => { noise(0.13, 0.32, 260); tone(95 + Math.random() * 30, 0.12, 'sawtooth', 0.07, 55); },
+      bigfart: () => { noise(0.7, 0.55, 220); tone(70, 0.7, 'sawtooth', 0.12, 38); tone(140, 0.35, 'square', 0.05, 60, 0.05); },
+      gulp: () => { tone(260, 0.08, 'sine', 0.2, 160); tone(240, 0.08, 'sine', 0.18, 150, 0.1); tone(300, 0.14, 'triangle', 0.08, 500, 0.22); },
+      stageUp: () => { tone(330, 0.5, 'triangle', 0.1, 520); tone(415, 0.5, 'triangle', 0.08, 660, 0.06); noise(0.3, 0.1, 800, 'bandpass'); },
+      stageDown: () => { tone(520, 0.45, 'triangle', 0.1, 300); },
     };
     return {
       ensure,

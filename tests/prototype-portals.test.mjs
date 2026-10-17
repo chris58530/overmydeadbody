@@ -103,6 +103,37 @@ test('a ground charge spends the air use, a smash refreshes it, and jump leaps o
   assert.equal(leap.state, 'free'); assert.ok(leap.body.vy < 0); assert.ok(leap.body.vx > 500);
 });
 
+test('drunk mode: one J spends every full cell and the shadow plays the chain by itself', () => {
+  const rows = Array.from({ length: 18 }, (_, y) => y >= 16 ? '#'.repeat(32) : y === 15 ? '..P.............................' : '.'.repeat(32));
+  const make = booze => { const g = new Game(parseCampaign(JSON.stringify({ format: 'drunken-rooms', version: 2, maps: [{ id: 'm', cells: 3, rooms: [{ id: 'r', tiles: rows, exits: { right: null }, booze }] }] }))); g.phase = 'play'; return g; };
+  const game = make(3), seen = [];
+  game.step(1 / 240, { skill: 'wrestler' }); assert.equal(game.booze, 0); assert.ok(game.body.vy < -1000);
+  for (let i = 0; i < 240 * 2.5; i++) { game.step(1 / 240, { skill: 'wrestler' }); if (seen.at(-1) !== game.state) seen.push(game.state); }
+  assert.ok(seen.join(',').startsWith('free,charge,lift,thrown'), seen.join(','));
+  const two = make(2.5); two.step(1 / 240, { skill: 'wrestler' }); assert.equal(two.state, 'charge'); assert.equal(two.booze, 0);
+  const none = make(0.9); none.step(1 / 240, { skill: 'wrestler' }); assert.equal(none.state, 'free'); assert.ok(none.bubbles.some(b => b.deny));
+});
+
+test('drunk mode: booze comes back by itself, a stage change is announced and lands on the ground, and a fart cancels it', () => {
+  const rows = Array.from({ length: 18 }, (_, y) => y >= 16 ? '#'.repeat(32) : y === 15 ? '..P.............................' : '.'.repeat(32));
+  const overlay = Array.from({ length: 18 }, (_, y) => y === 10 ? '.'.repeat(20) + '####' + '.'.repeat(8) : '.'.repeat(32));
+  const make = () => { const g = new Game(parseCampaign(JSON.stringify({ format: 'drunken-rooms', version: 2, maps: [{ id: 'm', cells: 1, rooms: [{ id: 'r', tiles: rows, exits: { right: null }, booze: 0.9, stages: { 1: overlay } }] }] }))); g.phase = 'play'; return g; };
+  const game = make();
+  for (let i = 0; i < 120 && game.booze < 1; i++) game.step(1 / 240);
+  assert.equal(game.booze, 1); assert.equal(game.stage, 0); assert.equal(game.stageWarn.to, 1);
+  for (let i = 0; i < 300; i++) game.step(1 / 240);
+  assert.equal(game.stage, 1); assert.equal(game.tiles[10][20], '#');
+  game.step(1 / 240, { kPressed: true }); assert.ok(Math.abs(game.booze - 5 / 6) < 0.01); assert.ok(game.body.vy < 0);
+  game.step(1 / 240, { kPressed: true }); assert.ok(game.booze < 5 / 6 + 0.01);   // cooldown: no second fart
+  const cancel = make();
+  for (let i = 0; i < 120 && cancel.booze < 1; i++) cancel.step(1 / 240);
+  cancel.step(1 / 240, { kPressed: true });
+  for (let i = 0; i < 60; i++) cancel.step(1 / 240);
+  assert.equal(cancel.stage, 0); assert.equal(cancel.stageWarn, null); assert.equal(cancel.tiles[10][20], '.');
+  cancel.die(); for (let i = 0; i < 120; i++) cancel.step(1 / 240);
+  assert.ok(cancel.booze < 1);
+});
+
 test('the shipped days load and every room keeps one spawn', () => {
   const { DEFAULT_CAMPAIGN } = context;
   const data = parseCampaign(JSON.stringify(DEFAULT_CAMPAIGN));
