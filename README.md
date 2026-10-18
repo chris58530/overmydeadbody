@@ -1,6 +1,6 @@
 # Over My Dead Body · 醉隱
 
-更新日期：2026-10-17。本文描述 `prototype/game.html` 與 `prototype/editor.html` 的目前實作；未實作的故事範圍另行標示。
+更新日期：2026-10-18。本文描述 `prototype/game.html` 與 `prototype/editor.html` 的目前實作；未實作的故事範圍另行標示。
 
 ## 產品與範圍
 
@@ -14,6 +14,8 @@
 |---|---|
 | `prototype/game.html` | 遊戲本體；可直接開啟或貼上 BeaverKit |
 | `prototype/editor.html` | 關卡編輯器；匯出 `drunken-rooms` v2 JSON |
+| `prototype/chill-puzzles.json` | 七關醉態解謎；使用 `game.html?chill=1` 載入 |
+| `prototype/chill-routes.json` | 七關 P 自動通關路線，綁定關卡版本並以 240 Hz 重播 |
 | `prototype/dialogue-example.json` | NPC 對話匯入範例 |
 | `prototype/legacy-days.json` | 改版前的第一、二天關卡（14 間），可拖進遊戲比較 |
 | `prototype/legacy-jl-days.json` | 上一版 J／L 關卡（13 間），保留舊規則 |
@@ -21,7 +23,7 @@
 | `handoff/kit/routes.json` | 12 間含瓶蓋的 P 路線；`routes.mjs` 以 240 Hz 驗證並安裝 |
 | `prototype/combo-test.json` | 早期連招實驗關（3 間）；已由第二天 2-5～2-7 取代，在現行規則下 A、C 可用單招通過 |
 | `tests/prototype-portals.test.mjs`、`tests/dialogue-editor.test.mjs` | 目前原型測試 |
-| `server.mjs`、`tests/game.test.mjs` | 早期版本；舊測試依賴此工作目錄未提供的 `dist/` |
+| `server.mjs`、`tests/game.test.mjs` | 早期 `dist/` 版本的伺服器與測試 |
 
 1. 開啟 `prototype/editor.html` 編輯關卡，可按「試玩目前房間」測試尚未匯出的修改。
 2. 按「結束試玩 · 返回編輯」繼續編輯，完成後按「匯出 JSON」。
@@ -29,7 +31,26 @@
 
 放置 NPC 後可點選角色，使用右側視覺對話工具編輯，或在「進階：對話 JSON」按「套用對話」及「匯入對話檔」。放置傳送門後，可點選傳送門或選取其座標，再設定個別目的房間或「結束這一天」。
 
-## 遊戲行為
+## 七關醉態解謎
+
+從專案根目錄啟動靜態伺服器：
+
+```sh
+python -m http.server 4174 --bind 127.0.0.1 --directory prototype
+```
+
+開啟 `http://127.0.0.1:4174/game.html?chill=1`。遊戲會讀取同資料夾內的兩個 chill JSON，因此此模式需要 HTTP 伺服器。未加 `chill=1` 時仍載入原本三天關卡。
+
+- A／D 移動，W／空白跳躍；E 放空升一階，K 原地放屁降一階。
+- 醉態固定在一至三階。J 不耗酒意，一階丟、二階衝→丟、三階升天→衝→丟，自動完成連段；每次離地一招，落地後恢復。
+- 技能立刻隨醉態改變，地圖保留舊狀態三秒後切換，空中也照常切換。倒數期間不可再次調階；會夾住角色的新增實體延後出現。
+- 七關依序為先試一下、橋下的門、借一下高台、末班貨梯、月台上的月亮、便利店的雨棚、家門口的天橋。主路設安全地板，瓶蓋為選拿。
+- P 從出生點自動通過本間，進下一間後交回控制；再按 P 中途接手，R 重來。自動路線不保證收齊瓶蓋，修改或匯入不同版本的房間會停用路線。
+- Esc 開啟操作說明與選關。畫面僅保留醉階、技能與切換倒數。
+
+`handoff/kit/build-chill.mjs` 產生關卡；修改後執行 `node handoff/kit/build-chill.mjs`，再執行 `node handoff/kit/build-chill-routes.mjs` 重新錄製並獨立重播驗證全部路線。
+
+## 三天關卡的遊戲行為
 
 房間固定 32 × 18 格，遊戲每格 40 px，邏輯畫面為 1280 × 720。每間房間必須有且只有一個出生點。日／地圖決定醉意格數上限，房間決定地形、出口、場景與對話。
 
@@ -133,7 +154,7 @@
 
 ## 驗證與維護
 
-目前原型測試：`node --test tests/prototype-portals.test.mjs tests/dialogue-editor.test.mjs`。測試涵蓋傳送門、關卡驗證、NPC 對話、編輯器試玩與腳本語法；瀏覽器視覺、音效及操作手感仍需人工試玩。
+執行 `npm test` 跑完整測試。`tests/prototype-portals.test.mjs` 與 `tests/dialogue-editor.test.mjs` 涵蓋原版傳送門、關卡驗證、NPC 對話、編輯器試玩與腳本語法；`tests/chill-puzzles.test.mjs` 與 `tests/chill-routes.test.mjs` 涵蓋醉態切換、三秒時間差、七關自動路線，以及放寬操作時間後的完整重播。瀏覽器視覺、音效及操作手感仍需人工試玩。
 
-`tests/game.test.mjs` 屬於舊版，依賴 `dist/game/`。此工作目錄未提供該目錄，因此 `npm test` 的完整測試入口仍有舊版依賴問題。新規格以 `prototype/` 為準；未完成的七天內容、離線素材封裝與舊測試入口整理不列為已實作功能。
+`tests/game.test.mjs` 屬於舊版，依賴 `dist/game/`。新規格以 `prototype/` 為準；完整七天劇情與離線素材封裝尚未完成。
 

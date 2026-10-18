@@ -117,6 +117,7 @@
     if (!data || !Array.isArray(data.maps) || !data.maps.length) { errors.push('maps 至少要有一張地圖'); return errors; }
     data.maps.forEach((map, mi) => {
       const at = `maps[${mi}]`;
+      if (data.rules === 'chill-puzzle' && ![1, 2, 3].includes(map.cells)) errors.push(`${at}.cells 解謎模式需要 1、2 或 3 階`);
       if (map.cells !== undefined && ![1, 2, 3].includes(map.cells)) errors.push(`${at}.cells 必須是 1、2 或 3`);
       if (map.cells === undefined && (!Array.isArray(map.abilities) || !map.abilities.length)) errors.push(`${at}.abilities 不可為空`);
       else (map.abilities || []).forEach(a => { if (!ABILITIES[a]) errors.push(`${at} 未知能力 "${a}"`); });
@@ -237,7 +238,7 @@
       this.bubbles = [];
       if (!this.seen.has(this.map.id + ':' + id)) {
         this.seen.add(this.map.id + ':' + id);
-        (this.room.lines || []).forEach((text, i) => this.bubbles.push({ who: 'body', text, delay: 0.2 + i * 0.8, t: 2.2 }));
+        if (!this.chill) (this.room.lines || []).forEach((text, i) => this.bubbles.push({ who: 'body', text, delay: 0.2 + i * 0.8, t: 2.2 }));
       }
       this.body = { x: this.spawn.x, y: this.spawn.y, vx: 0, vy: 0, face: 1, grounded: true, anim: 'idle', animTime: 0 };
       this.state = 'free';
@@ -253,13 +254,16 @@
       // drunk mode: a room starts from its own booze, or what was carried in; a death returns to that amount
       this.cells = this.map.cells || 0;
       this.booze = Math.min(this.cells, this.room.booze ?? this.carryBooze ?? 0);
-      this.stage = 0; this.stageWarn = null; this.hallu = new Set();
+      if (this.chill) this.booze = clamp(Math.round(this.booze), 1, this.cells);
+      this.stage = 0; this.stageWarn = null; this.hallu = new Set(); this.stageDeferred = [];
+      this.chillAirUsed = false;
       this.fartCd = 0; this.ascendT = 0; this.chain = []; this.chainT = 0; this.regenWait = 0;
       if (this.cells) this.applyStage(this.targetStage(), true);
     }
 
     // ---------- drunk mode ----------
     get drunk() { return !!this.map.cells; }
+    get chill() { return this.campaign.rules === 'chill-puzzle'; }
     targetStage() { return Math.min(this.cells, Math.floor(this.booze + 1e-9)); }
     // The static tile of a cell at a drunk stage: the room, then every overlay up to that stage.
     stageChar(x, y, k) {
@@ -290,6 +294,7 @@
     }
     // The map follows the full cells: a change is announced first (fart it away in time to cancel it) and lands with Jim.
     updateStage(dt) {
+      if (this.chill) { this.updateChillStage(dt); return; }
       const k = this.targetStage();
       if (k === this.stage) { this.stageWarn = null; return; }
       if (!this.stageWarn || this.stageWarn.to !== k) { this.stageWarn = { to: k, t: TUNING.stageWarn, cells: this.stageDiff(this.stage, k) }; this.events.push('warn'); }
@@ -298,8 +303,36 @@
       if (this.stageWarn.t <= 0 && settled) this.applyStage(k);
     }
 
+    // Puzzle rules keep the player's grade stable. The world follows exactly three seconds later.
+    changeGrade(delta) {
+      if (!this.chill || this.phase !== 'play' || this.stageWarn || this.stageDeferred.length || this.chain.length || !['free', 'thrown', 'recover'].includes(this.state)) return false;
+      const next = clamp(this.targetStage() + delta, 1, this.cells);
+      if (next === this.targetStage()) return false;
+      this.booze = next;
+      this.stageWarn = { to: next, t: 3, duration: 3, cells: this.stageDiff(this.stage, next) };
+      this.events.push(delta > 0 ? 'ready' : 'fart', 'warn');
+      if (delta < 0) this.emit(this.body.x, this.body.y - 12, '#b5c25a', 10, 120, 80);
+      return true;
+    }
+
+    updateChillStage(dt) {
+      const boxes = [this.box(this.body)].concat(this.stand && !this.stand.leaving ? [this.box(this.stand)] : []);
+      const blocked = (x, y, c) => SOLID.includes(c) && boxes.some(b => overlap(b, { x: x * T, y: y * T, w: T, h: T }));
+      const write = ([x, y, c]) => { this.tiles[y][x] = c; this.crumbles.delete(x + ',' + y); this.tilesVersion++; };
+      this.stageDeferred = this.stageDeferred.filter(cell => { if (blocked(...cell)) return true; write(cell); return false; });
+      if (!this.stageWarn) return;
+      this.stageWarn.t = Math.max(0, this.stageWarn.t - dt);
+      if (this.stageWarn.t > 1e-9) return;
+      const { to, cells } = this.stageWarn;
+      for (const cell of cells) { if (blocked(...cell)) this.stageDeferred.push(cell); else write(cell); }
+      this.events.push(to > this.stage ? 'stageUp' : 'stageDown');
+      this.stage = to; this.stageWarn = null; this.hallu = new Set();
+      for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (this.stageChar(x, y, to) !== this.stageChar(x, y, 0)) this.hallu.add(x + ',' + y);
+    }
+
     // K in drunk mode: a short fart. Forward is a burst of speed, nothing or W lifts Jim like a flap.
     fart(input, dir) {
+      if (this.chill) { this.changeGrade(-1); return; }
       if (this.fartCd > 0 || !['free', 'thrown', 'recover'].includes(this.state)) return;
       const b = this.body;
       if (this.booze < TUNING.fartCost - 1e-9) {
@@ -324,6 +357,7 @@
     // 3 cells 升天 → 衝 → 丟, 2 cells 衝 → 丟, 1 cell 丟. A/D and W/S still steer each part as it starts.
     pressZui() {
       if (this.state === 'dead' || this.chain.length || this.state === 'lift' || this.state === 'charge') return;
+      if (this.chill && this.chillAirUsed) return;
       const n = Math.min(this.cells, Math.floor(this.booze + 1e-9));
       if (n < 1) {
         this.bubbles = this.bubbles.filter(bub => !bub.deny);
@@ -332,7 +366,8 @@
         return;
       }
       if (n === 2 && this.hitsSolid(this.box({ x: this.body.x, h: BODY_H + TUNING.carryOffset }, this.body.y))) { this.events.push('deny'); return; }
-      this.booze = 0;
+      if (this.chill) { this.chillAirUsed = true; this.chillFace = this.body.face; }
+      else this.booze = 0;
       this.regenWait = TUNING.regenDelay;
       this.flash = { color: ZUI[n].tint, t: 0.25 };
       this.events.push('drink');
@@ -511,6 +546,7 @@
     // Bodyguard: the stand shoulders the body and charges at a constant speed through crates; glass cannot hurt the stand.
     startCharge() {
       const b = this.body;
+      if (this.chill) b.face = this.chillFace;
       const airborne = !b.grounded || this.state !== 'free';
       const s = { x: b.x, y: b.y, vx: 0, vy: 0, h: BODY_H + TUNING.carryOffset, glassFloor: true, face: b.face, ability: 'bodyguard', alpha: 1, leaving: false };
       if (this.hitsSolid(this.box(s))) { this.emit(b.x, b.y - 40, ABILITIES.bodyguard.tint, 10); this.events.push('deny'); return; }
@@ -699,6 +735,7 @@
         } else if (e.kind === 'cap') {
           if (!e.got && overlap(bb, { x: e.x - 14, y: e.y - 14, w: 28, h: 28 })) {
             e.got = true; this.roomCaps.push(e.key); this.events.push('cap');
+            if (this.chill) this.capsGot.add(e.key);
             this.emit(e.x, e.y, '#f2c24f', 14, 300, 220);
           }
         } else if (e.kind === 'faller') {
@@ -821,6 +858,11 @@
         const npc = this.nearbyNpc();
         if (npc?.data) { this.dialogue = { data: npc.data, node: npc.data.start }; return; }
       }
+      if (this.chill) {
+        this.updateChillStage(dt);
+        if (input.gradeUpPressed || input.talkPressed) this.changeGrade(1);
+        if (input.skill && !!input.right !== !!input.left) b.face = input.right ? 1 : -1;
+      }
 
       // the card overlay and the sip run in real time; the world keeps moving, slowly
       let kTaken = false;
@@ -828,7 +870,11 @@
       if (this.drinkT > 0) { kTaken = true; this.drinkT -= dt; if (this.drinkT <= 0) { this.drinkT = 0; this.ready = { id: this.pending, t: TUNING.holdTime }; this.pending = null; this.events.push('ready'); } }
       if (this.ready && (this.ready.t -= dt) <= 0) { this.ready = null; this.events.push('deny'); this.bubbles.push({ who: 'body', text: '酒退了……', delay: 0, t: 1 }); }
       this.fartCd = Math.max(0, (this.fartCd || 0) - dt);
-      if (this.drunk) { if (input.skill) this.pressSkill(input.skill); if (input.kPressed) this.fart(input, (input.right ? 1 : 0) - (input.left ? 1 : 0)); }
+      if (this.drunk) {
+        if (this.chill && input.kPressed) this.fart(input, 0);
+        if (input.skill) this.pressSkill(input.skill);
+        if (!this.chill && input.kPressed) this.fart(input, (input.right ? 1 : 0) - (input.left ? 1 : 0));
+      }
       else if (TUNING.directMode) { if (input.skill) this.pressSkill(input.skill); }
       else if (!kTaken && input.kPressed) this.pressK();
       if (this.hitStop > 0) { this.hitStop -= dt; return; }
@@ -888,8 +934,8 @@
         this.liftT = Math.min(1, this.liftT + dt / TUNING.liftRise);
         const e = 1 - Math.pow(1 - this.liftT, 3);
         b.y = this.liftFrom + (this.liftTo - this.liftFrom) * e;
-        if (dir) { this.aim = dir; b.face = dir; this.stand.face = dir; }
-        this.throwKind = input.jump ? 'up' : input.down ? 'low' : 'mid';
+        if (!this.chill && dir) { this.aim = dir; b.face = dir; this.stand.face = dir; }
+        this.throwKind = this.chill ? 'mid' : input.jump ? 'up' : input.down ? 'low' : 'mid';
         if (this.timer <= 0) {
           this.state = 'thrown';
           b.y = this.liftTo;
@@ -925,11 +971,11 @@
         b.vx = belt + (b.vx - belt) * Math.pow(0.0005, dt);
         this.physics(dt);
         if (this.timer <= 0) this.state = 'free';
-      } else if (this.state === 'charge' && input.jumpPressed && this.stand.grounded) this.jumpOut();
+      } else if (this.state === 'charge' && input.jumpPressed && this.stand.grounded && !this.chill) this.jumpOut();
       else if (this.state === 'charge') {
         this.timer -= dt;
         const st = this.stand;
-        if (dir && dir !== this.chargeDir) {
+        if (!this.chill && dir && dir !== this.chargeDir) {
           this.turnTime += dt;
           if (this.turnTime > TUNING.chargeTurn) { this.chargeDir = dir; this.turnTime = 0; }
         } else this.turnTime = 0;
@@ -946,6 +992,7 @@
 
       if (this.state === 'free' || this.state === 'recover') {
         if (b.grounded) this.airDraws = 0;
+        if (this.chill && b.grounded && !this.chain.length && this.ascendT <= 0) this.chillAirUsed = false;
         if (this.state === 'free') this.activeSkill = null;
       }
       if (this.state !== 'dead') {
@@ -956,8 +1003,10 @@
       }
       if (this.state !== 'dead' && this.drunk) {
         const busy = this.chain.length || this.state === 'lift' || this.state === 'charge';
-        if (!busy && (this.regenWait -= dt) <= 0) this.booze = Math.min(this.cells, this.booze + TUNING.regen * dt);
-        this.updateStage(dt);
+        if (!this.chill) {
+          if (!busy && (this.regenWait -= dt) <= 0) this.booze = Math.min(this.cells, this.booze + TUNING.regen * dt);
+          this.updateStage(dt);
+        }
       }
       if (this.state !== 'dead') this.checkHazards();
       if (this.state !== 'dead') this.checkExits();
@@ -1737,6 +1786,23 @@
   const expand = route => route.split(' ').flatMap(s => { const [k, n] = s.split('x'); return Array(+(n || 1)).fill(k); });
   root.Drunk.AUTO = {
     STEP_DT: 1 / 240,
+    puzzleSignature(game) { return JSON.stringify([game.campaign.rules, game.map.id, game.map.cells, game.map.abilities, game.room]); },
+    puzzleRoute(game, data) {
+      if (!game.chill || data?.stepHz !== 240 || data.rules !== 'chill-puzzle') return null;
+      const route = data.rooms?.[game.map.id + ':' + game.room.id];
+      if (!route || route.signature !== this.puzzleSignature(game) || !Array.isArray(route.steps) || !route.steps.length) return null;
+      let end = 0;
+      const result = [], keys = ['left', 'right', 'jump', 'jumpPressed', 'down', 'kPressed', 'gradeUpPressed'];
+      for (const step of route.steps) {
+        if (!Number.isInteger(step.frames) || step.frames < 1 || !step.input || typeof step.input !== 'object' || Array.isArray(step.input)) return null;
+        if (Object.entries(step.input).some(([key, value]) => key === 'skill' ? value !== 'wrestler' : !keys.includes(key) || typeof value !== 'boolean')) return null;
+        end += step.frames;
+        if (end > 240 * 120) return null;
+        result.push({ end, input: step.input });
+      }
+      return result;
+    },
+    puzzleInput(steps, frame) { return steps.find(step => frame < step.end)?.input || {}; },
     // Only rooms identical to the shipped ones have a route; edited or imported rooms return null.
     route(game) {
       const key = game.map.id + ':' + game.room.id, route = ROUTES[key];
@@ -2269,6 +2335,10 @@
           if (c === '^') { ctx.fillStyle = 'rgba(255,110,110,.35)'; ctx.fillRect(tx + 4, ty + 20, T - 8, T - 22); } }
       }
     }
+    if (g.chill) for (const [x, y] of g.stageDeferred) {
+      ctx.setLineDash([4, 5]); ctx.strokeStyle = '#f2c24f'; ctx.lineWidth = 2;
+      ctx.strokeRect(x * T + 3, y * T + 3, T - 6, T - 6); ctx.setLineDash([]);
+    }
     ctx.restore();
   }
 
@@ -2284,7 +2354,22 @@
   }
 
   // The booze gauge: one cell per move, drained from the right. The cell J will spend is ringed.
+  function drawChillGauge() {
+    const g = game, x = 22, y = 60, n = g.targetStage();
+    ctx.fillStyle = 'rgba(18,14,35,.72)'; ctx.fillRect(x, y, 256, g.stageWarn ? 104 : 76);
+    text(['', '微醺', '大醉', '爛醉'][n], x + 14, y + 26, 19, 'left', 0.9, '#e6d6ff');
+    for (let i = 1; i <= 3; i++) {
+      ctx.fillStyle = i <= n ? ZUI[i].tint : '#352c49'; ctx.fillRect(x + 106 + (i - 1) * 43, y + 16, 33, 8);
+    }
+    text('J  ' + Array.from({ length: n }, (_, i) => ZUI[n - i].name).join(' → '), x + 14, y + 57, 21, 'left', g.chillAirUsed ? 0.4 : 0.95, '#f2c24f');
+    if (g.stageWarn) {
+      text('景象變換　' + g.stageWarn.t.toFixed(1), x + 14, y + 87, 16, 'left', 0.85, '#cbbde3');
+      ctx.fillStyle = '#cbbde3'; ctx.fillRect(x, y + 102, 256 * g.stageWarn.t / g.stageWarn.duration, 2);
+    }
+  }
+
   function drawGauge() {
+    if (game.chill) { drawChillGauge(); return; }
     const g = game, cw = 78, ch = 20, x0 = 22, y0 = H - 66, n = Math.floor(g.booze + 1e-9);
     for (let i = 0; i < 3; i++) {
       const x = x0 + i * (cw + 10), fill = Math.max(0, Math.min(1, g.booze - i)), z = ZUI[i + 1];
@@ -2390,15 +2475,15 @@
     drawSlot();
     drawReady();
     if (g.flash) { ctx.globalAlpha = (g.flash.t / 0.45) * 0.4; ctx.fillStyle = g.flash.color; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
-    text(`${g.map.name}　${g.room.id}`, 22, 36, 20, 'left', 0.7);
+    text(`${g.map.name}　${g.chill ? `${g.map.rooms.indexOf(g.room) + 1} / ${g.map.rooms.length}` : g.room.id}`, 22, 36, 20, 'left', 0.7);
     if (g.drunk) {
       drawGauge();
-      const hint = (g.room.lines || []).filter(l => /[A-Z]/.test(l)).at(-1);
+      const hint = g.chill ? null : (g.room.lines || []).filter(l => /[A-Z]/.test(l)).at(-1);
       if (hint) text(hint, W / 2, H - 22, 18, 'center', 0.55);
       const n = Math.floor(g.booze + 1e-9);
-      if (g.state === 'lift') text('W 高拋　S 低飛', W / 2, H - 52, 20, 'center', 0.95, '#f2c24f');
-      if (g.state === 'charge' && g.stand && g.stand.grounded) text('W 跳離', W / 2, H - 52, 20, 'center', 0.95, '#f2c24f');
-      if (g.autoplay) text('自動通關中　P 取消', W / 2, H - 82, 20, 'center', 0.95, '#f2c24f');
+      if (!g.chill && g.state === 'lift') text('W 高拋　S 低飛', W / 2, H - 52, 20, 'center', 0.95, '#f2c24f');
+      if (!g.chill && g.state === 'charge' && g.stand && g.stand.grounded) text('W 跳離', W / 2, H - 52, 20, 'center', 0.95, '#f2c24f');
+      if (g.autoplay) text(g.chill ? '醉影帶路中　P 接手' : '自動通關中　P 取消', W / 2, g.chill ? H - 22 : H - 82, 20, 'center', 0.95, '#f2c24f');
     } else if (TUNING.directMode) {
       const air = !b.grounded || ['lift', 'thrown', 'charge'].includes(g.state);
       g.map.abilities.forEach((id, i) => {
@@ -2429,7 +2514,7 @@
       const got = [...g.capsGot].filter(k => k.startsWith(g.map.id + ':')).length;
       text(`${g.map.name}　完`, W / 2, H / 2 - 60, 64, 'center', a);
       if (g.map.outro) text(g.map.outro, W / 2, H / 2 - 4, 24, 'center', a * 0.85);
-      text(`倒下 ${g.mapDeaths} 次（無加班費）　·　${fmt(g.mapTime)}${total ? `　·　瓶蓋 ${got} / ${total}（可兌換：無）` : ''}`, W / 2, H / 2 + 40, 20, 'center', a * 0.7);
+      text(g.chill ? `慢慢走，也走到了。　瓶蓋 ${got} / ${total}` : `倒下 ${g.mapDeaths} 次（無加班費）　·　${fmt(g.mapTime)}${total ? `　·　瓶蓋 ${got} / ${total}（可兌換：無）` : ''}`, W / 2, H / 2 + 40, 20, 'center', a * 0.7);
       const more = g.mapIndex + 1 < g.campaign.maps.length;
       if (g.timer > 0.6) text(more ? 'Enter 繼續' : 'Enter 再走一次', W / 2, H / 2 + 92, 20, 'center', 0.6 + 0.3 * Math.sin(g.time * 3));
     }
@@ -2518,24 +2603,48 @@
   addEventListener('blur', () => { held.left = held.right = held.jump = held.down = false; });
   canvas.addEventListener('pointerdown', () => window.focus());
 
-  // P: replay the shipped route for this room from the spawn (it takes the cap too); P again or R hands control back.
-  let auto = null;
+  // P replays one room from its spawn. P hands control back; R also resets the room.
+  let auto = null, puzzleRoutes = null, puzzleRouteState = 'idle';
+  function loadPuzzleRoutes() {
+    if (puzzleRouteState !== 'idle') return;
+    puzzleRouteState = 'loading';
+    fetch('chill-routes.json', { cache: 'no-store' }).then(response => {
+      if (!response.ok) throw new Error('Route unavailable');
+      return response.json();
+    }).then(data => { puzzleRoutes = data; puzzleRouteState = 'ready'; })
+      .catch(() => { puzzleRouteState = 'error'; });
+  }
+  function stopAuto() {
+    if (!auto) return;
+    const previous = auto; auto = null;
+    previous.game.autoplay = false;
+    if (previous.tuning) Object.assign(TUNING, previous.tuning);
+    held.left = held.right = held.jump = held.down = false; pressed = {};
+  }
   function toggleAuto() {
-    if (auto) { auto = null; game.autoplay = false; return; }
+    if (auto) { stopAuto(); return; }
+    if (game.chill && game.phase === 'intro') game.phase = 'play';
     if (game.phase !== 'play' || game.dialogue) return;
-    const steps = AUTO.route(game);
+    if (game.chill) loadPuzzleRoutes();
+    if (game.chill && puzzleRouteState !== 'ready') {
+      game.shout('body', [puzzleRouteState === 'loading' ? '等我一下……' : '路線沒讀到，重新整理試試。']); return;
+    }
+    const steps = game.chill ? AUTO.puzzleRoute(game, puzzleRoutes) : AUTO.route(game);
     if (!steps) { game.shout('body', ['這間我也不知道怎麼過。']); return; }
+    const tuning = { ...TUNING }; Object.assign(TUNING, DEFAULTS);
     game.enterRoom(game.room.id);
-    auto = { steps, frame: 0, acc: 0, room: game.room };
+    auto = { steps, frame: 0, acc: 0, room: game.room, game, body: game.body, puzzle: game.chill, tuning };
+    held.left = held.right = held.jump = held.down = false; pressed = {};
     game.autoplay = true;
   }
   // Fixed 240 Hz steps, so the replay matches the run the route was verified with.
   function runAuto(frame) {
     auto.acc += frame;
     while (auto && auto.acc >= AUTO.STEP_DT) {
+      if (auto.game !== game || auto.body !== game.body || game.phase !== 'play' || game.state === 'dead' || (auto.puzzle && auto.frame >= auto.steps.at(-1).end)) { stopAuto(); break; }
       auto.acc -= AUTO.STEP_DT;
-      game.step(AUTO.STEP_DT, AUTO.input(auto.steps, auto.frame++));
-      if (game.phase !== 'play' || game.room !== auto.room || game.state === 'dead') { auto = null; game.autoplay = false; }
+      game.step(AUTO.STEP_DT, auto.puzzle ? AUTO.puzzleInput(auto.steps, auto.frame++) : AUTO.input(auto.steps, auto.frame++));
+      if (game.phase !== 'play' || game.room !== auto.room || game.state === 'dead') stopAuto();
     }
   }
 
@@ -2544,11 +2653,11 @@
   function loop(now) {
     const frame = Math.min((now - last) / 1000, 1 / 20); last = now;
     if (menu.hidden && frame > 0 && pressed.auto) toggleAuto();
-    if (menu.hidden && frame > 0 && auto && pressed.r) { auto = null; game.autoplay = false; }
+    if (menu.hidden && frame > 0 && auto && pressed.r) { stopAuto(); pressed.r = true; }
     if (menu.hidden && frame > 0 && auto) { pressed = {}; runAuto(frame); }
     else if (menu.hidden && frame > 0) {
       const n = Math.ceil(frame / (1 / 240)), dt = frame / n;
-      if (pressed.r && game.phase === 'play') game.die();
+      if (pressed.r && game.phase === 'play') { if (game.chill) game.enterRoom(game.room.id); else game.die(); }
       for (let i = 0; i < n; i++) {
         game.step(dt, { ...held, jumpPressed: pressed.jump, kPressed: pressed.k, skill: pressed.skill, confirmPressed: pressed.confirm, talkPressed: pressed.talk, choice: pressed.choice });
         pressed = {};
@@ -2602,7 +2711,7 @@
     }
     e.target.blur();
   });
-  addEventListener('keydown', e => { if (e.code === 'Backquote' && !e.repeat) { tune.hidden = !tune.hidden; if (!tune.hidden) buildTune(); } });
+  addEventListener('keydown', e => { if (e.code === 'Backquote' && !e.repeat) { stopAuto(); tune.hidden = !tune.hidden; if (!tune.hidden) buildTune(); } });
 
   // ---------- menu & level loading ----------
   function toggleMenu(force) {
@@ -2611,18 +2720,48 @@
     menuMsg.textContent = '';
   }
   function load(textData, name) {
-    try { game = new Game(parseCampaign(textData)); roomKey = ''; toggleMenu(false); }
+    try { const campaign = parseCampaign(textData); stopAuto(); game = new Game(campaign); roomKey = ''; if (game.chill) loadPuzzleRoutes(); updateInstructions(); toggleMenu(false); }
     catch (err) { toggleMenu(true); menuMsg.textContent = `${name} 讀不進來：\n${err.message}`; }
   }
   menu.addEventListener('click', e => {
+    const roomId = e.target.dataset?.room;
+    if (roomId && game.chill && game.map.rooms.some(room => room.id === roomId)) {
+      stopAuto(); game.enterRoom(roomId); game.phase = 'play'; roomKey = ''; toggleMenu(false); return;
+    }
     const act = e.target.dataset && e.target.dataset.act; if (!act) return;
     if (act === 'resume') toggleMenu(false);
-    if (act === 'retry') { toggleMenu(false); game.die(); }
-    if (act === 'restart') { game.startMap(0); toggleMenu(false); }
-    if (act === 'default') { game = new Game(window.DEFAULT_CAMPAIGN); roomKey = ''; toggleMenu(false); }
+    if (act === 'retry') { stopAuto(); toggleMenu(false); if (game.chill) { game.enterRoom(game.room.id); game.phase = 'play'; } else game.die(); }
+    if (act === 'restart') { stopAuto(); game.startMap(0); toggleMenu(false); }
+    if (act === 'default') { stopAuto(); game = new Game(previewCampaign || window.DEFAULT_CAMPAIGN); roomKey = ''; updateInstructions(); toggleMenu(false); }
     if (act === 'load') fileInput.click();
   });
   fileInput.addEventListener('change', () => { const f = fileInput.files[0]; if (f) f.text().then(t => load(t, f.name)); fileInput.value = ''; });
+  const originalInstructions = menu.querySelector('small').innerHTML;
+  let previewCampaign = null;
+  const roomPicker = document.createElement('div');
+  roomPicker.style.cssText = 'display:flex;flex-wrap:wrap;justify-content:center;gap:4px;margin-top:12px';
+  menu.appendChild(roomPicker);
+  function updateInstructions() {
+    menu.querySelector('small').innerHTML = game.chill
+      ? 'A / D 移動　空白跳躍　E 放空升階　K 放屁降階　J 醉影<br>P 自動通過本間，再按 P 接手　R 重來<br>醉態固定；切換後，舊世界保留 3 秒。'
+      : originalInstructions;
+    canvas.setAttribute('aria-label', game.chill ? '醉態解謎遊戲。E 升階，K 降階，J 醉影，A D 移動，空白跳，R 重來。' : '醉隱遊戲');
+    roomPicker.replaceChildren();
+    if (game.chill) for (const room of game.map.rooms) {
+      const button = document.createElement('button'); button.dataset.room = room.id;
+      button.textContent = '試玩：' + room.name; button.style.fontSize = '17px'; roomPicker.appendChild(button);
+    }
+  }
+  if (new URLSearchParams(location.search).get('chill') === '1') {
+    toggleMenu(true); menuMsg.textContent = '醉影正在找路……';
+    fetch('chill-puzzles.json', { cache: 'no-store' }).then(response => {
+      if (!response.ok) throw new Error('解謎關卡讀取失敗');
+      return response.text();
+    }).then(source => {
+      previewCampaign = parseCampaign(source);
+      load(source, '醉態解謎');
+    }).catch(err => { toggleMenu(true); menuMsg.textContent = err.message; });
+  }
   if (new URLSearchParams(location.search).get('editorTest') === '1' && parent !== window) {
     addEventListener('message', e => {
       if (e.source !== parent || e.data?.type !== 'drunk-editor-test') return;
@@ -2634,7 +2773,8 @@
         preview.startMap(e.data.mapIndex);
         preview.enterRoom(e.data.roomId);
         preview.phase = 'play';
-        game = preview;
+        stopAuto(); game = preview;
+        if (game.chill) loadPuzzleRoutes(); updateInstructions();
         roomKey = '';
         toggleMenu(false);
       } catch (err) { toggleMenu(true); menuMsg.textContent = `試玩讀不進來：\n${err.message}`; }
