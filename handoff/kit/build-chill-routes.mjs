@@ -12,15 +12,17 @@ export function buildChillRoutes() {
   const { parseCampaign } = getEngine();
   const campaign = parseCampaign(readFileSync(new URL('../../prototype/chill-puzzles.json', import.meta.url), 'utf8'));
   const result = { stepHz: STEP_HZ, rules: 'chill-puzzle', rooms: {} };
-  for (const room of campaign.maps[0].rooms) {
-    assert.ok(plans[room.id], `${room.id}: missing route plan`);
-    const recorded = recordRoom(campaign, room.id, plans[room.id]);
-    const route = { signature: recorded.signature, steps: recorded.steps };
-    const replay = replayRoom(campaign, room.id, route);
-    assert.equal(replay.phase, recorded.game.phase, `${room.id}: replay exit differs`);
-    assert.equal(replay.nextRoom, recorded.game.nextRoom, `${room.id}: replay destination differs`);
-    result.rooms[`${campaign.maps[0].id}:${room.id}`] = route;
-  }
+  campaign.maps.forEach((map, mapIndex) => {
+    for (const room of map.rooms) {
+      assert.ok(plans[room.id], `${room.id}: missing route plan`);
+      const recorded = recordRoom(campaign, room.id, plans[room.id], { mapIndex });
+      const route = { signature: recorded.signature, steps: recorded.steps };
+      const replay = replayRoom(campaign, room.id, route, mapIndex);
+      assert.equal(replay.phase, recorded.game.phase, `${room.id}: replay exit differs`);
+      assert.equal(replay.nextRoom, recorded.game.nextRoom, `${room.id}: replay destination differs`);
+      result.rooms[`${map.id}:${room.id}`] = route;
+    }
+  });
   return result;
 }
 

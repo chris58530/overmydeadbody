@@ -1,5 +1,7 @@
 # 醉隱 (Over My Dead Body) — drunk-mode design brief
 
+> **已過時**：本文描述有酒瓶、每按一次 J 扣一格的早期規則。現行主線為醉態解謎版，規格見 README。
+
 Single-screen rooms, 2D platformer, HTML5 canvas. Game file (read-only for you):
 `C:/Users/user/Documents/DrunkenRoomStudio/prototype/game.html` (engine = first `<script>`).
 

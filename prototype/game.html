@@ -254,7 +254,7 @@
       // drunk mode: a room starts from its own booze, or what was carried in; a death returns to that amount
       this.cells = this.map.cells || 0;
       this.booze = Math.min(this.cells, this.room.booze ?? this.carryBooze ?? 0);
-      if (this.chill) this.booze = clamp(Math.round(this.booze), 1, this.cells);
+      if (this.chill) this.booze = clamp(Math.round(this.booze), 0, this.cells);
       this.stage = 0; this.stageWarn = null; this.hallu = new Set(); this.stageDeferred = [];
       this.chillAirUsed = false;
       this.fartCd = 0; this.ascendT = 0; this.chain = []; this.chainT = 0; this.regenWait = 0;
@@ -303,10 +303,10 @@
       if (this.stageWarn.t <= 0 && settled) this.applyStage(k);
     }
 
-    // Puzzle rules keep the player's grade stable. The world follows exactly three seconds later.
+    // Puzzle rules keep the player's grade stable (0 sober to 3). The world follows exactly three seconds later.
     changeGrade(delta) {
       if (!this.chill || this.phase !== 'play' || this.stageWarn || this.stageDeferred.length || this.chain.length || !['free', 'thrown', 'recover'].includes(this.state)) return false;
-      const next = clamp(this.targetStage() + delta, 1, this.cells);
+      const next = clamp(this.targetStage() + delta, 0, this.cells);
       if (next === this.targetStage()) return false;
       this.booze = next;
       this.stageWarn = { to: next, t: 3, duration: 3, cells: this.stageDiff(this.stage, next) };
@@ -2357,11 +2357,11 @@
   function drawChillGauge() {
     const g = game, x = 22, y = 60, n = g.targetStage();
     ctx.fillStyle = 'rgba(18,14,35,.72)'; ctx.fillRect(x, y, 256, g.stageWarn ? 104 : 76);
-    text(['', '微醺', '大醉', '爛醉'][n], x + 14, y + 26, 19, 'left', 0.9, '#e6d6ff');
+    text(['清醒', '微醺', '大醉', '爛醉'][n], x + 14, y + 26, 19, 'left', 0.9, '#e6d6ff');
     for (let i = 1; i <= 3; i++) {
       ctx.fillStyle = i <= n ? ZUI[i].tint : '#352c49'; ctx.fillRect(x + 106 + (i - 1) * 43, y + 16, 33, 8);
     }
-    text('J  ' + Array.from({ length: n }, (_, i) => ZUI[n - i].name).join(' → '), x + 14, y + 57, 21, 'left', g.chillAirUsed ? 0.4 : 0.95, '#f2c24f');
+    text(n ? 'J  ' + Array.from({ length: n }, (_, i) => ZUI[n - i].name).join(' → ') : 'J  叫不出醉影', x + 14, y + 57, 21, 'left', n && !g.chillAirUsed ? 0.95 : 0.4, '#f2c24f');
     if (g.stageWarn) {
       text('景象變換　' + g.stageWarn.t.toFixed(1), x + 14, y + 87, 16, 'left', 0.85, '#cbbde3');
       ctx.fillStyle = '#cbbde3'; ctx.fillRect(x, y + 102, 256 * g.stageWarn.t / g.stageWarn.duration, 2);
@@ -2522,7 +2522,7 @@
       ctx.fillStyle = '#0e0b1c'; ctx.fillRect(0, 0, W, H);
       const a = Math.min(1, g.timer * 2);
       text(g.map.name, W / 2, H / 2 - 30, 60, 'center', a);
-      text(g.map.intro, W / 2, H / 2 + 30, 24, 'center', Math.min(1, Math.max(0, g.timer * 2 - 0.6)) * 0.85);
+      g.map.intro.split('\n').forEach((line, i) => text(line, W / 2, H / 2 + 30 + i * 36, 24, 'center', Math.min(1, Math.max(0, g.timer * 2 - 0.6)) * 0.85));
       if (g.timer > 0.5) text('K 繼續', W / 2, H - 60, 18, 'center', 0.45 + 0.25 * Math.sin(g.time * 3));
     }
     if (loaded < Object.keys(SRC).length) text('…', W - 40, 36, 24, 'right', 0.6);
@@ -2725,8 +2725,9 @@
   }
   menu.addEventListener('click', e => {
     const roomId = e.target.dataset?.room;
-    if (roomId && game.chill && game.map.rooms.some(room => room.id === roomId)) {
-      stopAuto(); game.enterRoom(roomId); game.phase = 'play'; roomKey = ''; toggleMenu(false); return;
+    const mapIndex = Number(e.target.dataset?.map ?? game.mapIndex);
+    if (roomId && game.chill && game.campaign.maps[mapIndex]?.rooms.some(room => room.id === roomId)) {
+      stopAuto(); if (mapIndex !== game.mapIndex) game.startMap(mapIndex); game.enterRoom(roomId); game.phase = 'play'; roomKey = ''; toggleMenu(false); return;
     }
     const act = e.target.dataset && e.target.dataset.act; if (!act) return;
     if (act === 'resume') toggleMenu(false);
@@ -2743,14 +2744,14 @@
   menu.appendChild(roomPicker);
   function updateInstructions() {
     menu.querySelector('small').innerHTML = game.chill
-      ? 'A / D 移動　空白跳躍　E 放空升階　K 放屁降階　J 醉影<br>P 自動通過本間，再按 P 接手　R 重來<br>醉態固定；切換後，舊世界保留 3 秒。'
+      ? 'A / D 移動　空白跳躍　E 喝一口升階　K 放屁降階　J 醉影<br>P 自動通過本間，再按 P 接手　R 重來<br>清醒時叫不出醉影；換階後技能立刻變，世界晚 3 秒才跟上。'
       : originalInstructions;
     canvas.setAttribute('aria-label', game.chill ? '醉態解謎遊戲。E 升階，K 降階，J 醉影，A D 移動，空白跳，R 重來。' : '醉隱遊戲');
     roomPicker.replaceChildren();
-    if (game.chill) for (const room of game.map.rooms) {
-      const button = document.createElement('button'); button.dataset.room = room.id;
-      button.textContent = '試玩：' + room.name; button.style.fontSize = '17px'; roomPicker.appendChild(button);
-    }
+    if (game.chill) game.campaign.maps.forEach((map, mi) => map.rooms.forEach((room, ri) => {
+      const button = document.createElement('button'); button.dataset.room = room.id; button.dataset.map = mi;
+      button.textContent = `${mi + 1}-${ri + 1} ${room.name}`; button.style.fontSize = '17px'; roomPicker.appendChild(button);
+    }));
   }
   if (new URLSearchParams(location.search).get('chill') === '1') {
     toggleMenu(true); menuMsg.textContent = '醉影正在找路……';

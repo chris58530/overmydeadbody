@@ -100,8 +100,29 @@ test('a small fart lowers one whole grade without launching or accelerating the 
   assert.equal(game.stage, 2);
   assert.equal(game.stageWarn.to, 1);
   game.updateChillStage(3);
-  assert.equal(game.changeGrade(-1), false, 'the lower grade stays at one');
+  assert.equal(game.changeGrade(-1), true, 'one more fart sobers Jim up completely');
+  assert.equal(game.booze, 0);
+  game.updateChillStage(3);
+  assert.equal(game.stage, 0);
+  assert.equal(game.changeGrade(-1), false, 'the lower grade stays at zero');
+  assert.equal(game.booze, 0);
+});
+
+test('sober Jim (grade 0) cannot call the shadow; one sip gives the throw while the world stays sober', () => {
+  const game = make({ booze: 0, stages: { 1: grid([[20, 10, '#']]) } });
+  assert.equal(game.targetStage(), 0);
+  assert.equal(game.stage, 0);
+  assert.equal(game.tiles[10][20], '.', 'grade-one hallucinations are absent at grade zero');
+  game.step(DT, { skill: 'wrestler' });
+  assert.equal(game.state, 'free');
+  assert.equal(game.chillAirUsed, false, 'a refused J does not spend the move');
+  assert.ok(game.events.includes('deny'));
+  game.step(DT, { gradeUpPressed: true });
   assert.equal(game.booze, 1);
+  game.step(DT, { skill: 'wrestler' });
+  assert.equal(game.state, 'lift', 'the throw is available at once');
+  assert.equal(game.stage, 0, 'the world is still sober');
+  assert.equal(game.tiles[10][20], '.');
 });
 
 test('K input selects a lower grade and E still gives nearby NPC dialogue priority', () => {

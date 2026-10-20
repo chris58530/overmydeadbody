@@ -14,6 +14,17 @@ export function room(id, name, theme, booze, lines, draw, overlays = {}, portalT
   return { id, name, theme, booze, tiles: g.map(row => row.join('')), ...(Object.keys(stages).length ? { stages } : {}), exits: {}, portalTarget, lines };
 }
 
+// ASCII rooms: 18 rows of 32 characters, row 0 at the top. Overlays use '.' to keep and '_' to clear.
+export function art(rows, what = 'room') {
+  assert.equal(rows.length, 18, `${what}: needs 18 rows`);
+  rows.forEach((row, y) => assert.equal(row.length, 32, `${what}: row ${y} needs 32 characters`));
+  return rows.slice();
+}
+export function artRoom(id, name, theme, booze, lines, tiles, overlays = {}) {
+  const stages = Object.fromEntries(Object.entries(overlays).map(([grade, rows]) => [grade, art(rows, `${id} stage ${grade}`)]));
+  return { id, name, theme, booze, tiles: art(tiles, id), ...(Object.keys(stages).length ? { stages } : {}), exits: {}, portalTarget: null, lines };
+}
+
 let engine;
 export function getEngine() {
   if (!engine) {
@@ -30,7 +41,7 @@ export const routeSignature = game => JSON.stringify([game.campaign.rules, game.
 // The browser receives just the recorded inputs, never these controllers.
 export function recordRoom(campaign, id, plan, options = {}) {
   const { Game } = getEngine();
-  const game = new Game(campaign); game.enterRoom(id); game.phase = 'play';
+  const game = new Game(campaign); game.startMap(options.mapIndex ?? 0); game.enterRoom(id); game.phase = 'play';
   const signature = routeSignature(game), steps = [], trace = [];
   let frames = 0, lastKey = '';
   const tick = (input = {}) => {
@@ -42,7 +53,7 @@ export function recordRoom(campaign, id, plan, options = {}) {
     game.step(1 / STEP_HZ, input); frames++;
     if (options.instantWorld && game.stageWarn) game.updateChillStage(3);
     assert.notEqual(game.state, 'dead', `${id}: route must remain safe`);
-    if (game.events.length) trace.push({ frame: frames, x: game.body.x, y: game.body.y, grade: game.targetStage(), world: game.stage, events: [...game.events] });
+    if (game.events.length || (options.log && frames % 24 === 0)) trace.push({ frame: frames, x: game.body.x, y: game.body.y, grade: game.targetStage(), world: game.stage, state: game.state, events: [...game.events] });
     game.events.length = 0; game.particles.length = 0; game.bubbles.length = 0;
   };
   const wait = (seconds, input = {}) => { for (let n = 0; n < Math.round(seconds * STEP_HZ) && game.phase === 'play'; n++) tick(input); };
@@ -53,12 +64,13 @@ export function recordRoom(campaign, id, plan, options = {}) {
   const stair = (x, y, seconds = 6) => {
     let lastJump = -1000;
     for (let n = 0; n < seconds * STEP_HZ && game.phase === 'play'; n++) {
-      const b = game.body, desired = Math.max(-220, Math.min(220, (x - b.x) * 8)), input = { jump: true };
-      if (b.vx < desired - 8) input.right = true;
-      else if (b.vx > desired + 8) input.left = true;
+      // hold a direction until close, then let go; few input changes keep the recorded route small
+      const b = game.body, input = { jump: true }, dx = x - b.x;
+      if (dx > 24) input.right = true;
+      else if (dx < -24) input.left = true;
       if (b.grounded && n - lastJump > 72 && b.y > y + 1) { input.jumpPressed = true; lastJump = n; }
       tick(input);
-      if (b.grounded && Math.abs(b.x - x) < 3 && Math.abs(b.y - y) < 1) return;
+      if (b.grounded && Math.abs(b.x - x) < 24 && Math.abs(b.y - y) < 1 && Math.abs(b.vx) < 5) return;
     }
     assert.fail(`${id}: cannot reach (${x}, ${y}); at (${game.body.x.toFixed(1)}, ${game.body.y.toFixed(1)})`);
   };
@@ -74,14 +86,14 @@ export function recordRoom(campaign, id, plan, options = {}) {
     land: () => until(g => g.body.grounded && !g.chillAirUsed, 8),
     finish: (input = { right: true }, seconds = 10) => { wait(seconds, input); assert.notEqual(game.phase, 'play', `${id}: door not reached`); },
   };
-  plan(recorder);
+  try { plan(recorder); } catch (err) { err.trace = trace; throw err; }
   if (options.requireExit !== false) assert.notEqual(game.phase, 'play', `${id}: plan did not exit`);
   return { game, signature, steps, frames, trace };
 }
 
-export function replayRoom(campaign, id, route) {
+export function replayRoom(campaign, id, route, mapIndex = 0) {
   const { Game } = getEngine();
-  const game = new Game(campaign); game.enterRoom(id); game.phase = 'play';
+  const game = new Game(campaign); game.startMap(mapIndex); game.enterRoom(id); game.phase = 'play';
   assert.equal(routeSignature(game), route.signature, `${id}: stale route`);
   for (const step of route.steps) for (let frame = 0; frame < step.frames; frame++) {
     assert.equal(game.phase, 'play', `${id}: route continues after exit`);
