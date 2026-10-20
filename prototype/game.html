@@ -350,7 +350,8 @@
     }
 
     updateChillStage(dt) {
-      const boxes = [this.box(this.body)].concat(this.stand && !this.stand.leaving ? [this.box(this.stand)] : []);
+      const boxes = [this.box(this.body)].concat(this.stand && !this.stand.leaving ? [this.box(this.stand)] : [],
+        this.entities.filter(e => e.kind === 'patrol' && e.alive).map(e => ({ x: e.x - e.w / 2, y: e.y - e.h, w: e.w, h: e.h })));
       const blocked = (x, y, c) => SOLID.includes(c) && boxes.some(b => overlap(b, { x: x * T, y: y * T, w: T, h: T }));
       const write = ([x, y, c]) => { this.tiles[y][x] = c; this.crumbles.delete(x + ',' + y); this.tilesVersion++; };
       this.stageDeferred = this.stageDeferred.filter(cell => { if (blocked(...cell)) return true; write(cell); return false; });
@@ -749,6 +750,8 @@
         e.t += dt;
         if (e.kind === 'patrol') {
           if (!e.alive) { e.x += e.vx * dt; e.y += e.vy * dt; e.vy += 2000 * dt; continue; }
+          // puzzle rules: a guard whose floor fades three seconds late falls; glass or the pit ends his shift
+          if (this.chill && this.patrolFall(e, dt)) continue;
           const nx = e.x + e.dir * TUNING.patrolSpeed * dt, front = Math.floor((nx + e.dir * e.w / 2) / T);
           if (this.solid(front, Math.floor((e.y - 10) / T)) || !this.solid(front, Math.floor(e.y / T)) || nx < e.w / 2 || nx > W - e.w / 2) e.dir = -e.dir;
           else e.x = nx;
@@ -788,6 +791,28 @@
           }
         }
       }
+    }
+
+    // Returns true while the patrol is off its feet (falling, or just knocked out by the landing).
+    patrolFall(e, dt) {
+      const cols = [Math.floor((e.x - e.w / 2 + 2) / T), Math.floor((e.x + e.w / 2 - 2) / T)];
+      const footing = row => cols.some(c => this.solid(c, row) || this.tileAt(c, row) === '=');
+      if (!e.vy && footing(Math.round(e.y / T))) return false;
+      const before = e.y;
+      e.vy = Math.min((e.vy || 0) + 2000 * dt, 1400); e.y += e.vy * dt;
+      const row = Math.floor(e.y / T);
+      if (row > Math.floor((before - 1e-6) / T) && footing(row)) { e.y = row * T; e.vy = 0; }
+      const glass = cols.some(c => this.tileAt(c, Math.floor((e.y - 1) / T)) === '^' || this.tileAt(c, Math.floor(e.y / T)) === '^');
+      if (glass || e.y > H + e.h) {
+        e.alive = false; e.vx = 0; e.vy = -300; this.events.push('knock');
+        if (e.y <= H) this.emit(e.x, e.y - e.h / 2, '#f3e9d2', 12, 380, 260);
+        return true;
+      }
+      if (e.vy) {
+        const b = this.body, bb = this.box(b), box = { x: e.x - e.w / 2, y: e.y - e.h, w: e.w, h: e.h };
+        if (this.state !== 'dead' && overlap({ x: bb.x + 6, y: bb.y + 6, w: bb.w - 12, h: bb.h - 6 }, box)) this.die('guard');
+      }
+      return !!e.vy;
     }
 
     die(cause) {

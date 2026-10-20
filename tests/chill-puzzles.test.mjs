@@ -242,3 +242,29 @@ test('room retry clears in-flight skills and world changes while keeping collect
   assert.equal(game.capsGot.size, 1);
   assert.equal(game.entities.filter(entity => entity.kind === 'cap').length, 0);
 });
+
+test('a patrol falls when its floor fades three seconds late, and glass knocks him out', () => {
+  const floor = Array.from({ length: 32 }, (_, x) => [x, 16, x >= 10 && x <= 13 ? '^' : '#']);
+  const bridge = Array.from({ length: 6 }, (_, i) => [10 + i, 11, '#']);
+  const game = make({ booze: 0, tiles: grid([[2, 15, 'P'], [12, 10, 'R'], ...bridge, ...floor]), stages: { 1: grid(bridge.map(([x, y]) => [x, y, '_'])) } });
+  const guard = game.entities.find(entity => entity.kind === 'patrol');
+  game.changeGrade(1);
+  tick(game, 2.9);
+  assert.equal(guard.y, 11 * T, 'the guard keeps walking on the old bridge');
+  until(game, () => !guard.alive, 2);
+  assert.ok(guard.x - guard.w / 2 < 14 * T, 'he landed on the glass');
+});
+
+test('a new solid waits for a patrol standing in it', () => {
+  const floor = Array.from({ length: 32 }, (_, x) => [x, 16, '#']);
+  const game = make({ booze: 0, tiles: grid([[2, 15, 'P'], [17, 15, 'R'], ...floor]), stages: { 1: grid([[20, 15, '#']]) } });
+  const guard = game.entities.find(entity => entity.kind === 'patrol');
+  guard.dir = 0; guard.x = 20.5 * T;
+  game.changeGrade(1);
+  tick(game, 3.1);
+  assert.equal(game.tiles[15][20], '.');
+  assert.equal(game.stageDeferred.length, 1);
+  guard.x = 25 * T;
+  tick(game, DT);
+  assert.equal(game.tiles[15][20], '#');
+});
