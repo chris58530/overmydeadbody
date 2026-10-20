@@ -28,11 +28,13 @@ python -m http.server 4174 --bind 127.0.0.1 --directory prototype
 | `prototype/chill-puzzles.json` | 十五間解謎房，由 `build-chill.mjs` 產生 |
 | `prototype/chill-routes.json` | 十五間的 P 自動通關路線，綁定房間版本，以 240 Hz 重播 |
 | `prototype/legacy-chill-night.json` | 上一版一晚 7 間（可拖進遊戲比較，沒有 P 路線） |
+| `prototype/beaverkit.html` | 單一檔案版：內嵌十五間關卡與 P 路線，直接開啟就是解謎版；由 `build-beaverkit.mjs` 產生，發布到 BeaverKit 用這個檔案 |
 | `prototype/editor.html` | 關卡編輯器（尚未支援解謎模式欄位，見「關卡編輯器」） |
 | `prototype/dialogue-example.json` | NPC 對話匯入範例 |
 | `handoff/kit/chill-day1.mjs`～`chill-day3.mjs` | 每天 5 間的 ASCII 房間定義與 P 路線計畫 |
 | `handoff/kit/build-chill.mjs` | 組成三天、寫入 `chill-puzzles.json`；每天的開場與結尾文字也在這裡 |
 | `handoff/kit/build-chill-routes.mjs` | 依路線計畫錄製，獨立重播驗證後寫入 `chill-routes.json` |
+| `handoff/kit/build-beaverkit.mjs` | 把 `game.html`、`chill-puzzles.json`、`chill-routes.json` 合成 `beaverkit.html` |
 | `handoff/kit/chill-probe.mjs` | 捷徑搜尋：用遊戲引擎搜尋「不換階」「沒有三秒時間差」時能不能過關 |
 | `tests/chill-puzzles.test.mjs`、`tests/chill-routes.test.mjs` | 解謎規則與十五間的路線測試 |
 
@@ -49,6 +51,14 @@ python -m http.server 4174 --bind 127.0.0.1 --directory prototype
 | P | 醉影帶路：從出生點自動通過本間，進下一間後交回控制；再按 P 中途接手 |
 | Esc | 操作說明與選關（列出三天全部 15 間） |
 | M | 靜音 |
+
+### 手機觸控
+
+手機與平板（粗略指標裝置）會顯示半透明按鈕：左下方向鍵，右下「跳」與「J 醉影」，右側「E 喝一口」「K 放屁」，右上「帶路」（P）、「重來」（R）、「選單」（Esc）。點一下遊戲畫面等於 Enter，用來跳過每天的開場與結尾。直放時遊戲畫面在上、按鈕在下，並提示橫放。
+
+### BeaverKit
+
+已發布為「醉隱」：https://beaverkit.io/p/I6IdRlKpC2B（知道連結的人都能看）。更新時先執行 `node handoff/kit/build-beaverkit.mjs`，再到 BeaverKit 作品的編輯頁匯入 `prototype/beaverkit.html`。作品在沙盒 iframe 裡執行，localStorage 不可用，遊戲已能在沒有它的情況下正常運作。
 
 ## 規則
 

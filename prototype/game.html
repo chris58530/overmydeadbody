@@ -24,6 +24,29 @@
   #tune button { font: inherit; color: inherit; background: none; border: 1px solid rgba(243, 233, 210, .35); padding: 3px 10px; margin: 8px 6px 0 0; cursor: pointer; }
   #tune textarea { width: 100%; height: 70px; margin-top: 8px; font-size: 11px; background: #1b1633; color: inherit; border: 0; }
   #menuMsg { color: #f0a49c; white-space: pre-line; font-size: 15px; max-width: 80vw; text-align: center; }
+  /* touch controls: shown on phones and tablets only */
+  #pad { position: fixed; inset: 0; pointer-events: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+  #pad[hidden] { display: none; }
+  #pad .btn { position: absolute; pointer-events: auto; touch-action: none; display: flex; flex-direction: column; align-items: center; justify-content: center; box-sizing: border-box; border-radius: 50%; background: rgba(243, 233, 210, .13); border: 2px solid rgba(243, 233, 210, .32); color: rgba(243, 233, 210, .92); font-size: 3.4vmin; line-height: 1.15; }
+  #pad .btn b { font-size: 6vmin; font-weight: normal; }
+  #pad .btn.on { background: rgba(243, 233, 210, .36); }
+  #pad .dpad { left: max(3vmin, env(safe-area-inset-left)); bottom: 4vmin; width: 46vmin; height: 22vmin; border-radius: 11vmin; flex-direction: row; justify-content: space-between; padding: 0 5vmin; font-size: 7vmin; }
+  #pad .dpad span { opacity: .55; }
+  #pad .dpad.left span:first-child, #pad .dpad.right span:last-child { opacity: 1; }
+  #pad .jump { right: max(3vmin, env(safe-area-inset-right)); bottom: 4vmin; width: 23vmin; height: 23vmin; }
+  #pad .zui { right: calc(max(3vmin, env(safe-area-inset-right)) + 26vmin); bottom: 5vmin; width: 21vmin; height: 21vmin; }
+  #pad .up { right: calc(max(3vmin, env(safe-area-inset-right)) + 4vmin); bottom: 30vmin; width: 16vmin; height: 16vmin; }
+  #pad .down { right: calc(max(3vmin, env(safe-area-inset-right)) + 24vmin); bottom: 30vmin; width: 16vmin; height: 16vmin; }
+  #pad .sys { top: 3vmin; width: 11vmin; height: 11vmin; font-size: 3vmin; }
+  #pad .sys.menu { right: max(3vmin, env(safe-area-inset-right)); }
+  #pad .sys.retry { right: calc(max(3vmin, env(safe-area-inset-right)) + 13vmin); }
+  #pad .sys.auto { right: calc(max(3vmin, env(safe-area-inset-right)) + 26vmin); }
+  #pad .hint { position: absolute; left: 0; right: 0; text-align: center; color: rgba(243, 233, 210, .5); font-size: 3.6vmin; display: none; }
+  @media (orientation: portrait) {
+    body.touch { align-items: flex-start; }
+    body.touch #pad .sys { top: calc(56.25vw + 3vmin); }
+    body.touch #pad .hint { display: block; top: calc(56.25vw + 18vmin); }
+  }
 </style>
 </head>
 <body>
@@ -40,6 +63,17 @@
   <small>A D 走　W 跳　K 放屁（按住 A/D 是加速，不按方向或按 W 往上噴，要一直點）　J 叫醉影　R 重來　P 自動通關本間　M 靜音　` 調手感<br>醉意會自己回滿。J 一次用掉全部滿格，自動連段：一格 丟、兩格 衝→丟、三格 升天→衝→丟；放屁扣小格<br>滿格越多越醉：醉影越強，地圖也越危險（先預告，落地才變；預告時放屁可以取消）<br>舊關卡（沒有 cells）沿用 J 摔角手、L 保鑣　·　也可以直接把 JSON 拖進畫面</small>
 </div>
 <div id="tune" hidden></div>
+<div id="pad" hidden>
+  <div class="btn dpad" data-pad="dpad"><span>◀</span><span>▶</span></div>
+  <div class="btn jump" data-pad="jump"><b>跳</b></div>
+  <div class="btn zui" data-pad="skill"><b>J</b>醉影</div>
+  <div class="btn up" data-pad="talk"><b>E</b>喝一口</div>
+  <div class="btn down" data-pad="k"><b>K</b>放屁</div>
+  <div class="btn sys menu" data-pad="menu">選單</div>
+  <div class="btn sys retry" data-pad="r">重來</div>
+  <div class="btn sys auto" data-pad="auto">帶路</div>
+  <p class="hint">手機橫過來玩，畫面比較大</p>
+</div>
 <input id="file" type="file" accept=".json,application/json" hidden>
 <script>
 // 醉隱 game engine: pure rules, no DOM. Units are pixels; a room is 32 x 18 tiles of 40 px.
@@ -2603,10 +2637,54 @@
   addEventListener('blur', () => { held.left = held.right = held.jump = held.down = false; });
   canvas.addEventListener('pointerdown', () => window.focus());
 
+  // Touch controls write into the same held / pressed input as the keyboard.
+  const pad = document.getElementById('pad');
+  if (matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window) {
+    pad.hidden = false;
+    document.body.classList.add('touch');
+    const dpadDir = (el, e) => { const r = el.getBoundingClientRect(); return e.clientX < r.left + r.width / 2 ? 'left' : 'right'; };
+    const setDpad = (el, dir) => {
+      held.left = dir === 'left'; held.right = dir === 'right';
+      el.classList.toggle('left', dir === 'left'); el.classList.toggle('right', dir === 'right');
+    };
+    const tap = act => {
+      if (act === 'menu') { toggleMenu(); return; }
+      if (!menu.hidden) return;
+      if (act === 'skill') pressed.skill = 'wrestler';
+      else pressed[act] = true;
+      if (act === 'jump') held.jump = true;
+    };
+    for (const el of pad.querySelectorAll('[data-pad]')) {
+      const act = el.dataset.pad;
+      el.addEventListener('pointerdown', e => {
+        e.preventDefault(); Sfx.ensure();
+        try { el.setPointerCapture(e.pointerId); } catch (err) { /* synthetic pointers */ }
+        el.classList.add('on');
+        if (act === 'dpad') { if (menu.hidden) setDpad(el, dpadDir(el, e)); } else tap(act);
+      });
+      el.addEventListener('pointermove', e => { if (act === 'dpad' && el.classList.contains('on') && menu.hidden) setDpad(el, dpadDir(el, e)); });
+      const release = () => {
+        el.classList.remove('on');
+        if (act === 'dpad') setDpad(el, null);
+        if (act === 'jump') held.jump = false;
+      };
+      el.addEventListener('pointerup', release);
+      el.addEventListener('pointercancel', release);
+      el.addEventListener('lostpointercapture', release);
+      el.addEventListener('contextmenu', e => e.preventDefault());
+    }
+    // Tapping the picture continues day intros and day ends (Enter on a keyboard).
+    canvas.addEventListener('pointerdown', () => { Sfx.ensure(); if (menu.hidden) pressed.confirm = true; });
+  }
+
   // P replays one room from its spawn. P hands control back; R also resets the room.
   let auto = null, puzzleRoutes = null, puzzleRouteState = 'idle';
+  // A single-file build (handoff/kit/build-beaverkit.mjs) embeds the puzzle rooms and routes.
+  const embedded = id => document.getElementById(id)?.textContent || null;
   function loadPuzzleRoutes() {
     if (puzzleRouteState !== 'idle') return;
+    const inline = embedded('chill-routes-data');
+    if (inline) { puzzleRoutes = JSON.parse(inline); puzzleRouteState = 'ready'; return; }
     puzzleRouteState = 'loading';
     fetch('chill-routes.json', { cache: 'no-store' }).then(response => {
       if (!response.ok) throw new Error('Route unavailable');
@@ -2753,7 +2831,11 @@
       button.textContent = `${mi + 1}-${ri + 1} ${room.name}`; button.style.fontSize = '17px'; roomPicker.appendChild(button);
     }));
   }
-  if (new URLSearchParams(location.search).get('chill') === '1') {
+  if (embedded('chill-puzzles-data')) {
+    const source = embedded('chill-puzzles-data');
+    previewCampaign = parseCampaign(source);
+    load(source, '醉態解謎');
+  } else if (new URLSearchParams(location.search).get('chill') === '1') {
     toggleMenu(true); menuMsg.textContent = '醉影正在找路……';
     fetch('chill-puzzles.json', { cache: 'no-store' }).then(response => {
       if (!response.ok) throw new Error('解謎關卡讀取失敗');
