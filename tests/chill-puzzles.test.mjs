@@ -268,3 +268,12 @@ test('a new solid waits for a patrol standing in it', () => {
   tick(game, DT);
   assert.equal(game.tiles[15][20], '#');
 });
+
+test('a wall brushing Jim at the spawn never pulls him through it', () => {
+  for (const [wall, dir] of [[4, 'right'], [6, 'left']]) {
+    const floor = Array.from({ length: 32 }, (_, x) => [x, 16, '#']);
+    const game = make({ booze: 0, tiles: grid([[5, 15, 'P'], [wall, 15, '#'], [wall, 14, '#'], ...floor]) });
+    tick(game, 0.5, { [dir]: true });
+    assert.ok(dir === 'right' ? game.body.x > 5.5 * T : game.body.x < 5.5 * T, `walking ${dir} away from the wall`);
+  }
+});

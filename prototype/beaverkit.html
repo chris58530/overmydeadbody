@@ -452,6 +452,8 @@
       const y0 = Math.floor(box.y / T), y1 = Math.floor((box.y + box.h - 1e-6) / T);
       for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
         if (!this.solid(x, y)) continue;
+        // Jim is wider than a tile: a wall brushing his trailing side must not pull him through it
+        if (dx > 0 ? (x + 1) * T <= b.x : dx < 0 && x * T >= b.x) continue;
         b.x = dx > 0 ? x * T - BODY_W / 2 : (x + 1) * T + BODY_W / 2;
         b.vx = 0;
         return true;
