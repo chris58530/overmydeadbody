@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>醉隱 · 關卡編輯器</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500&display=swap">
 <style>
   :root { --ink: #f3e9d2; --dim: rgba(243, 233, 210, .55); --line: rgba(243, 233, 210, .14); --bg: #0e0b1c; --panel: #151127; --accent: #e0a87a; --bad: #f0857a; --warn: #e8c46a; }
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font: 15px/1.5 "LXGW WenKai TC", "Kaiti TC", "DFKai-SB", "KaiTi", serif; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font: 15px/1.5 "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; }
   body { display: grid; grid-template-rows: auto 1fr; overflow: hidden; }
   button, input, select, textarea { font: inherit; color: inherit; }
   button { background: none; border: 1px solid var(--line); padding: 3px 10px; cursor: pointer; }
@@ -144,7 +144,7 @@
 (function () {
   'use strict';
   const COLS = 32, ROWS = 18, CELL = 30, W = COLS * CELL, H = ROWS * CELL;
-  const FONT = '"LXGW WenKai TC", "Kaiti TC", "DFKai-SB", "KaiTi", serif';
+  const FONT = '"Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif';
   const SOLID = '#BC<>';
   const TILES = [
     { ch: '#', name: '地形', tip: '能站、會擋路' },

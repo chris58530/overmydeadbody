@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>醉隱</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500&display=swap">
 <style>
   html, body { margin: 0; height: 100%; background: #0e0b1c; overflow: hidden; }
-  body { display: flex; align-items: center; justify-content: center; font-family: "LXGW WenKai TC", "Kaiti TC", "DFKai-SB", "KaiTi", serif; }
+  body { display: flex; align-items: center; justify-content: center; font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; }
   canvas { display: block; width: min(100vw, 177.78vh); height: min(56.25vw, 100vh); background: #2b2860; }
   #menu { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: rgba(14, 11, 28, .82); color: #f3e9d2; }
   #menu[hidden] { display: none; }
@@ -1886,7 +1886,7 @@
   const { T, COLS, ROWS, W, H, TUNING, ABILITIES, ZUI, Game, parseCampaign, AUTO } = window.Drunk;
   const canvas = document.getElementById('game'), ctx = canvas.getContext('2d');
   const menu = document.getElementById('menu'), fileInput = document.getElementById('file'), menuMsg = document.getElementById('menuMsg');
-  const FONT = '"LXGW WenKai TC", "Kaiti TC", "DFKai-SB", "KaiTi", serif';
+  const FONT = '"Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif';
 
   const BASE = 'https://assets.beaverkit.io/8b8492c8-d4c0-4051-abac-cb6fe421fa89/';
   const SRC = {
