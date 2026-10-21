@@ -1,6 +1,0 @@
-2-1 still NO  (4s)
-2-2 still FOUND 3.1s  Rx5 N RS Nx12 R Nx3 Rx8  (5s)
-2-3 still NO  (2s)
-2-4 still NO  (16s)
-2-5 still NO  (2s)
-2-3 instant NO  (86s)

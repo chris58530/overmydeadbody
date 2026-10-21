@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
-import { plans } from '../handoff/kit/chill-room-plans.mjs';
+import { plans, capPlans } from '../handoff/kit/chill-room-plans.mjs';
 import { recordRoom, replayRoom } from '../handoff/kit/chill-room-tools.mjs';
 
 const context = vm.createContext({});
@@ -133,6 +133,12 @@ for (const { id } of rooms) {
     }
   });
 
+  test(`${id}: the optional bottle cap can be collected`, () => {
+    assert.ok(capPlans[id], `${id}: missing cap route`);
+    const { game } = recordRoom(campaign, id, capPlans[id], { mapIndex: where(id).mapIndex, requireExit: false });
+    assert.ok([...game.capsGot].some(key => key.startsWith(`${game.map.id}:${id}:`)), `${id}: cap route must collect the cap`);
+  });
+
   if (expectedSkills[id]) {
     test(`${id}: the puzzle still works with half a second of hesitation after every grade change`, () => {
       const delayed = recordRoom(campaign, id, plans[id], { actionDelay: 0.5, mapIndex: where(id).mapIndex });
@@ -151,7 +157,7 @@ for (const { id } of rooms) {
 
 // Rooms that need a grade change for the world itself (a roof to fall through, a wall that must go,
 // an awning the rise cannot clear): staying at the starting grade never reaches the door.
-for (const id of ['1-4', '2-4', '2-5', '3-2', '3-5']) {
+for (const id of ['1-4', '2-3', '2-4', '2-5', '3-2', '3-3', '3-4', '3-5']) {
   test(`${id}: walking, jumping and the starting grade's J alone never reach the door`, () => {
     for (const dir of ['right', 'left']) {
       const game = make(id);
