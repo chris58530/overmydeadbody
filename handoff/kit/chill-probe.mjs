@@ -38,7 +38,7 @@ function clone(g) {
     if (k === 'campaign' || k === 'room' || k === 'exits' || k === 'seen') c[k] = v;
     else if (k === 'particles' || k === 'events' || k === 'bubbles') c[k] = [];
     else if (k === 'tiles') c[k] = v.map(r => r.slice());
-    else if (k === 'entities') c[k] = v.map(e => ({ ...e }));
+    else if (k === 'entities' || k === 'stageQueue') c[k] = v.map(e => ({ ...e }));
     else if (k === 'crumbles') c[k] = new Map([...v].map(([a, b]) => [a, { ...b }]));
     else if (Object.prototype.toString.call(v) === '[object Set]') c[k] = new v.constructor(v);
     else if (v && typeof v === 'object') c[k] = Array.isArray(v) ? v.slice() : { ...v };
@@ -59,7 +59,8 @@ function advance(g, first, hold, instant) {
 function key(g, cool) {
   const b = g.body, s = g.stand;
   let k = (cool > 0 ? Math.ceil(cool / 5) : 0) + '|' + g.state + '|' + Math.round(b.x / 20) + '|' + Math.round(b.y / 20) + '|' + Math.round(b.vx / 150) + '|' + Math.round(b.vy / 250) + '|' + (b.grounded ? 1 : 0)
-    + '|' + g.targetStage() + '|' + g.stage + '|' + (g.stageWarn ? Math.round(g.stageWarn.t * 4) : '') + '|' + (g.chillAirUsed ? 1 : 0) + '|' + g.chain.length + '|' + g.tilesVersion;
+    + '|' + g.targetStage() + '|' + g.stage + '|' + (g.stageWarn ? Math.round(g.stageWarn.t * 4) : '') + '|' + (g.chillAirUsed ? 1 : 0) + '|' + g.chain.length + '|' + g.tilesVersion
+    + '|' + (g.held || 0) + '|' + g.entities.filter(e => e.kind === 'bottle' && e.got).length;
   if (g.state === 'charge' || g.state === 'lift') k += '|' + Math.round(g.timer / 0.1) + '|' + (s ? Math.round(s.y / 20) : '');
   return k;
 }
@@ -127,9 +128,10 @@ export function compress(plan) {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const { campaign } = await import('./build-chill.mjs');
   const args = process.argv.slice(2);
   const flag = (name, def) => args.find(a => a.startsWith(`--${name}=`))?.split('=')[1] ?? def;
+  // --campaign=single or --campaign=loop probes the test rooms in chill-single.mjs / chill-loop.mjs
+  const { campaign } = await import({ single: './chill-single.mjs', loop: './chill-loop.mjs' }[flag('campaign')] ?? './build-chill.mjs');
   const modes = flag('mode', 'still,instant').split(',');
   const ids = args.filter(a => !a.startsWith('--'));
   for (const map of campaign.maps) for (const room of map.rooms) {

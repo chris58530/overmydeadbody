@@ -105,6 +105,12 @@
     // drunk mode (a map with "cells"): K farts a small share of a cell, J spends a whole cell on the drunk shadow's move
     fartCost: 1 / 6, fartCooldown: 0.14, fartUp: 300, fartDash: 560, fartDashLift: 60,
     ascendVY: 1200, ascendBreak: 0.45, stageWarn: 0.9,
+    // single-skill 升天: a squat before the rise; S in the air after it slams straight down through crates
+    ascendWindup: 0.25, poundHang: 0.12, poundVY: 1300,
+    // bottles: "carry" — how many bottles Jim can hold; E drinks one
+    carry: 1,
+    // bottles: "drink" — a bottle drunk on touch comes back after bottleRespawn; K lowers a grade with a small hop
+    bottleRespawn: 3, fartHop: 480,
     // booze comes back by itself (cells per second), after a pause once J has spent it; a chain runs on its own
     regen: 0.4, regenDelay: 0.8, chainAscend: 0.45, chainCharge: 0.7,
   };
@@ -115,8 +121,8 @@
   };
 
   // . empty  # ground  ^ shards  = plank  B crate (charge breaks)  C crumbling boxes  < > conveyor
-  // R patrol (office chair / night guard)  L falling light (tube / sign)  * bottle cap  P spawn
-  const TILE_CHARS = '.#^=BCP<>RL*ON';
+  // R patrol (office chair / night guard)  L falling light (tube / sign)  * bottle cap  P spawn  D a bottle of booze (bottles rules)
+  const TILE_CHARS = '.#^=BCP<>RL*OND';
   // stage overlays: '.' keeps the tile below, '_' clears it, anything else replaces it
   const STAGE_CHARS = '.#^=BC<>_';
   // the drunk shadow's moves, one per cell: the last cell left is always the throw
@@ -257,6 +263,7 @@
         if (t === 'P') this.spawn = { x: x * T + T / 2, y: (y + 1) * T };
         if (t === 'R') { this.entities.push({ kind: 'patrol', x: x * T + T / 2, y: (y + 1) * T, dir: -1, alive: true, w: street ? 44 : 40, h: street ? 110 : 34, skin: street ? 'guard' : 'chair', t: 0 }); this.tiles[y][x] = '.'; }
         if (t === 'L') { this.entities.push({ kind: 'faller', x: x * T + T / 2, y: y * T, vy: 0, phase: 'idle', t: 0, w: 72, h: street ? 30 : 14, skin: street ? 'sign' : 'tube' }); this.tiles[y][x] = '.'; }
+        if (t === 'D') { this.entities.push({ kind: 'bottle', x: x * T + T / 2, y: y * T + T / 2, got: false }); this.tiles[y][x] = '.'; }
         if (t === '*') {
           const key = `${this.map.id}:${this.room.id}:${x},${y}`;
           if (!this.capsGot.has(key)) this.entities.push({ kind: 'cap', key, x: x * T + T / 2, y: y * T + T / 2, got: false, t: 0 });
@@ -264,6 +271,7 @@
         }
       }
       this.roomCaps = [];
+      this.held = this.room.held || 0;
       this.activeSkill = null;
       this.airDraws = 0;
       this.drinkT = 0;
@@ -289,15 +297,23 @@
       this.cells = this.map.cells || 0;
       this.booze = Math.min(this.cells, this.room.booze ?? this.carryBooze ?? 0);
       if (this.chill) this.booze = clamp(Math.round(this.booze), 0, this.cells);
-      this.stage = 0; this.stageWarn = null; this.hallu = new Set(); this.stageDeferred = [];
+      this.stage = 0; this.stageWarn = null; this.stageQueue = []; this.hallu = new Set(); this.stageDeferred = [];
       this.chillAirUsed = false;
       this.fartCd = 0; this.ascendT = 0; this.chain = []; this.chainT = 0; this.regenWait = 0;
+      this.windupT = 0; this.pound = null; this.ascended = false; this.downHeld = false;
       if (this.cells) this.applyStage(this.targetStage(), true);
     }
 
     // ---------- drunk mode ----------
     get drunk() { return !!this.map.cells; }
     get chill() { return this.campaign.rules === 'chill-puzzle'; }
+    // skills: "single" — each grade is one move of its own (1 丟, 2 衝, 3 升天) instead of a chain
+    get single() { return this.chill && this.campaign.skills === 'single'; }
+    // bottles: "carry" — E only drinks a bottle picked up in the room (D); K stays free
+    get bottled() { return this.chill && this.campaign.bottles === 'carry'; }
+    // bottles: "drink" — the drink-use-sober loop: touching a bottle drinks it (it comes back later), J spends a grade,
+    // K spends one with a hop, and the world is the body three seconds ago (changes queue instead of blocking)
+    get looped() { return this.chill && this.campaign.bottles === 'drink'; }
     targetStage() { return Math.min(this.cells, Math.floor(this.booze + 1e-9)); }
     // The static tile of a cell at a drunk stage: the room, then every overlay up to that stage.
     stageChar(x, y, k) {
@@ -339,14 +355,36 @@
 
     // Puzzle rules keep the player's grade stable (0 sober to 3). The world follows exactly three seconds later.
     changeGrade(delta) {
-      if (!this.chill || this.phase !== 'play' || this.stageWarn || this.stageDeferred.length || this.chain.length || !['free', 'thrown', 'recover'].includes(this.state)) return false;
+      if (!this.chill || this.phase !== 'play' || (!this.looped && (this.stageWarn || this.stageDeferred.length)) || this.chain.length || this.windupT > 0 || this.pound || !['free', 'thrown', 'recover'].includes(this.state)) return false;
       const next = clamp(this.targetStage() + delta, 0, this.cells);
       if (next === this.targetStage()) return false;
-      this.booze = next;
-      this.stageWarn = { to: next, t: 3, duration: 3, cells: this.stageDiff(this.stage, next) };
-      this.events.push(delta > 0 ? 'ready' : 'fart', 'warn');
+      if (delta > 0 && this.bottled) {
+        if (!this.held) {
+          this.bubbles = this.bubbles.filter(bub => !bub.deny);
+          this.bubbles.push({ who: 'body', text: '沒酒了……', delay: 0, t: 0.8, deny: true });
+          this.events.push('deny');
+          return false;
+        }
+        this.held--;
+      }
+      if (this.looped) this.shiftGrade(next);
+      else {
+        this.booze = next;
+        this.stageWarn = { to: next, t: 3, duration: 3, cells: this.stageDiff(this.stage, next) };
+        this.events.push('warn');
+      }
+      this.events.push(delta > 0 ? 'ready' : 'fart');
       if (delta < 0) this.emit(this.body.x, this.body.y - 12, '#b5c25a', 10, 120, 80);
       return true;
+    }
+
+    // Loop rules: the body takes the new grade now and the world queues it, landing three seconds later in order.
+    shiftGrade(next) {
+      this.booze = next;
+      const entry = { to: next, t: 3, duration: 3 };
+      if (this.stageWarn) this.stageQueue.push(entry);
+      else { entry.cells = this.stageDiff(this.stage, next); this.stageWarn = entry; }
+      this.events.push('warn');
     }
 
     updateChillStage(dt) {
@@ -356,18 +394,30 @@
       const write = ([x, y, c]) => { this.tiles[y][x] = c; this.crumbles.delete(x + ',' + y); this.tilesVersion++; };
       this.stageDeferred = this.stageDeferred.filter(cell => { if (blocked(...cell)) return true; write(cell); return false; });
       if (!this.stageWarn) return;
+      for (const q of this.stageQueue) q.t = Math.max(0, q.t - dt);
       this.stageWarn.t = Math.max(0, this.stageWarn.t - dt);
       if (this.stageWarn.t > 1e-9) return;
       const { to, cells } = this.stageWarn;
+      // a newer change of the same cell replaces one still waiting for Jim or a guard to step out
+      this.stageDeferred = this.stageDeferred.filter(([dx, dy]) => !cells.some(([x, y]) => x === dx && y === dy));
       for (const cell of cells) { if (blocked(...cell)) this.stageDeferred.push(cell); else write(cell); }
-      this.events.push(to > this.stage ? 'stageUp' : 'stageDown');
+      if (to !== this.stage) this.events.push(to > this.stage ? 'stageUp' : 'stageDown');
       this.stage = to; this.stageWarn = null; this.hallu = new Set();
+      const next = this.stageQueue.shift();
+      if (next) { next.cells = this.stageDiff(to, next.to); this.stageWarn = next; }
       for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (this.stageChar(x, y, to) !== this.stageChar(x, y, 0)) this.hallu.add(x + ',' + y);
     }
 
     // K in drunk mode: a short fart. Forward is a burst of speed, nothing or W lifts Jim like a flap.
     fart(input, dir) {
-      if (this.chill) { this.changeGrade(-1); return; }
+      if (this.chill) {
+        if (this.changeGrade(-1) && this.looped) {
+          const b = this.body;
+          b.vy = Math.min(b.vy, -TUNING.fartHop); b.grounded = false; b.puff = true; this.coyote = 0; this.jumpBuf = 0;
+          if (this.state === 'recover') this.state = 'free';
+        }
+        return;
+      }
       if (this.fartCd > 0 || !['free', 'thrown', 'recover'].includes(this.state)) return;
       const b = this.body;
       if (this.booze < TUNING.fartCost - 1e-9) {
@@ -406,9 +456,21 @@
       this.regenWait = TUNING.regenDelay;
       this.flash = { color: ZUI[n].tint, t: 0.25 };
       this.events.push('drink');
-      if (n === 3) { this.chain = ['charge', 'throw']; this.chainT = TUNING.chainAscend; this.ascend(); }
+      if (this.single) { if (n === 3) this.windup(); else if (n === 2) this.startCharge(); else this.startLift(); }
+      else if (n === 3) { this.chain = ['charge', 'throw']; this.chainT = TUNING.chainAscend; this.ascend(); }
       else if (n === 2) { this.chain = ['throw']; this.startCharge(); this.timer = TUNING.chainCharge; }
       else this.startLift();
+      // loop rules: the shadow eats a grade as the move starts (a refused charge eats nothing)
+      if (this.looped && (n !== 2 || this.state === 'charge')) this.shiftGrade(n - 1);
+    }
+
+    // Single-skill 升天 squats first: Jim holds still (in the air too) and the fart goes off when the timer runs out.
+    windup() {
+      const b = this.body;
+      this.windupT = TUNING.ascendWindup;
+      b.vx = b.vy = 0;
+      this.setAnim('idle');
+      this.emit(b.x, b.y, '#b5c25a', 8, 160, 40);
     }
 
     // The third cell: Jim's own enormous fart. Straight up, high, and through crates overhead.
@@ -417,7 +479,7 @@
       if (this.stand) this.stand.leaving = true;
       this.state = 'free';
       b.vy = -TUNING.ascendVY; b.vx *= 0.4; b.grounded = false; b.puff = true;
-      this.ascendT = TUNING.ascendBreak; this.coyote = 0;
+      this.ascendT = TUNING.ascendBreak; this.coyote = 0; this.ascended = this.single;
       this.hitStop = 0.07; this.shake = 0.4;
       this.events.push('bigfart');
       this.shout('body', ['噗————！！', '對不起大家！', '升天啦——']);
@@ -771,6 +833,20 @@
             e.said = e.t;
             this.bubbles.push({ who: e, text: GUARD_LINES[Math.floor(Math.random() * GUARD_LINES.length)], delay: 0, t: 1.8 });
           }
+        } else if (e.kind === 'bottle' && this.looped) {
+          // drunk on touch below the day's top grade; it comes back once Jim has stepped off its spot
+          const spot = { x: e.x - 12, y: e.y - 18, w: 24, h: 36 };
+          if (e.got) { if ((e.t -= dt) <= 0 && !overlap(bb, spot)) e.got = false; }
+          else if (this.state !== 'dead' && this.targetStage() < this.cells && overlap(bb, spot)) {
+            e.got = true; e.t = TUNING.bottleRespawn;
+            this.shiftGrade(this.targetStage() + 1); this.events.push('ready');
+            this.emit(e.x, e.y, '#8fd18a', 10, 220, 160);
+          }
+        } else if (e.kind === 'bottle') {
+          if (!e.got && this.held < TUNING.carry && overlap(bb, { x: e.x - 12, y: e.y - 18, w: 24, h: 36 })) {
+            e.got = true; this.held++; this.events.push('cap');
+            this.emit(e.x, e.y, '#8fd18a', 10, 220, 160);
+          }
         } else if (e.kind === 'cap') {
           if (!e.got && overlap(bb, { x: e.x - 14, y: e.y - 14, w: 28, h: 28 })) {
             e.got = true; this.roomCaps.push(e.key); this.events.push('cap');
@@ -921,7 +997,7 @@
       }
       if (this.chill) {
         this.updateChillStage(dt);
-        if (input.gradeUpPressed || input.talkPressed) this.changeGrade(1);
+        if (!this.looped && (input.gradeUpPressed || input.talkPressed)) this.changeGrade(1);
         if (input.skill && !!input.right !== !!input.left) b.face = input.right ? 1 : -1;
       }
 
@@ -949,8 +1025,31 @@
       const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0);
       this.jumpBuf = input.jumpPressed ? TUNING.jumpBuffer : Math.max(0, this.jumpBuf - dt);
 
-      if (this.state === 'free') {
+      const downPressed = !!input.down && !this.downHeld;
+      this.downHeld = !!input.down;
+      if (this.state === 'free' && this.windupT > 0) {
+        b.vx = b.vy = 0;
+        if ((this.windupT -= dt) <= 0) { this.windupT = 0; this.ascend(); }
+      } else if (this.state === 'free' && this.pound) {
+        // ground pound: a short hang, then straight down; crates under the feet break instead of catching him
+        b.vx = 0;
+        if (this.pound.hang > 0) { this.pound.hang -= dt; b.vy = 0; }
+        else {
+          b.vy = TUNING.poundVY;
+          const box = this.box(b), hit = [];
+          for (let y = Math.floor(b.y / T); y <= Math.floor((b.y + b.vy * dt + 1) / T); y++) for (let x = Math.floor(box.x / T); x <= Math.floor((box.x + box.w - 1e-6) / T); x++) if ('BC'.includes(this.tileAt(x, y))) hit.push([x, y]);
+          if (hit.length) { for (const [x, y] of hit) this.breakFrom(x, y); this.shake = 0.35; this.hitStop = TUNING.hitStop; this.events.push('break'); }
+          this.moveY(b, b.vy * dt);
+          if (b.grounded) {
+            this.pound = null; b.landT = 0.12;
+            this.shake = Math.max(this.shake, 0.4); this.events.push('land'); this.wakeNpcs();
+            this.emit(b.x, b.y, '#b9aee0', 24, 420, 120);
+          }
+        }
+        this.setAnim('fall');
+      } else if (this.state === 'free') {
         if (dir) b.face = dir;
+        if (this.ascended && !b.grounded && downPressed) { this.pound = { hang: TUNING.poundHang }; this.ascendT = 0; b.puff = false; this.shout('body', ['看我的——', '屁股降落！']); }
         // conveyors push while grounded and keep pushing through the jump (like Celeste's lift boost)
         if (b.grounded) b.carry = this.beltUnder(b);
         const push = b.carry || 0;
@@ -1053,7 +1152,7 @@
 
       if (this.state === 'free' || this.state === 'recover') {
         if (b.grounded) this.airDraws = 0;
-        if (this.chill && b.grounded && !this.chain.length && this.ascendT <= 0) this.chillAirUsed = false;
+        if (this.chill && b.grounded && !this.chain.length && this.ascendT <= 0 && !this.windupT && !this.pound) { this.chillAirUsed = false; this.ascended = false; }
         if (this.state === 'free') this.activeSkill = null;
       }
       if (this.state !== 'dead') {
@@ -1883,15 +1982,13 @@
 <script>
 (function () {
   'use strict';
-  const { T, COLS, ROWS, W, H, TUNING, ABILITIES, ZUI, Game, parseCampaign, AUTO } = window.Drunk;
+  const { T, COLS, ROWS, W, H, BODY_W, TUNING, ABILITIES, ZUI, Game, parseCampaign, AUTO } = window.Drunk;
   const canvas = document.getElementById('game'), ctx = canvas.getContext('2d');
   const menu = document.getElementById('menu'), fileInput = document.getElementById('file'), menuMsg = document.getElementById('menuMsg');
   const FONT = '"Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif';
 
   const BASE = 'https://assets.beaverkit.io/8b8492c8-d4c0-4051-abac-cb6fe421fa89/';
   const SRC = {
-    background: 'b132a32789d4e52b83a682b1b3c8244b45dcf16f4163ed7c9ec513b8fd905ebc',
-    floor: '5842ae8429f22101a658313cdd4713283d0b2c2ae43b1ef793691d44d31798d7',
     idle0: 'ab1e4d1fb3c46b852221ef67aaeb4bf478a331758bc3d8c2811d0fbabaf93f11',
     idle1: '6eaf667c216dbaa2c6f22e3d7cc456b29c3e717e49a6086fc67f9954f7e0be42',
     idle2: '3bbfacc9ecc3faea6af10d15668fcb9e2b4387bed96d53e128da8e52df0985a7',
@@ -1915,7 +2012,6 @@
     i.onload = i.onerror = () => {
       loaded++;
       if (k.startsWith('bottle') && i.naturalWidth) { const c = document.createElement('canvas'); c.width = c.height = 300; c.getContext('2d').drawImage(i, 0, 0, 300, 300); bottles[+k.slice(6)] = c; }
-      if (k === 'floor' || k === 'background') roomKey = '';
     };
     i.src = BASE + hash + '.png';
     img[k] = i;
@@ -1928,225 +2024,36 @@
   const rnd = (x, y, k = 0) => { const n = Math.sin(x * 127.1 + y * 311.7 + k * 74.7) * 43758.5453; return n - Math.floor(n); };
   const layer = document.createElement('canvas'); layer.width = W; layer.height = H;
   let roomKey = '';
-  // Day one is a colour journey: cold fluorescent office -> warm pantry -> burgundy and brass lifts -> the indigo night.
-  const INDOOR = {
-    office: { floor: ['#2c4a4c', '#284446'], cab: '#8aa6a0', top: '#e2c48f', line: '#5d7b77', handle: '#f0ead8', edge: '#122326' },
-    pantry: { floor: ['#e8dcc4', '#cdbb98'], cab: '#7a4a3a', top: '#efe3cc', line: '#5b352b', handle: '#e8c98a', edge: '#2a1712' },
-    elevator: { floor: ['#2b1a20', '#33202a'], cab: '#6e2f3d', top: '#d8b46a', line: '#4a1f2b', handle: '#e7c77e', edge: '#1a0b10' },
-    lobby: { floor: ['#3a3a5e', '#34345a'], cab: '#2d2a45', top: '#c9a25a', line: '#22203a', handle: '#e7c77e', edge: '#141228' },
-  };
+  // Greybox: everything but Jim is a flat, readable block at its true collision size, over a tile grid
+  // (fine line every tile, heavy line every five, numbered along the top and left edges).
+  const GREY = { bg: '#2a2d36', grid: 'rgba(255,255,255,.05)', grid5: 'rgba(255,255,255,.13)', label: 'rgba(255,255,255,.35)',
+    solid: '#70747f', solidEdge: '#4b4f59', glass: '#e0484d', plank: '#a3a9b5', crate: '#d9893b', crateInk: '#7a4518',
+    belt: '#4d515c', exit: '#f3f1ea', patrol: '#d8504a', faller: '#e8c34a', bottle: '#5fbf6a', cap: '#f2c24f', shadow: '#9b7be0' };
   function buildLayer() {
-    const theme = game.room.theme || 'street';
-    if (INDOOR[theme]) buildIndoorLayer(INDOOR[theme]); else buildStreetLayer();
-    const c = layer.getContext('2d'), copy = document.createElement('canvas'); copy.width = W; copy.height = H;
-    copy.getContext('2d').drawImage(layer, 0, 0);
-    c.clearRect(0, 0, W, H);
-    c.save(); c.shadowColor = 'rgba(6,4,16,.65)'; c.shadowBlur = 14; c.shadowOffsetY = 6; c.drawImage(copy, 0, 0); c.restore();
-  }
-  function buildStreetLayer() {
     const c = layer.getContext('2d'), tiles = game.tiles;
     c.clearRect(0, 0, W, H);
-    const solid = (x, y) => x >= 0 && x < COLS && y >= 0 && y < ROWS && tiles[y][x] === '#';
-    let fill = '#3a3263';
-    if (ok(img.floor)) { const band = document.createElement('canvas'); band.width = 480; band.height = 70; band.getContext('2d').drawImage(img.floor, 0, 40, 480, 70, 0, 0, 480, 70); fill = c.createPattern(band, 'repeat'); }
-    c.fillStyle = fill;
-    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (solid(x, y)) c.fillRect(x * T, y * T, T, T);
-    c.fillStyle = 'rgba(24,18,52,.38)';
-    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (solid(x, y) && solid(x, y - 1)) c.fillRect(x * T, y * T, T, T);
-    // wobbly crayon outline on exposed edges
-    c.strokeStyle = '#1c1636'; c.lineWidth = 3; c.lineCap = 'round';
-    const edge = (x1, y1, x2, y2, k) => { c.beginPath(); c.moveTo(x1, y1); c.quadraticCurveTo((x1 + x2) / 2 + (rnd(x1, y1, k) - .5) * 4, (y1 + y2) / 2 + (rnd(x2, y2, k) - .5) * 4, x2, y2); c.stroke(); };
-    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
-      if (!solid(x, y)) continue;
-      if (!solid(x - 1, y) && x > 0) edge(x * T, y * T, x * T, y * T + T, 1);
-      if (!solid(x + 1, y) && x < COLS - 1) edge(x * T + T, y * T, x * T + T, y * T + T, 2);
-      if (!solid(x, y + 1) && y < ROWS - 1) edge(x * T, y * T + T, x * T + T, y * T + T, 3);
-    }
-    // grassy road edge on top surfaces
-    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS;) {
-      if (!(solid(x, y) && !solid(x, y - 1))) { x++; continue; }
-      let run = 0; while (x + run < COLS && solid(x + run, y) && !solid(x + run, y - 1)) run++;
-      if (ok(img.floor)) c.drawImage(img.floor, (x * 53) % 600, 0, run * T, 24, x * T, y * T - 7, run * T, 24);
-      else { c.fillStyle = '#8f7fb5'; c.fillRect(x * T, y * T, run * T, 6); }
-      x += run;
-    }
+    c.fillStyle = GREY.bg; c.fillRect(0, 0, W, H);
+    for (let x = 0; x <= COLS; x++) { c.fillStyle = x % 5 ? GREY.grid : GREY.grid5; c.fillRect(x * T, 0, 1, H); }
+    for (let y = 0; y <= ROWS; y++) { c.fillStyle = y % 5 ? GREY.grid : GREY.grid5; c.fillRect(0, y * T, W, 1); }
+    c.font = `11px ${FONT}`; c.fillStyle = GREY.label; c.textAlign = 'left';
+    for (let x = 0; x < COLS; x += 5) c.fillText(String(x), x * T + 3, 12);
+    for (let y = 5; y < ROWS; y += 5) c.fillText(String(y), 3, y * T + 12);
     for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
       const t = tiles[y][x], tx = x * T, ty = y * T;
-      if (t === '^') {
-        for (let i = 0; i < 3; i++) {
-          const bx = tx + 2 + i * 12 + rnd(x, y, i) * 3, w = 10 + rnd(x, y, i + 5) * 6, h = 14 + rnd(x, y, i + 9) * 14, peak = bx + w * (0.3 + rnd(x, y, i + 2) * 0.4);
-          c.beginPath(); c.moveTo(bx, ty + T); c.lineTo(peak, ty + T - h); c.lineTo(bx + w, ty + T); c.closePath();
-          c.fillStyle = i % 2 ? 'rgba(150,205,180,.9)' : 'rgba(190,228,214,.9)'; c.fill();
-          c.lineWidth = 2; c.strokeStyle = '#1c1636'; c.stroke();
-          c.strokeStyle = 'rgba(255,255,255,.75)'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(peak - 1, ty + T - h + 5); c.lineTo(peak - 3, ty + T - 4); c.stroke();
-        }
-      } else drawProp(c, t, x, y, '#1c1636', '#7b6a9c');
-    }
-  }
-
-  // Crates and planks look the same on every theme; only the plank colours follow the palette.
-  function drawProp(c, t, x, y, ink, plank) {
-    const tx = x * T, ty = y * T;
-    if (t === 'B') {
-      const j = (k) => (rnd(x, y, k) - 0.5) * 3;
-      c.fillStyle = (x + y) % 2 ? '#b07a4f' : '#a46f47';
-      c.beginPath(); c.moveTo(tx + 1 + j(1), ty + 1 + j(2)); c.lineTo(tx + T - 1 + j(3), ty + 1 + j(4)); c.lineTo(tx + T - 1 + j(5), ty + T - 1 + j(6)); c.lineTo(tx + 1 + j(7), ty + T - 1 + j(8)); c.closePath();
-      c.fill(); c.strokeStyle = '#2a1b2e'; c.lineWidth = 2.5; c.stroke();
-      c.strokeStyle = 'rgba(60,34,30,.75)'; c.lineWidth = 2;
-      c.beginPath(); c.moveTo(tx + 6, ty + 6); c.lineTo(tx + T - 6, ty + T - 6); c.moveTo(tx + 5, ty + T / 2 + j(9)); c.lineTo(tx + T - 5, ty + T / 2 + j(10)); c.stroke();
-      c.fillStyle = 'rgba(255,220,170,.25)'; c.fillRect(tx + 4, ty + 3, T - 8, 3);
-    } else if (t === '=') {
-      c.fillStyle = plank; c.fillRect(tx, ty, T, 10);
-      c.strokeStyle = ink; c.lineWidth = 2; c.strokeRect(tx + 1, ty + 1, T - 2, 9);
-    }
-  }
-
-  // Office-building tiles: bottom two rows are floor, anything above is a cabinet/counter block.
-  function buildIndoorLayer(pal) {
-    const c = layer.getContext('2d'), tiles = game.tiles, ink = pal.edge;
-    c.clearRect(0, 0, W, H);
-    const solid = (x, y) => x >= 0 && x < COLS && y >= 0 && y < ROWS && tiles[y][x] === '#';
-    const floor = y => y >= ROWS - 2;
-    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
-      if (!solid(x, y)) continue;
-      const tx = x * T, ty = y * T;
-      if (floor(y)) {
-        c.fillStyle = pal.floor[(x + y) % 2]; c.fillRect(tx, ty, T, T);
-        c.fillStyle = 'rgba(255,255,255,.05)';
-        for (let i = 0; i < 6; i++) c.fillRect(tx + rnd(x, y, i) * 36, ty + rnd(x, y, i + 7) * 36, 2, 2);
-      } else {
-        c.fillStyle = pal.cab; c.fillRect(tx, ty, T, T);
-        c.fillStyle = 'rgba(20,16,44,.10)'; c.fillRect(tx + T - 6, ty, 6, T);
-        if (solid(x, y - 1) && !floor(y - 1)) { c.strokeStyle = pal.line; c.lineWidth = 2; c.beginPath(); c.moveTo(tx + 3, ty + 1); c.lineTo(tx + T - 3, ty + 1); c.stroke(); }
-        c.fillStyle = pal.handle; c.fillRect(tx + T / 2 - 6, ty + 12 + (rnd(x, y, 3) - 0.5) * 2, 12, 3);
+      if (t === '#') {
+        c.fillStyle = GREY.solid; c.fillRect(tx, ty, T, T);
+        c.strokeStyle = GREY.solidEdge; c.lineWidth = 1; c.strokeRect(tx + 0.5, ty + 0.5, T - 1, T - 1);
+      } else if (t === '^') {
+        c.fillStyle = GREY.glass;
+        for (let i = 0; i < 4; i++) { c.beginPath(); c.moveTo(tx + i * 10, ty + T); c.lineTo(tx + i * 10 + 5, ty + T - 16); c.lineTo(tx + i * 10 + 10, ty + T); c.closePath(); c.fill(); }
+      } else if (t === '=') {
+        c.fillStyle = GREY.plank; c.fillRect(tx, ty, T, 8);
+      } else if (t === 'B') {
+        c.fillStyle = GREY.crate; c.fillRect(tx + 1, ty + 1, T - 2, T - 2);
+        c.strokeStyle = GREY.crateInk; c.lineWidth = 2; c.strokeRect(tx + 1, ty + 1, T - 2, T - 2);
+        c.beginPath(); c.moveTo(tx + 6, ty + 6); c.lineTo(tx + T - 6, ty + T - 6); c.moveTo(tx + T - 6, ty + 6); c.lineTo(tx + 6, ty + T - 6); c.stroke();
       }
     }
-    c.fillStyle = 'rgba(24,18,52,.28)';
-    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (solid(x, y) && floor(y) && solid(x, y - 1)) c.fillRect(x * T, y * T, T, T);
-    c.strokeStyle = ink; c.lineWidth = 3; c.lineCap = 'round';
-    const edge = (x1, y1, x2, y2, k) => { c.beginPath(); c.moveTo(x1, y1); c.quadraticCurveTo((x1 + x2) / 2 + (rnd(x1, y1, k) - .5) * 4, (y1 + y2) / 2 + (rnd(x2, y2, k) - .5) * 4, x2, y2); c.stroke(); };
-    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
-      if (!solid(x, y)) continue;
-      if (!solid(x - 1, y) && x > 0) edge(x * T, y * T, x * T, y * T + T, 1);
-      if (!solid(x + 1, y) && x < COLS - 1) edge(x * T + T, y * T, x * T + T, y * T + T, 2);
-      if (!solid(x, y + 1) && y < ROWS - 1) edge(x * T, y * T + T, x * T + T, y * T + T, 3);
-      if (!solid(x, y - 1)) {
-        if (floor(y)) { c.fillStyle = ink; c.fillRect(x * T, y * T, T, 4); c.fillStyle = 'rgba(255,255,255,.12)'; c.fillRect(x * T, y * T + 4, T, 2); }
-        else { c.fillStyle = pal.top; c.fillRect(x * T - 1, y * T - 3, T + 2, 8); c.strokeStyle = ink; c.lineWidth = 2; c.strokeRect(x * T - 1, y * T - 3, T + 2, 8); }
-      }
-    }
-    // broken mugs instead of glass
-    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
-      if (tiles[y][x] !== '^') { drawProp(c, tiles[y][x], x, y, ink, pal.top); continue; }
-      const tx = x * T, ty = y * T;
-      for (let i = 0; i < 3; i++) {
-        const bx = tx + 2 + i * 12 + rnd(x, y, i) * 3, w = 11 + rnd(x, y, i + 5) * 5, h = 10 + rnd(x, y, i + 9) * 10;
-        c.beginPath(); c.moveTo(bx, ty + T); c.lineTo(bx + 2, ty + T - h); c.lineTo(bx + w * 0.6, ty + T - h - 4); c.lineTo(bx + w, ty + T - h * 0.4); c.lineTo(bx + w, ty + T); c.closePath();
-        c.fillStyle = '#ece6d8'; c.fill(); c.lineWidth = 2; c.strokeStyle = ink; c.stroke();
-        c.strokeStyle = '#5b7cc4'; c.lineWidth = 2.5; c.beginPath(); c.moveTo(bx + 2, ty + T - h + 3); c.lineTo(bx + w * 0.6, ty + T - h - 1); c.stroke();
-      }
-    }
-  }
-
-  // ---------- backdrops (drawn once per theme) ----------
-  const backdrops = {};
-  function backdrop(theme) {
-    const key = theme + (ok(img.background) ? ':1' : ':0');
-    if (backdrops[key]) return backdrops[key];
-    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-    const c = cv.getContext('2d');
-    let ink = '#1c1636';
-    const box = (x, y, w, h, fill, stroke = ink, lw = 2.5) => { c.fillStyle = fill; c.fillRect(x, y, w, h); if (stroke) { c.strokeStyle = stroke; c.lineWidth = lw; c.strokeRect(x, y, w, h); } };
-    const glow = (x, y, r, color) => { const g = c.createRadialGradient(x, y, 4, x, y, r); g.addColorStop(0, color); g.addColorStop(1, color.replace(/[\d.]+\)$/, '0)')); c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2); };
-    const pane = (x, y, w, h, grade, frame, cols = 2) => {
-      if (ok(img.background)) c.drawImage(img.background, x * 1.5, y * 1.5, w * 1.5, h * 1.5, x, y, w, h); else box(x, y, w, h, '#2b2860', null);
-      c.fillStyle = grade; c.fillRect(x, y, w, h);
-      c.strokeStyle = 'rgba(255,255,255,.07)'; c.lineWidth = 14;
-      c.beginPath(); c.moveTo(x + w * 0.2, y + h); c.lineTo(x + w * 0.55, y); c.moveTo(x + w * 0.45, y + h); c.lineTo(x + w * 0.7, y); c.stroke();
-      c.strokeStyle = frame; c.lineWidth = 6;
-      c.beginPath(); for (let i = 1; i < cols; i++) { c.moveTo(x + w * i / cols, y); c.lineTo(x + w * i / cols, y + h); } c.stroke();
-      c.lineWidth = 10; c.strokeRect(x, y, w, h);
-    };
-    const speckle = n => { for (let i = 0; i < n; i++) { c.fillStyle = i % 2 ? 'rgba(255,255,255,.035)' : 'rgba(0,0,0,.09)'; c.fillRect(rnd(i, 1, 1) * W, rnd(i, 2, 2) * H, 2, 2); } };
-    const write = (str, x, y, size, color, rot = 0) => { c.save(); c.translate(x, y); c.rotate(rot); c.font = `${size}px ${FONT}`; c.fillStyle = color; c.fillText(str, 0, 0); c.restore(); };
-
-    if (theme === 'office') {
-      // cold fluorescent teal, warm amber screens and desk lamps
-      ink = '#122326';
-      box(0, 0, W, H, '#24474f', null); box(0, 0, W, 36, '#1b353b', null); box(0, 470, W, H - 470, '#1f3d44', null);
-      c.fillStyle = '#3d6b6f'; c.fillRect(0, 466, W, 5);
-      pane(40, 70, 340, 300, 'rgba(10,46,56,.38)', '#122326'); pane(900, 70, 340, 300, 'rgba(10,46,56,.38)', '#122326');
-      c.save(); c.translate(0, 40);
-      box(470, 100, 340, 220, '#e9efe6', '#7fa6a0', 6);
-      write('連假前', 500, 150, 30, '#d4574a', -0.03); write('全部交！！', 520, 192, 34, '#d4574a', -0.02);
-      c.strokeStyle = '#2f6a8f'; c.lineWidth = 3;
-      c.beginPath(); for (let i = 0; i < 4; i++) { c.moveTo(500, 225 + i * 18); c.lineTo(620 + rnd(i, 3, 3) * 60, 222 + i * 18); } c.stroke();
-      c.beginPath(); c.moveTo(690, 300); c.lineTo(690, 220); c.moveTo(690, 300); c.lineTo(790, 300); c.stroke();
-      [[705, 40], [730, 62], [755, 30]].forEach(([x, h]) => box(x, 300 - h, 16, h, 'rgba(47,106,143,.45)', '#2f6a8f', 2));
-      box(490, 318, 300, 8, '#7fa6a0', null);
-      c.restore();
-      c.beginPath(); c.arc(855, 66, 24, 0, Math.PI * 2); c.fillStyle = '#f2ead6'; c.fill(); c.strokeStyle = ink; c.lineWidth = 3; c.stroke();
-      const hand = (a, l, w) => { c.lineWidth = w; c.beginPath(); c.moveTo(855, 66); c.lineTo(855 + Math.cos(a) * l, 66 + Math.sin(a) * l); c.stroke(); };
-      hand((47 / 60) * Math.PI * 2 - Math.PI / 2, 18, 2); hand(((11 + 47 / 60) / 12) * Math.PI * 2 - Math.PI / 2, 12, 3);
-      for (const x of [150, 560, 970]) { glow(x + 85, 40, 300, 'rgba(170,240,215,.16)'); box(x, 36, 170, 10, '#d9f3e6', ink, 2); }
-      for (let i = 0; i < 6; i++) {
-        const x = 10 + i * 220;
-        glow(x + 87, 494, 120, 'rgba(242,180,90,.22)');
-        box(x + 50, 470, 74, 48, '#10201f', ink); c.fillStyle = 'rgba(242,180,90,.55)'; c.fillRect(x + 56, 476, 62, 34);
-        box(x, 520, 200, 120, '#183338', null);
-      }
-    } else if (theme === 'pantry') {
-      // the one warm room of the night
-      ink = '#2a1712';
-      box(0, 0, W, H, '#5a3b35', null);
-      for (let y = 300; y < H; y += 32) for (let x = 0; x < W; x += 32) box(x, y, 32, 32, (x + y) % 64 ? '#b8674a' : '#a95d43', '#7d4434', 1.5);
-      for (let i = 0; i < 4; i++) { box(100 + i * 150, 140, 150, 120, '#9c7a63', ink, 2); box(100 + i * 150 + 120, 230, 6, 18, '#5b352b', null); }
-      pane(920, 70, 280, 220, 'rgba(70,30,20,.25)', ink);
-      glow(500, 70, 380, 'rgba(255,200,130,.28)');
-      box(760, 330, 120, 310, '#9da3a6', ink, 2); c.fillStyle = ink; c.fillRect(760, 430, 120, 3); box(862, 360, 6, 50, '#8a9599', null); box(862, 450, 6, 70, '#8a9599', null);
-      box(1000, 470, 60, 170, '#a9a49a', ink, 2); box(1006, 400, 48, 70, 'rgba(127,195,230,.85)', ink, 2);
-      c.save(); c.translate(190, 330); c.rotate(-0.03); box(0, 0, 180, 82, '#f6efdd', ink, 2); c.restore();
-      write('杯子請自己洗', 204, 368, 22, '#5b352b', -0.03); write('— 總務', 290, 398, 14, '#5b352b', -0.03);
-      c.strokeStyle = ink; c.lineWidth = 2; c.beginPath(); c.moveTo(500, 0); c.lineTo(500, 50); c.stroke();
-      c.fillStyle = '#2f6b5a'; c.beginPath(); c.moveTo(455, 70); c.lineTo(545, 70); c.lineTo(525, 48); c.lineTo(475, 48); c.closePath(); c.fill(); c.stroke();
-      c.fillStyle = '#ffe3b0'; c.beginPath(); c.ellipse(500, 72, 22, 6, 0, 0, Math.PI * 2); c.fill();
-    } else if (theme === 'elevator') {
-      // burgundy walls, brass doors: a little too fancy for 23:50
-      ink = '#1a0b10';
-      box(0, 0, W, H, '#4a1f2b', null);
-      c.strokeStyle = '#3b1822'; c.lineWidth = 3; c.beginPath(); for (let x = 160; x < W; x += 160) { c.moveTo(x, 0); c.lineTo(x, H); } c.stroke();
-      c.strokeStyle = 'rgba(255,220,200,.05)'; c.lineWidth = 2; c.beginPath(); for (let i = 0; i < 14; i++) { const x = rnd(i, 5, 5) * W; c.moveTo(x, 0); c.lineTo(x + 120, 300 + rnd(i, 6, 6) * 300); } c.stroke();
-      box(0, 600, W, 40, '#3b1822', null);
-      for (const x of [200, 560, 920]) glow(x, 0, 260, 'rgba(255,214,150,.22)');
-      for (const x of [360, 720]) {
-        glow(x + 100, 480, 200, 'rgba(216,180,106,.18)');
-        box(x - 10, 320, 220, 320, '#2a1218', ink, 3); box(x, 330, 100, 310, '#c9a25a', ink, 2); box(x + 100, 330, 100, 310, '#b8914c', ink, 2);
-        c.fillStyle = 'rgba(255,240,200,.25)'; c.fillRect(x + 14, 340, 8, 290); c.fillRect(x + 114, 340, 8, 290);
-        box(x + 60, 270, 80, 34, '#14070b', ink, 2); write(x === 360 ? '7 ▼' : 'B1', x + 74, 296, 22, '#f0b45a');
-      }
-      box(618, 450, 34, 60, '#c9a25a'); c.beginPath(); c.arc(635, 470, 7, 0, Math.PI * 2); c.arc(635, 492, 7, 0, Math.PI * 2); c.fillStyle = '#fff1c8'; c.fill();
-      box(90, 90, 160, 50, '#2f8a5c', ink, 3); write('安全門  EXIT', 104, 124, 20, '#eaf7ec');
-      c.fillStyle = '#c9a25a'; c.beginPath(); c.moveTo(1110, 560); c.lineTo(1190, 560); c.lineTo(1180, 640); c.lineTo(1120, 640); c.closePath(); c.fill(); c.strokeStyle = ink; c.lineWidth = 3; c.stroke();
-      c.fillStyle = '#2f6b4f'; for (let i = 0; i < 7; i++) { c.beginPath(); c.ellipse(1150 + (rnd(i, 7, 7) - 0.5) * 80, 500 - rnd(i, 8, 8) * 90, 16, 34, (rnd(i, 9, 9) - 0.5) * 1.6, 0, Math.PI * 2); c.fill(); c.stroke(); }
-    } else if (theme === 'lobby') {
-      // the night finally fills the frame
-      ink = '#141228';
-      pane(0, 60, W, 580, 'rgba(0,0,0,0)', '#141228', 4);
-      box(0, 0, W, 64, '#1b1d33', null); write('1F　大廳', W - 150, 44, 24, 'rgba(231,199,126,.75)');
-      glow(250, 560, 260, 'rgba(231,199,126,.18)');
-      box(80, 540, 340, 100, '#2a2742', null);
-    }
-    // depth: blur the room a touch and haze it toward the wall colour, so nothing behind Jim reads as a platform
-    const soft = document.createElement('canvas'); soft.width = W; soft.height = H;
-    const sc = soft.getContext('2d'); sc.filter = 'blur(1.6px)'; sc.drawImage(cv, 0, 0);
-    c.clearRect(0, 0, W, H); c.drawImage(soft, 0, 0);
-    c.globalAlpha = theme === 'pantry' ? 0.5 : 0.42; c.fillStyle = { office: '#1d3a40', pantry: '#4a2f2a', elevator: '#3a1822', lobby: '#15172b' }[theme] || '#1b1830'; c.fillRect(0, 0, W, H); c.globalAlpha = 1;
-    speckle(3000);
-    // soft vignette to pull the eye to the middle
-    const v = c.createRadialGradient(W / 2, H / 2, 300, W / 2, H / 2, 820); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.35)');
-    c.fillStyle = v; c.fillRect(0, 0, W, H);
-    backdrops[key] = cv;
-    return cv;
   }
 
   // ---------- sprites ----------
@@ -2162,7 +2069,6 @@
     if (anim === 'drink') return [img['drink' + f], 0];
     return [img[anim], f * 512];
   }
-  function drawActor(anim, t, x, y, face, size, color, alpha) { drawFrame(anim, frameOf(anim, t), x, y, face, size, color, alpha); }
 
   // Jim's pose from what he is doing right now. The jump strip is a whole hop (crouch, rise, apex, land) and the
   // fall strip is trip-and-pass-out, so frames are chosen by state and velocity rather than played by time.
@@ -2243,110 +2149,58 @@
   }
 
   // Day two leaves the office: sodium street lamps over a magenta night.
-  function drawStreetGrade() {
-    ctx.save();
-    ctx.globalCompositeOperation = 'soft-light';
-    const gr = ctx.createLinearGradient(0, 0, 0, H);
-    gr.addColorStop(0, 'rgba(120,40,170,.75)'); gr.addColorStop(0.55, 'rgba(230,70,130,.55)'); gr.addColorStop(1, 'rgba(255,150,60,.85)');
-    ctx.fillStyle = gr; ctx.fillRect(-8, -8, W + 16, H + 16);
-    ctx.restore();
-    for (const x of [170, 640, 1110]) {
-      const gl = ctx.createRadialGradient(x, 300, 6, x, 300, 300);
-      gl.addColorStop(0, 'rgba(255,190,90,.38)'); gl.addColorStop(1, 'rgba(255,190,90,0)');
-      ctx.fillStyle = gl; ctx.fillRect(x - 300, 0, 600, H);
-      ctx.fillStyle = '#1a1028'; ctx.fillRect(x - 4, 300, 8, H - 300);
-      ctx.beginPath(); ctx.moveTo(x - 4, 302); ctx.quadraticCurveTo(x, 270, x + 30, 280); ctx.lineWidth = 6; ctx.strokeStyle = '#1a1028'; ctx.stroke();
-      ctx.fillStyle = '#ffd38a'; ctx.beginPath(); ctx.ellipse(x + 32, 286, 14, 6, 0, 0, Math.PI * 2); ctx.fill();
-    }
-  }
-
   function drawDynamicTiles() {
     const g = game;
     for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
       const t = g.tiles[y][x], tx = x * T, ty = y * T;
       if (t === 'N') {
-        drawActor('idle', g.time, tx + T / 2, ty + T, 1, 100, '#e0a87a', 1);
+        ctx.fillStyle = '#b9a0d8'; ctx.fillRect(tx + T / 2 - 16, ty + T - 72, 32, 72);
         text(g.room.npcs?.[`${x},${y}`]?.name || 'NPC', tx + T / 2, ty - T, 16, 'center');
       } else if (t === 'O') {
-        ctx.save();
-        const pulse = .5 + .5 * Math.sin(g.time * 4), cx = tx + T / 2, cy = ty + T / 2;
-        const halo = ctx.createRadialGradient(cx, cy, 0, cx, cy, T * .95);
-        halo.addColorStop(0, 'rgba(143,255,226,.45)');
-        halo.addColorStop(.45, `rgba(143,255,226,${.12 + pulse * .12})`);
-        halo.addColorStop(1, 'rgba(143,255,226,0)');
-        ctx.fillStyle = halo; ctx.fillRect(tx - T / 2, ty - T / 2, T * 2, T * 2);
-        ctx.fillStyle = '#34235f'; ctx.strokeStyle = '#8fffe2'; ctx.lineWidth = 3;
-        ctx.shadowColor = '#8fffe2'; ctx.shadowBlur = 12 + Math.sin(g.time * 4) * 5;
-        ctx.beginPath(); ctx.ellipse(tx + T / 2, ty + T / 2, T * .32, T * .44, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = '#8fffe2'; ctx.font = '24px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('→', tx + T / 2, ty + T * .7);
-        ctx.fillStyle = '#e5fff7';
-        for (let i = 0; i < 6; i++) {
-          const phase = (g.time * .45 + i / 6 + x * .13 + y * .07) % 1;
-          const sx = cx + Math.sin(i * 2.4 + g.time) * T * .52;
-          const sy = ty + T - phase * T * 1.4;
-          ctx.globalAlpha = Math.sin(phase * Math.PI);
-          ctx.beginPath(); ctx.arc(sx, sy, 1.5 + pulse, 0, Math.PI * 2); ctx.fill();
-        }
-        ctx.restore();
+        // the exit: a door outline two tiles tall standing on the tile's floor
+        ctx.strokeStyle = GREY.exit; ctx.lineWidth = 3; ctx.globalAlpha = 0.7 + 0.3 * Math.sin(g.time * 4);
+        ctx.strokeRect(tx + 6, ty - T + 6, T - 12, T * 2 - 6);
+        ctx.globalAlpha = 1; ctx.font = `bold 11px ${FONT}`; ctx.textAlign = 'center'; ctx.fillStyle = GREY.exit;
+        ctx.fillText('EXIT', tx + T / 2, ty - T - 4);
       } else if (t === 'C') {
-        const c = g.crumbles.get(x + ',' + y), jx = c ? (Math.random() - 0.5) * 4 : 0, jy = c ? (Math.random() - 0.5) * 2 : 0;
-        ctx.save(); ctx.translate(tx + jx, ty + jy);
-        ctx.fillStyle = (x + y) % 2 ? '#c89a64' : '#bd8f5a'; ctx.fillRect(1, 1, T - 2, T - 2);
-        ctx.fillStyle = '#e8d6a8'; ctx.fillRect(T / 2 - 4, 1, 8, T - 2);
-        ctx.strokeStyle = '#3a2618'; ctx.lineWidth = 2.5; ctx.strokeRect(1, 1, T - 2, T - 2);
-        ctx.strokeStyle = 'rgba(58,38,24,.5)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(4, T - 9); ctx.lineTo(14, T - 9); ctx.stroke();
-        ctx.restore();
+        // crumbling boxes: a dashed crate, shaking once stood on
+        const c = g.crumbles.get(x + ',' + y), jx = c ? (Math.random() - 0.5) * 4 : 0;
+        ctx.fillStyle = 'rgba(217,137,59,.45)'; ctx.fillRect(tx + 2 + jx, ty + 2, T - 4, T - 4);
+        ctx.setLineDash([5, 4]); ctx.strokeStyle = GREY.crate; ctx.lineWidth = 2; ctx.strokeRect(tx + 2 + jx, ty + 2, T - 4, T - 4); ctx.setLineDash([]);
       } else if (t === '<' || t === '>') {
         const d = t === '>' ? 1 : -1, off = ((g.time * TUNING.belt * d) % 20 + 20) % 20;
-        ctx.fillStyle = '#2a2d3d'; ctx.fillRect(tx, ty, T, T);
-        ctx.fillStyle = '#3c4157'; ctx.fillRect(tx, ty, T, 10);
-        ctx.save(); ctx.beginPath(); ctx.rect(tx, ty, T, 10); ctx.clip();
-        ctx.strokeStyle = '#ffd38a'; ctx.lineWidth = 2.5;
-        for (let k = -20; k < T + 20; k += 20) { const cx = tx + k + off; ctx.beginPath(); ctx.moveTo(cx - 4 * d, ty + 1); ctx.lineTo(cx + 3 * d, ty + 5); ctx.lineTo(cx - 4 * d, ty + 9); ctx.stroke(); }
+        ctx.fillStyle = GREY.belt; ctx.fillRect(tx, ty, T, T);
+        ctx.save(); ctx.beginPath(); ctx.rect(tx, ty, T, 12); ctx.clip();
+        ctx.strokeStyle = '#c8ccd6'; ctx.lineWidth = 2;
+        for (let k = -20; k < T + 20; k += 20) { const cx = tx + k + off; ctx.beginPath(); ctx.moveTo(cx - 4 * d, ty + 2); ctx.lineTo(cx + 3 * d, ty + 6); ctx.lineTo(cx - 4 * d, ty + 10); ctx.stroke(); }
         ctx.restore();
-        ctx.strokeStyle = '#120c1c'; ctx.lineWidth = 2.5; ctx.strokeRect(tx, ty, T, T);
       }
     }
   }
 
+  // Entities as their hit boxes: a guard or chair is the box that kills, with an arrow for where it walks.
   function drawEntities() {
     const g = game;
     for (const e of g.entities) {
       if (e.kind === 'patrol') {
-        ctx.save(); ctx.translate(e.x, e.y);
+        ctx.save(); ctx.translate(e.x, e.y - e.h / 2);
         if (!e.alive) ctx.rotate(e.t * 9 * Math.sign(e.vx || 1));
-        if (e.skin === 'chair') {
-          ctx.strokeStyle = '#120c1c'; ctx.lineWidth = 2.5; ctx.fillStyle = '#2d2a3d';
-          for (const wx of [-15, 0, 15]) { ctx.beginPath(); ctx.arc(wx + Math.sin(e.t * 12 + wx) * 1.5, -4, 4, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
-          ctx.fillRect(-2, -22, 4, 16);
-          ctx.fillStyle = '#c0504d'; ctx.beginPath(); ctx.rect(-20, -28, 40, 8); ctx.fill(); ctx.stroke();
-          ctx.beginPath(); ctx.rect(-e.dir * 20 - (e.dir > 0 ? 0 : 0) - 4, -50, 8, 26); ctx.fill(); ctx.stroke();
-        } else {
-          const lit = ctx.createLinearGradient(0, 0, e.dir * 200, 0);
-          lit.addColorStop(0, 'rgba(255,240,180,.35)'); lit.addColorStop(1, 'rgba(255,240,180,0)');
-          if (e.alive) { ctx.fillStyle = lit; ctx.beginPath(); ctx.moveTo(e.dir * 16, -62); ctx.lineTo(e.dir * 200, -110); ctx.lineTo(e.dir * 200, -10); ctx.closePath(); ctx.fill(); }
-          ctx.restore();
-          drawActor(e.alive ? 'run' : 'fall', e.t, e.x, e.y, e.dir, 150, '#232a4a', 0.95);
-          ctx.save(); ctx.translate(e.x, e.y);
-          ctx.fillStyle = '#232a4a'; ctx.strokeStyle = '#0e1024'; ctx.lineWidth = 2;
-          ctx.beginPath(); ctx.ellipse(e.dir * 4, -122, 24, 8, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-        }
+        ctx.globalAlpha = e.alive ? 1 : 0.6;
+        ctx.fillStyle = GREY.patrol; ctx.fillRect(-e.w / 2, -e.h / 2, e.w, e.h);
+        ctx.strokeStyle = '#5a1a18'; ctx.lineWidth = 2; ctx.strokeRect(-e.w / 2, -e.h / 2, e.w, e.h);
+        ctx.fillStyle = '#fff3ec'; ctx.beginPath();
+        ctx.moveTo(e.dir * (e.w / 2 + 12), 0); ctx.lineTo(e.dir * (e.w / 2 + 2), -7); ctx.lineTo(e.dir * (e.w / 2 + 2), 7); ctx.closePath(); ctx.fill();
         ctx.restore();
       } else if (e.kind === 'cap' && !e.got) {
-        drawCap(e, g.time);
+        drawCap(e);
+      } else if (e.kind === 'bottle' && (!e.got || g.looped)) {
+        // under loop rules a drunk bottle shows as an outline until it comes back
+        drawBottle(e.x, e.y, 1, e.got ? 0.25 : 1);
       } else if (e.kind === 'faller' && e.phase !== 'gone') {
-        const wob = e.phase === 'warn' ? Math.sin(e.t * 60) * 0.12 : 0;
-        if (e.phase !== 'fall') { ctx.strokeStyle = '#120c1c'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(e.x - 26, 0); ctx.lineTo(e.x - 26, e.y); ctx.moveTo(e.x + 26, 0); ctx.lineTo(e.x + 26, e.y); ctx.stroke(); }
-        ctx.save(); ctx.translate(e.x, e.y + e.h / 2); ctx.rotate(wob);
-        if (e.skin === 'tube') {
-          const gl = ctx.createRadialGradient(0, 0, 4, 0, 0, 90); gl.addColorStop(0, 'rgba(200,250,230,.25)'); gl.addColorStop(1, 'rgba(200,250,230,0)');
-          ctx.fillStyle = gl; ctx.fillRect(-90, -20, 180, 110);
-          ctx.fillStyle = '#d9f3e6'; ctx.strokeStyle = '#122326'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.rect(-36, -7, 72, 14); ctx.fill(); ctx.stroke();
-        } else {
-          ctx.fillStyle = '#d8343f'; ctx.strokeStyle = '#1a0b10'; ctx.lineWidth = 3; ctx.beginPath(); ctx.rect(-36, -15, 72, 30); ctx.fill(); ctx.stroke();
-          ctx.font = `24px ${FONT}`; ctx.textAlign = 'center'; ctx.fillStyle = '#fff1c8'; ctx.fillText('酒', 0, 9);
-        }
-        ctx.restore();
+        if (e.phase !== 'fall') { ctx.strokeStyle = 'rgba(232,195,74,.5)'; ctx.lineWidth = 1; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(e.x, 0); ctx.lineTo(e.x, e.y); ctx.stroke(); ctx.setLineDash([]); }
+        const wob = e.phase === 'warn' ? Math.sin(e.t * 60) * 3 : 0;
+        ctx.fillStyle = GREY.faller; ctx.fillRect(e.x - e.w / 2 + wob, e.y, e.w, e.h);
+        ctx.fillStyle = '#3a2e08'; ctx.font = `bold ${Math.min(24, e.h)}px ${FONT}`; ctx.textAlign = 'center'; ctx.fillText('!', e.x + wob, e.y + e.h - 3);
       }
     }
   }
@@ -2414,19 +2268,33 @@
     if (s >= 2) { ctx.fillStyle = `rgba(255,120,200,${0.03 * (s - 1) * (0.5 + 0.5 * Math.sin(g.time * 2))})`; ctx.fillRect(0, 0, W, H); }
   }
 
-  // The booze gauge: one cell per move, drained from the right. The cell J will spend is ringed.
+  // 1 丟 an arc, 2 衝 a flat arrow, 3 升天 an up arrow, 0 a dash: thin lines in the move's colour
+  function moveIcon(grade, cx, cy, alpha) {
+    ctx.save(); ctx.globalAlpha = alpha; ctx.translate(cx, cy);
+    ctx.lineWidth = 3; ctx.lineCap = ctx.lineJoin = 'round'; ctx.strokeStyle = grade ? ZUI[grade].tint : '#8a809f';
+    ctx.beginPath();
+    if (grade === 1) { ctx.moveTo(-11, 8); ctx.quadraticCurveTo(-2, -16, 10, 6); ctx.moveTo(4, 5); ctx.lineTo(10, 6); ctx.lineTo(11, 0); }
+    else if (grade === 2) { ctx.moveTo(-11, 0); ctx.lineTo(11, 0); ctx.moveTo(5, -6); ctx.lineTo(11, 0); ctx.lineTo(5, 6); }
+    else if (grade === 3) { ctx.moveTo(0, 11); ctx.lineTo(0, -11); ctx.moveTo(-6, -5); ctx.lineTo(0, -11); ctx.lineTo(6, -5); }
+    else { ctx.moveTo(-8, 0); ctx.lineTo(8, 0); }
+    ctx.stroke(); ctx.restore();
+  }
+
+  // The puzzle panel, icons only. Top: three stage bars, lit up to Jim's grade (the ones the world is
+  // changing blink). Below: the move J plays now, and the bottles in hand. While the world lags, a bar runs down.
   function drawChillGauge() {
-    const g = game, x = 22, y = 60, n = g.targetStage();
-    ctx.fillStyle = 'rgba(18,14,35,.72)'; ctx.fillRect(x, y, 256, g.stageWarn ? 104 : 76);
-    text(['清醒', '微醺', '大醉', '爛醉'][n], x + 14, y + 26, 19, 'left', 0.9, '#e6d6ff');
+    const g = game, x = 22, y = 60, n = g.targetStage(), warn = g.stageWarn;
+    const moves = !n ? [0] : g.single ? [n] : Array.from({ length: n }, (_, i) => n - i);
+    ctx.fillStyle = 'rgba(18,14,35,.72)'; ctx.fillRect(x, y, 170, warn ? 84 : 74);
     for (let i = 1; i <= 3; i++) {
-      ctx.fillStyle = i <= n ? ZUI[i].tint : '#352c49'; ctx.fillRect(x + 106 + (i - 1) * 43, y + 16, 33, 8);
+      const changing = warn && i > Math.min(g.stage, warn.to) && i <= Math.max(g.stage, warn.to);
+      ctx.globalAlpha = changing ? 0.5 + 0.5 * Math.sin(g.time * 14) : 1;
+      ctx.fillStyle = i <= n ? ZUI[i].tint : '#352c49'; ctx.fillRect(x + 14 + (i - 1) * 50, y + 14, 42, 8);
     }
-    text(n ? 'J  ' + Array.from({ length: n }, (_, i) => ZUI[n - i].name).join(' → ') : 'J  叫不出醉影', x + 14, y + 57, 21, 'left', n && !g.chillAirUsed ? 0.95 : 0.4, '#f2c24f');
-    if (g.stageWarn) {
-      text('景象變換　' + g.stageWarn.t.toFixed(1), x + 14, y + 87, 16, 'left', 0.85, '#cbbde3');
-      ctx.fillStyle = '#cbbde3'; ctx.fillRect(x, y + 102, 256 * g.stageWarn.t / g.stageWarn.duration, 2);
-    }
+    ctx.globalAlpha = 1;
+    moves.forEach((m, i) => moveIcon(m, x + 28 + i * 32, y + 48, n && !g.chillAirUsed ? 1 : 0.35));
+    if (g.bottled) for (let i = 0; i < TUNING.carry; i++) drawBottle(x + 150 - i * 22, y + 48, 0.6, i < g.held ? 1 : 0.25);
+    if (warn) { ctx.fillStyle = '#cbbde3'; ctx.fillRect(x, y + 80, 170 * warn.t / warn.duration, 4); }
   }
 
   function drawGauge() {
@@ -2453,16 +2321,18 @@
     text(['清醒', '微醺', '大醉', '爛醉'][g.stage] + (g.stageWarn ? (g.stageWarn.to > g.stage ? '　醉意上湧…' : '　酒醒中…') : ''), x0, y0 - 12, 17, 'left', 0.85, g.stageWarn ? '#f2c24f' : '#cdb8ff');
   }
 
-  function drawCap(e, t) {
-    const y = e.y + Math.sin(t * 3 + e.x) * 3;
-    ctx.save(); ctx.translate(e.x, y); ctx.rotate(Math.sin(t * 2) * 0.2);
-    const gl = ctx.createRadialGradient(0, 0, 2, 0, 0, 34); gl.addColorStop(0, 'rgba(255,214,110,.45)'); gl.addColorStop(1, 'rgba(255,214,110,0)');
-    ctx.fillStyle = gl; ctx.fillRect(-34, -34, 68, 68);
-    ctx.beginPath();
-    for (let i = 0; i < 21; i++) { const a = i / 21 * Math.PI * 2, r = i % 2 ? 11 : 14; ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
-    ctx.closePath(); ctx.fillStyle = '#e8b84a'; ctx.fill(); ctx.strokeStyle = '#3a2618'; ctx.lineWidth = 2; ctx.stroke();
-    ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI * 2); ctx.fillStyle = '#c9411f'; ctx.fill();
+  // A bottle: a green capsule 36 px tall at scale 1, centred on (x, y).
+  function drawBottle(x, y, s, alpha = 1) {
+    ctx.save(); ctx.globalAlpha = alpha; ctx.translate(x, y); ctx.scale(s, s);
+    ctx.fillStyle = GREY.bottle; ctx.strokeStyle = '#1d4a22'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.roundRect(-8, -12, 16, 30, 6); ctx.fill(); ctx.stroke();
+    ctx.fillRect(-3, -18, 6, 7);
     ctx.restore();
+  }
+
+  function drawCap(e) {
+    ctx.fillStyle = GREY.cap; ctx.beginPath(); ctx.arc(e.x, e.y, 10, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#6b5212'; ctx.lineWidth = 2; ctx.stroke();
   }
 
   function drawAim() {
@@ -2491,13 +2361,6 @@
     if (key !== roomKey) { roomKey = key; buildLayer(); }
     ctx.save();
     if (g.shake) ctx.translate((Math.random() - 0.5) * g.shake * 18, (Math.random() - 0.5) * g.shake * 18);
-    const theme = g.room.theme || 'street';
-    if (theme !== 'street') ctx.drawImage(backdrop(theme), -8, -8, W + 16, H + 16);
-    else if (ok(img.background)) ctx.drawImage(img.background, -8, -8, W + 16, H + 16); else { ctx.fillStyle = '#2b2860'; ctx.fillRect(-8, -8, W + 16, H + 16); }
-    if (theme === 'street') { drawStreetGrade(); ctx.fillStyle = 'rgba(22,12,40,.28)'; ctx.fillRect(-8, -8, W + 16, H + 16); }
-    else { ctx.fillStyle = 'rgba(18,14,44,.08)'; ctx.fillRect(-8, -8, W + 16, H + 16); }
-    const pit = ctx.createLinearGradient(0, 560, 0, H); pit.addColorStop(0, 'rgba(6,4,14,0)'); pit.addColorStop(1, 'rgba(6,4,14,.7)');
-    ctx.fillStyle = pit; ctx.fillRect(-8, 560, W + 16, H - 552);
     ctx.drawImage(layer, 0, 0);
     drawDynamicTiles();
     drawHallucination();
@@ -2511,7 +2374,11 @@
           ctx.beginPath(); ctx.moveTo(st.x - g.chargeDir * (40 + i * 6), yy); ctx.lineTo(st.x - g.chargeDir * (40 + i * 6 + len), yy); ctx.stroke();
         }
       }
-      drawActor(charging ? 'run' : 'idle', g.time, st.x, st.y, st.face, st.ability === 'wrestler' ? 170 : 152, g.drunk ? '#9b7be0' : ABILITIES[st.ability].tint, (g.drunk ? 0.75 : 0.85) * st.alpha);
+      // the shadow is a translucent box the size of what it holds Jim up with
+      const sh = st.h || 150;
+      ctx.globalAlpha = 0.45 * st.alpha; ctx.fillStyle = g.drunk ? GREY.shadow : ABILITIES[st.ability].tint; ctx.fillRect(st.x - BODY_W / 2 - 6, st.y - sh, BODY_W + 12, sh);
+      ctx.globalAlpha = 0.9 * st.alpha; ctx.strokeStyle = ctx.fillStyle; ctx.lineWidth = 2; ctx.strokeRect(st.x - BODY_W / 2 - 6, st.y - sh, BODY_W + 12, sh);
+      ctx.globalAlpha = 1;
     }
     if (g.state === 'lift') drawAim();
     if (g.state !== 'dead') {
@@ -2708,12 +2575,16 @@
   let auto = null, puzzleRoutes = null, puzzleRouteState = 'idle';
   // A single-file build (handoff/kit/build-beaverkit.mjs) embeds the puzzle rooms and routes.
   const embedded = id => document.getElementById(id)?.textContent || null;
+  // ?chill=1 loads the main puzzle rooms, ?chill=single the single-skill test rooms, ?chill=loop the drink-use-sober loop
+  const chillParam = new URLSearchParams(location.search).get('chill');
+  const chillFiles = ['single', 'loop'].includes(chillParam)
+    ? { rooms: `chill-${chillParam}.json`, routes: `chill-${chillParam}-routes.json` } : { rooms: 'chill-puzzles.json', routes: 'chill-routes.json' };
   function loadPuzzleRoutes() {
     if (puzzleRouteState !== 'idle') return;
     const inline = embedded('chill-routes-data');
     if (inline) { puzzleRoutes = JSON.parse(inline); puzzleRouteState = 'ready'; return; }
     puzzleRouteState = 'loading';
-    fetch('chill-routes.json', { cache: 'no-store' }).then(response => {
+    fetch(chillFiles.routes, { cache: 'no-store' }).then(response => {
       if (!response.ok) throw new Error('Route unavailable');
       return response.json();
     }).then(data => { puzzleRoutes = data; puzzleRouteState = 'ready'; })
@@ -2862,9 +2733,9 @@
     const source = embedded('chill-puzzles-data');
     previewCampaign = parseCampaign(source);
     load(source, '醉態解謎');
-  } else if (new URLSearchParams(location.search).get('chill') === '1') {
+  } else if (['1', 'single', 'loop'].includes(chillParam)) {
     toggleMenu(true); menuMsg.textContent = '醉影正在找路……';
-    fetch('chill-puzzles.json', { cache: 'no-store' }).then(response => {
+    fetch(chillFiles.rooms, { cache: 'no-store' }).then(response => {
       if (!response.ok) throw new Error('解謎關卡讀取失敗');
       return response.text();
     }).then(source => {
