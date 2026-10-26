@@ -57,6 +57,8 @@
   <button data-act="resume">繼續</button>
   <button data-act="retry">重來這間</button>
   <button data-act="restart">從第一間開始</button>
+  <button data-act="autoAll">從頭一路自動通關</button>
+  <button data-act="autoHere">從這間一路自動通關</button>
   <button data-act="load">載入關卡 JSON</button>
   <button data-act="default">換回內建關卡</button>
   <p id="menuMsg"></p>
@@ -143,6 +145,7 @@
     pit: ['這坑比我的年終還深', '我只是想回家……'],
     guard: ['我有識別證！', '我就住這附近！'],
     sign: ['招牌也太不牢了', '這是工傷嗎？'],
+    crush: ['牆長在我身上了', '幻覺把我卡住了'],
     other: ['我早就死了啊', '再一杯……', '嗝。', '這不算！'],
   };
   const GUARD_LINES = ['下班了還想去哪？', '這裡不能過。', '你是不是喝酒了？'];
@@ -395,6 +398,8 @@
       const boxes = [this.box(this.body)].concat(this.stand && !this.stand.leaving ? [this.box(this.stand)] : [],
         this.entities.filter(e => e.kind === 'patrol' && e.alive).map(e => ({ x: e.x - e.w / 2, y: e.y - e.h, w: e.w, h: e.h })));
       const blocked = (x, y, c) => SOLID.includes(c) && boxes.some(b => overlap(b, { x: x * T, y: y * T, w: T, h: T }));
+      // loop rules: a solid that lands on Jim does not wait for him; he is stuck in the wall, and that is a death
+      const jim = this.box(this.body), crushes = (x, y, c) => this.looped && this.state !== 'dead' && SOLID.includes(c) && overlap(jim, { x: x * T, y: y * T, w: T, h: T });
       const write = ([x, y, c]) => { this.tiles[y][x] = c; this.crumbles.delete(x + ',' + y); this.tilesVersion++; };
       this.stageDeferred = this.stageDeferred.filter(cell => { if (blocked(...cell)) return true; write(cell); return false; });
       if (!this.stageWarn) return;
@@ -404,7 +409,10 @@
       const { to, cells } = this.stageWarn;
       // a newer change of the same cell replaces one still waiting for Jim or a guard to step out
       this.stageDeferred = this.stageDeferred.filter(([dx, dy]) => !cells.some(([x, y]) => x === dx && y === dy));
-      for (const cell of cells) { if (blocked(...cell)) this.stageDeferred.push(cell); else write(cell); }
+      for (const cell of cells) {
+        if (crushes(...cell)) { write(cell); this.die('crush'); }
+        else if (blocked(...cell)) this.stageDeferred.push(cell); else write(cell);
+      }
       if (to !== this.stage) this.events.push(to > this.stage ? 'stageUp' : 'stageDown');
       this.stage = to; this.stageWarn = null; this.hallu = new Set();
       const next = this.stageQueue.shift();
@@ -2423,7 +2431,7 @@
       const n = Math.floor(g.booze + 1e-9);
       if (!g.chill && g.state === 'lift') text('W 高拋　S 低飛', W / 2, H - 52, 20, 'center', 0.95, '#f2c24f');
       if (!g.chill && g.state === 'charge' && g.stand && g.stand.grounded) text('W 跳離', W / 2, H - 52, 20, 'center', 0.95, '#f2c24f');
-      if (g.autoplay) text(g.chill ? '醉影帶路中　P 接手' : '自動通關中　P 取消', W / 2, g.chill ? H - 22 : H - 82, 20, 'center', 0.95, '#f2c24f');
+      if (g.autoplay || autoChain) text(autoChain ? '一路帶路中　P 停下' : g.chill ? '醉影帶路中　P 接手' : '自動通關中　P 取消', W / 2, g.chill ? H - 22 : H - 82, 20, 'center', 0.95, '#f2c24f');
     } else if (TUNING.directMode) {
       const air = !b.grounded || ['lift', 'thrown', 'charge'].includes(g.state);
       g.map.abilities.forEach((id, i) => {
@@ -2584,7 +2592,9 @@
   }
 
   // P replays one room from its spawn. P hands control back; R also resets the room.
-  let auto = null, puzzleRoutes = null, puzzleRouteState = 'idle';
+  // autoQueued: P pressed during a room transition starts as soon as the next room is playable
+  // autoChain: keep playing room after room (cards stay up a moment, day ends are confirmed) until the last day ends
+  let auto = null, autoQueued = false, autoChain = false, puzzleRoutes = null, puzzleRouteState = 'idle';
   // A single-file build (handoff/kit/build-beaverkit.mjs) embeds the puzzle rooms and routes.
   const embedded = id => document.getElementById(id)?.textContent || null;
   // ?chill=1 loads the main puzzle rooms, ?chill=single the single-skill test rooms, ?chill=loop the drink-use-sober loop
@@ -2611,8 +2621,10 @@
   }
   function toggleAuto() {
     if (auto) { stopAuto(); return; }
+    if (game.phase === 'transition') { autoQueued = true; return; }
     if (game.chill && game.phase === 'intro') game.phase = 'play';
     if (game.phase !== 'play' || game.dialogue) return;
+    if (puzzleRouteState === 'error') puzzleRouteState = 'idle';   // a failed load is tried again
     if (game.chill) loadPuzzleRoutes();
     if (game.chill && puzzleRouteState !== 'ready') {
       game.shout('body', [puzzleRouteState === 'loading' ? '等我一下……' : '路線沒讀到，重新整理試試。']); return;
@@ -2625,6 +2637,20 @@
     held.left = held.right = held.jump = held.down = false; pressed = {};
     game.autoplay = true;
   }
+  // One step of the chained run: start the next room's route once it is playable, let cards show for a moment,
+  // and confirm a day's end; stop after the last day or where no route exists.
+  function chainStep() {
+    if (game.phase === 'mapEnd') {
+      if (game.mapIndex + 1 >= game.campaign.maps.length) { autoChain = false; return; }
+      if (game.timer > 1.5) pressed.confirm = true;
+      return;
+    }
+    if (game.phase === 'intro' && game.timer < 3) return;
+    if (game.phase === 'transition' || game.state === 'dead' || game.dialogue) return;
+    toggleAuto();
+    if (!auto && puzzleRouteState !== 'loading') autoChain = false;
+  }
+
   // Fixed 240 Hz steps, so the replay matches the run the route was verified with.
   function runAuto(frame) {
     auto.acc += frame;
@@ -2640,7 +2666,11 @@
   let last = performance.now();
   function loop(now) {
     const frame = Math.min((now - last) / 1000, 1 / 20); last = now;
+    if (pressed.r) autoChain = false;   // R takes the run back
+    if (menu.hidden && frame > 0 && autoQueued && !auto && game.phase !== 'transition') { autoQueued = false; toggleAuto(); }
+    if (menu.hidden && frame > 0 && pressed.auto && autoChain) { autoChain = false; autoQueued = false; stopAuto(); pressed.auto = false; }
     if (menu.hidden && frame > 0 && pressed.auto) toggleAuto();
+    if (menu.hidden && frame > 0 && autoChain && !auto) chainStep();
     if (menu.hidden && frame > 0 && auto && pressed.r) { stopAuto(); pressed.r = true; }
     if (menu.hidden && frame > 0 && auto) { pressed = {}; runAuto(frame); }
     else if (menu.hidden && frame > 0) {
@@ -2719,8 +2749,10 @@
     }
     const act = e.target.dataset && e.target.dataset.act; if (!act) return;
     if (act === 'resume') toggleMenu(false);
-    if (act === 'retry') { stopAuto(); toggleMenu(false); if (game.chill) { game.enterRoom(game.room.id); game.phase = 'play'; } else game.die(); }
-    if (act === 'restart') { stopAuto(); game.startMap(0); toggleMenu(false); }
+    if (act === 'retry') { stopAuto(); autoChain = false; toggleMenu(false); if (game.chill) { game.enterRoom(game.room.id); game.phase = 'play'; } else game.die(); }
+    if (act === 'restart') { stopAuto(); autoChain = false; game.startMap(0); toggleMenu(false); }
+    if (act === 'autoAll') { stopAuto(); game.startMap(0); autoChain = true; toggleMenu(false); }
+    if (act === 'autoHere') { stopAuto(); autoChain = true; toggleMenu(false); }
     if (act === 'default') { stopAuto(); game = new Game(previewCampaign || window.DEFAULT_CAMPAIGN); roomKey = ''; updateInstructions(); toggleMenu(false); }
     if (act === 'load') fileInput.click();
   });

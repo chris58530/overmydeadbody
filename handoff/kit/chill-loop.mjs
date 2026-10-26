@@ -25,45 +25,51 @@ const D = (x, y) => [x, y, 'D'];
 
 // The office prologue: walking and jumping only. Credits are painted on the walls; names are placeholders.
 export const day1 = [
-  // From the desk to the print room: a desk to hop, filing cabinets to climb, a dip in the floor.
+  // From the desk to the print room: a desk, a strip of broken mugs, the filing cabinets up to a walkway,
+  // and two stacks of paper boxes over more glass that sag the moment you stand on them.
   { ...artRoom('P1-1', '辦公室', 'office', 0, [], [
-      ...Array(13).fill(EMPTY),
-      '..............##................',
-      '............####................',
-      '..P....##...####.............O..',
-      '##################...###########',
+      ...Array(11).fill(EMPTY),
+      '.............................O..',
+      '...............##====CC..CC#####',
+      '...............##..........#####',
+      '.............####..........#####',
+      '.P...##......####..........#####',
+      '#########^^######^^^^^^^^^^#####',
       FLOOR,
     ]), signs: [[3, 3, '醉隱　Over My Dead Body', 40], [3, 6, '製作　DrunkenRoomStudio', 22]] },
 
-  // The print room: hop the desk, walk on before the flickering tube drops, and run up the paper boxes
-  // before they give way.
+  // The print room: the paper feed runs against you under a flickering tube, the rolling chair guards the
+  // floor, and the paper boxes up to the printer give way under you.
   { ...artRoom('P1-2', '列印室', 'office', 0, [], [
-      ...Array(4).fill(EMPTY),
-      '............L...................',
-      ...Array(6).fill(EMPTY),
-      '.............................O..',
-      '........................########',
-      '........................########',
-      '....##..............CC..########',
-      '..P.##..............CC..########',
-      FLOOR, FLOOR,
-    ]), signs: [[2, 2, '企劃　○○○', 22], [2, 4, '程式　○○○', 22], [16, 2, '美術　○○○', 22], [16, 4, '音樂　○○○', 22], [24, 9, '印表機（卡紙）', 18]] },
+      EMPTY, EMPTY,
+      '.........L......................',
+      ...Array(8).fill(EMPTY),
+      '..............................O.',
+      '............................####',
+      '............................####',
+      '...............#.........CC.####',
+      '.P.............#....R....CC.####',
+      '###<<<<<<<<<<<<#################',
+      FLOOR,
+    ]), signs: [[2, 4, '企劃　○○○', 22], [2, 6, '程式　○○○', 22], [17, 4, '美術　○○○', 22], [17, 6, '音樂　○○○', 22], [27, 9, '印表機（卡紙）', 18]] },
 
-  // After the faint: the lights are out, and the way to the door is up the shelves.
+  // After the faint: the lights are out and the floor is broken glass. Up the shelves, over the sagging boxes,
+  // past the tube that lets go, and around the chair rolling in front of the door.
   { ...artRoom('P1-3', '醒來', 'office', 0, [], [
       ...Array(5).fill(EMPTY),
-      '.............................O..',
-      '.........................#######',
+      '..................L........R..O.',
+      '.......................#########',
       EMPTY,
-      '.....................====.......',
+      '...................===..........',
       EMPTY,
-      '................====............',
+      '..............====..............',
       EMPTY,
-      '...........====.................',
+      '.........CCCC...................',
       EMPTY,
-      '......====......................',
+      '....====........................',
       '..P.............................',
-      FLOOR, FLOOR,
+      '#########^^^^^^^^^^^^^^^^^^^^^^^',
+      FLOOR,
     ]), signs: [[2, 2, '特別感謝　所有還在加班的人', 22]],
     cutscene: '印表機吐出最後一張。\n按下「送出」的那一刻，懸著的心終於放下。\n眼皮，終於可以闔上了。\n\n……\n\n醒來時，整層樓的燈都暗了。不知道過了多久。' },
 ];
@@ -176,16 +182,32 @@ const fartUp = (r, y) => {
 
 export const plans = {
   'P1-1': r => {
-    for (const [x, y] of [[320, 600], [500, 560], [590, 520], [780, 680], [1000, 640]]) r.stair(x, y);
+    for (const [x, y] of [[230, 600], [560, 560], [640, 480], [800, 480]]) r.stair(x, y);
+    // leap from the walkway over the first boxes and keep moving before the second stack gives way
+    r.until(g => g.body.x >= 830, 1, { right: true });
+    r.tick({ right: true, jump: true, jumpPressed: true });
+    r.until(g => g.body.grounded, 2, { right: true, jump: true });
+    r.until(g => g.body.x >= 1110 && g.body.grounded, 2, { right: true });
     r.finish();
   },
   'P1-2': r => {
-    r.stair(200, 560);
-    r.stair(830, 560); r.stair(1000, 480);
+    const chair = () => r.game.entities.find(e => e.kind === 'patrol');
+    r.stair(620, 560);
+    // hop the chair as it rolls up to the desk, then run for the paper boxes
+    r.until(g => chair().dir < 0 && chair().x < 800 && chair().x > 720, 12);
+    r.tick({ right: true, jump: true, jumpPressed: true });
+    r.until(g => g.body.grounded, 2, { right: true, jump: true });
+    r.stair(1040, 560);
+    r.tick({ right: true, jump: true, jumpPressed: true });
+    r.until(g => g.body.grounded && g.body.y <= 480, 2, { right: true, jump: true });
     r.finish();
   },
   'P1-3': r => {
-    for (const [x, y] of [[300, 560], [500, 480], [700, 400], [900, 320], [1060, 240]]) r.stair(x, y);
+    const chair = () => r.game.entities.find(e => e.kind === 'patrol');
+    for (const [x, y] of [[230, 560], [430, 480], [600, 400], [820, 320], [960, 240]]) r.stair(x, y);
+    r.until(g => chair().dir < 0 && chair().x - g.body.x < 170, 12);
+    r.tick({ right: true, jump: true, jumpPressed: true });
+    r.until(g => g.body.grounded, 2, { right: true, jump: true });
     r.finish();
   },
   'L2-1': r => {
@@ -231,14 +253,9 @@ export const plans = {
     r.skill(); r.land(); r.finish();
   },
   'L3-2': r => {
-    const chair = () => r.game.entities.find(e => e.kind === 'patrol');
+    // drink at the spawn and stand clear of the steps: under loop rules a step that lands on you is a death
     drunk(r, { right: true });
-    // hop the chair against its roll each time it comes by while the stairs come in
-    for (let n = 0; n < 6 * 240 && (r.game.stageWarn || r.game.stageDeferred.length || !r.game.body.grounded); n++) {
-      const g = r.game, c = chair(), near = Math.abs(c.x - g.body.x) < 120 && Math.sign(g.body.x - c.x) === c.dir;
-      const over = c.dir < 0 ? { right: true } : { left: true };
-      r.tick(near && g.body.grounded ? { jumpPressed: true, jump: true, ...over } : g.body.grounded ? {} : { jump: true, ...over });
-    }
+    r.world();
     for (const [x, y] of [[300, 560], [420, 480], [540, 400], [660, 320], [780, 240], [940, 160]]) r.stair(x, y);
     r.finish();
   },
