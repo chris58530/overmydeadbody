@@ -145,7 +145,7 @@
   'use strict';
   const COLS = 32, ROWS = 18, CELL = 30, W = COLS * CELL, H = ROWS * CELL;
   const FONT = '"Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif';
-  const SOLID = '#BC<>';
+  const SOLID = '#BC<>S';
   const TILES = [
     { ch: '#', name: '地形', tip: '能站、會擋路' },
     { ch: '^', name: '碎片', tip: '碰到就重來；保鑣扛著可以踩過去' },
@@ -156,6 +156,8 @@
     { ch: '<', name: '輸送帶 ←', tip: '往左推，起跳時保留推力' },
     { ch: 'R', name: '巡邏', tip: '室內是辦公椅、街上是保全；碰到就重來，保鑣可以撞飛' },
     { ch: 'L', name: '掉落物', tip: '室內是燈管、街上是招牌；走到正下方會掉' },
+    { ch: 'S', name: '沙發', tip: '踩上去會彈起來，落得越快彈得越高' },
+    { ch: 'M', name: '台車', tip: '兩格寬的移動平台，往右開，碰到地形就掉頭；站上去會被載著走' },
     { ch: '*', name: '瓶蓋', tip: '收集品，離開房間才算數' },
     { ch: 'O', name: '傳送門', tip: '碰到前往設定的目的地；在房間設定選擇目的地' },
     { ch: 'N', name: 'NPC', tip: '放置角色；點擊已放置角色編輯或匯入對話 JSON' },
@@ -299,6 +301,8 @@
       c.fillStyle = '#f3e9d2'; c.font = `${12 * q}px ${FONT}`; c.textAlign = 'center'; c.fillText('↔', px + s / 2, py + s - 1 * q);
     }
     else if (ch === 'L') { c.fillStyle = street ? '#d8343f' : '#d9f3e6'; c.fillRect(px - 6 * q, py + 10 * q, s + 12 * q, street ? 12 * q : 6 * q); c.fillStyle = '#f3e9d2'; c.font = `${13 * q}px ${FONT}`; c.textAlign = 'center'; c.fillText('↓', px + s / 2, py + s); }
+    else if (ch === 'S') { c.fillStyle = '#b06ab3'; c.fillRect(px + q, py + 3 * q, s - 2 * q, 11 * q); c.strokeStyle = '#5e2f61'; c.lineWidth = 2 * q; c.beginPath(); c.moveTo(px + 3 * q, py + 16 * q); for (let i = 0; i < 4; i++) { c.lineTo(px + (6 + i * 6.5) * q, py + 25 * q); c.lineTo(px + (9 + i * 6.5) * q, py + 16 * q); } c.stroke(); }
+    else if (ch === 'M') { c.fillStyle = '#5fa8d3'; c.fillRect(px - 15 * q, py, s + 30 * q, 10 * q); c.fillStyle = '#24506b'; c.beginPath(); c.arc(px, py + 14 * q, 4 * q, 0, Math.PI * 2); c.arc(px + s, py + 14 * q, 4 * q, 0, Math.PI * 2); c.fill(); }
     else if (ch === '*') { c.fillStyle = '#e8b84a'; c.beginPath(); c.arc(px + s / 2, py + s / 2, 9 * q, 0, Math.PI * 2); c.fill(); c.fillStyle = '#c9411f'; c.beginPath(); c.arc(px + s / 2, py + s / 2, 4 * q, 0, Math.PI * 2); c.fill(); }
     else if (ch === 'O') {
       c.save(); c.shadowColor = '#8fffe2'; c.shadowBlur = 12 * q;
@@ -463,7 +467,7 @@
   function thumb(r) {
     const c = document.createElement('canvas'); c.width = COLS * 2; c.height = ROWS * 2;
     const x = c.getContext('2d'); x.fillStyle = THEME_BG[r.theme || 'street']; x.fillRect(0, 0, c.width, c.height);
-    const colors = { '#': '#c9d3cf', '^': '#f3e9d2', 'B': '#c98a5a', 'C': '#d9b98a', '<': '#ffd38a', '>': '#ffd38a', '=': '#9b84c4', 'R': '#e0605a', 'L': '#e0f3ec', '*': '#f2c24f', 'P': '#ffffff', 'O': '#8fffe2' };
+    const colors = { '#': '#c9d3cf', '^': '#f3e9d2', 'B': '#c98a5a', 'C': '#d9b98a', '<': '#ffd38a', '>': '#ffd38a', '=': '#9b84c4', 'R': '#e0605a', 'L': '#e0f3ec', 'S': '#b06ab3', 'M': '#5fa8d3', '*': '#f2c24f', 'P': '#ffffff', 'O': '#8fffe2' };
     for (let y = 0; y < ROWS; y++) for (let k = 0; k < COLS; k++) { const ch = r.tiles[y][k]; if (colors[ch]) { x.fillStyle = colors[ch]; x.fillRect(k * 2, y * 2, 2, 2); } }
     return c;
   }

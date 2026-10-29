@@ -102,6 +102,9 @@
     patrolSpeed: 110, belt: 180, crumbleDelay: 0.45, crumbleRespawn: 2.5, fallTrigger: 60, fallWarn: 0.3,
     slowmo: 0.2, airDraws: 1, airCharge: 0.5, hitStop: 0.06, holdTime: 5,
     deathDelay: 0.45, transition: 0.5,
+    // rooms placed on a map ("at"): walking off an edge slides the camera over for pan seconds and Jim keeps going;
+    // leaving through the top adds panBoost px/s upward so he clears the floor he comes up through
+    pan: 0.35, panBoost: 660,
     // 1: each skill has its own key and fires at once; 0: the K card draw
     directMode: 1,
     // drunk mode (a map with "cells"): K farts a small share of a cell, J spends a whole cell on the drunk shadow's move
@@ -113,6 +116,8 @@
     carry: 1,
     // bottles: "drink" — a bottle drunk on touch comes back after bottleRespawn; K lowers a grade with a small hop
     bottleRespawn: 3, fartHop: 560,
+    // sofa: landing bounces at least sofa px/s, or the landing speed times sofaKeep (a drop from a throw goes higher), at most sofaMax
+    sofa: 900, sofaKeep: 1.2, sofaMax: 1150, cartSpeed: 120,
     // booze comes back by itself (cells per second), after a pause once J has spent it; a chain runs on its own
     regen: 0.4, regenDelay: 0.8, chainAscend: 0.45, chainCharge: 0.7,
   };
@@ -124,9 +129,10 @@
 
   // . empty  # ground  ^ shards  = plank  B crate (charge breaks)  C crumbling boxes  < > conveyor
   // R patrol (office chair / night guard)  L falling light (tube / sign)  * bottle cap  P spawn  D a bottle of booze (bottles rules)
-  const TILE_CHARS = '.#^=BCP<>RL*OND';
+  // S sofa (bounces Jim up)  M cart (a moving platform that rolls until something solid turns it)
+  const TILE_CHARS = '.#^=BCP<>RL*ONDSM';
   // stage overlays: '.' keeps the tile below, '_' clears it, anything else replaces it
-  const STAGE_CHARS = '.#^=BC<>_';
+  const STAGE_CHARS = '.#^=BC<>S_';
   // the drunk shadow's moves, one per cell: the last cell left is always the throw
   const ZUI = { 1: { name: '丟', tint: '#e0605a' }, 2: { name: '衝', tint: '#5aa7d6' }, 3: { name: '升天', tint: '#b5c25a' } };
   function validateDialogue(d) {
@@ -149,7 +155,7 @@
     other: ['再一杯……', '嗝。', '這不算！', '加班加到眼花了'],
   };
   const GUARD_LINES = ['下班了還想去哪？', '這裡不能過。', '你是不是喝酒了？'];
-  const SOLID = '#BC<>';
+  const SOLID = '#BC<>S';
   const SIDES = ['left', 'right', 'top', 'bottom'];
   const THEMES = ['office', 'pantry', 'elevator', 'lobby', 'street'];
 
@@ -269,6 +275,8 @@
         if (t === 'R') { this.entities.push({ kind: 'patrol', x: x * T + T / 2, y: (y + 1) * T, dir: -1, alive: true, w: street ? 44 : 40, h: street ? 110 : 34, skin: street ? 'guard' : 'chair', t: 0 }); this.tiles[y][x] = '.'; }
         if (t === 'L') { this.entities.push({ kind: 'faller', x: x * T + T / 2, y: y * T, vy: 0, phase: 'idle', t: 0, w: 72, h: street ? 30 : 14, skin: street ? 'sign' : 'tube' }); this.tiles[y][x] = '.'; }
         if (t === 'D') { this.entities.push({ kind: 'bottle', x: x * T + T / 2, y: y * T + T / 2, got: false }); this.tiles[y][x] = '.'; }
+        // a cart is two tiles wide with its deck on the top of its tile, rolling right first
+        if (t === 'M') { this.entities.push({ kind: 'cart', x: x * T + T / 2, y: y * T, w: 80, h: 16, dir: 1, t: 0 }); this.tiles[y][x] = '.'; }
         if (t === '*') {
           const key = `${this.map.id}:${this.room.id}:${x},${y}`;
           if (!this.capsGot.has(key)) this.entities.push({ kind: 'cap', key, x: x * T + T / 2, y: y * T + T / 2, got: false, t: 0 });
@@ -537,9 +545,10 @@
     }
 
     moveY(b, dy) {
-      const prevBottom = b.y;
+      const prevBottom = b.y, fall = b.vy;
       b.y += dy;
       b.grounded = false;
+      if (b === this.body) b.cart = -1;
       const box = this.box(b);
       const x0 = Math.floor(box.x / T), x1 = Math.floor((box.x + box.w - 1e-6) / T);
       const y0 = Math.floor(box.y / T), y1 = Math.floor((box.y + box.h - 1e-6) / T);
@@ -549,9 +558,30 @@
         if (!(SOLID.includes(t) || floorOnly)) continue;
         if (dy > 0) { b.y = y * T; b.grounded = true; } else b.y = (y + 1) * T + (b.h || BODY_H);
         b.vy = 0;
+        // any sofa under his feet throws him, whichever side the other floor is on
+        if (dy > 0 && b === this.body) for (let sx = x0; sx <= x1; sx++) if (this.tileAt(sx, y) === 'S') { this.bounce(fall); break; }
         return true;
       }
+      // Jim lands on a cart's deck from above, like a plank; beltUnder makes it carry him
+      if (dy > 0 && b === this.body) {
+        const box = this.box(b);
+        const i = this.entities.findIndex(e => e.kind === 'cart' && box.x < e.x + e.w / 2 && box.x + box.w > e.x - e.w / 2 && prevBottom <= e.y + 0.01 && b.y >= e.y);
+        if (i >= 0) { b.y = this.entities[i].y; b.grounded = true; b.vy = 0; b.cart = i; return true; }
+      }
       return false;
+    }
+
+    // A sofa throws Jim back up: harder the faster he lands. It counts as touching down, so J is back.
+    bounce(fall) {
+      const b = this.body;
+      b.vy = -clamp(Math.max(TUNING.sofa, fall * TUNING.sofaKeep), 0, TUNING.sofaMax);
+      b.vx = clamp(b.vx, -TUNING.run, TUNING.run);   // a throw's sideways speed is spent on the cushion
+      b.grounded = false; b.puff = true; b.carry = 0; this.coyote = 0; this.jumpBuf = 0;
+      this.pound = null; this.ascendT = 0;   // a ground pound ends on the cushion
+      if (this.chill) this.chillAirUsed = false;
+      if (this.state === 'thrown' || this.state === 'recover') this.state = 'free';
+      this.events.push('bounce');
+      this.emit(b.x, b.y, '#c58ad6', 10, 260, 120);
     }
 
     physics(dt) {
@@ -789,6 +819,9 @@
     // Conveyor speed under a grounded actor's centre.
     beltUnder(a) {
       if (!a.grounded) return 0;
+      // a cart's deck pushes like a belt running at the cart's speed, so a jump off it keeps that speed
+      const cart = a === this.body && a.cart >= 0 && this.entities[a.cart];
+      if (cart) return cart.dir * TUNING.cartSpeed;
       const t = this.tileAt(Math.floor(a.x / T), Math.round(a.y / T));
       return t === '>' ? TUNING.belt : t === '<' ? -TUNING.belt : 0;
     }
@@ -851,9 +884,10 @@
         } else if (e.kind === 'bottle' && this.looped) {
           // drunk on touch below the day's top grade; it comes back once Jim has stepped off its spot
           const spot = { x: e.x - 12, y: e.y - 18, w: 24, h: 36 };
-          if (e.got) { if ((e.t -= dt) <= 0 && !overlap(bb, spot)) e.got = false; }
+          // its own countdown: e.t is every entity's age and goes up each step
+          if (e.got) { if ((e.back -= dt) <= 0 && !overlap(bb, spot)) e.got = false; }
           else if (this.state !== 'dead' && this.targetStage() < this.cells && overlap(bb, spot)) {
-            e.got = true; e.t = TUNING.bottleRespawn;
+            e.got = true; e.back = TUNING.bottleRespawn;
             this.shiftGrade(this.targetStage() + 1); this.events.push('ready');
             this.emit(e.x, e.y, '#8fd18a', 10, 220, 160);
           }
@@ -862,12 +896,23 @@
             e.got = true; this.held++; this.events.push('cap');
             this.emit(e.x, e.y, '#8fd18a', 10, 220, 160);
           }
+        } else if (e.kind === 'cap' && this.looped) {
+          // loop rules: a cocktail (Celeste's strawberry) follows Jim and counts only once he stands on solid ground; a death loses it
+          if (!e.got && !this.berry && this.state !== 'dead' && overlap(bb, { x: e.x - 14, y: e.y - 14, w: 28, h: 28 })) {
+            e.got = true; this.berry = { key: e.key, x: e.x, y: e.y };
+            this.events.push('ready'); this.emit(e.x, e.y, '#e0484d', 10, 220, 160);
+          }
         } else if (e.kind === 'cap') {
           if (!e.got && overlap(bb, { x: e.x - 14, y: e.y - 14, w: 28, h: 28 })) {
             e.got = true; this.roomCaps.push(e.key); this.events.push('cap');
             if (this.chill) this.capsGot.add(e.key);
             this.emit(e.x, e.y, '#f2c24f', 14, 300, 220);
           }
+        } else if (e.kind === 'cart') {
+          const step = e.dir * TUNING.cartSpeed * dt, ahead = e.x + step + e.dir * e.w / 2;
+          const col = Math.floor((e.dir > 0 ? ahead - 1e-6 : ahead) / T);
+          if (ahead < 0 || ahead > W || this.solid(col, Math.floor(e.y / T)) || this.solid(col, Math.floor((e.y + e.h - 1) / T))) e.dir = -e.dir;
+          else e.x += step;
         } else if (e.kind === 'faller') {
           if (e.phase === 'idle') {
             if (Math.abs(b.x - e.x) < TUNING.fallTrigger && b.y > e.y) { e.phase = 'warn'; e.t = 0; this.events.push('warn'); }
@@ -908,8 +953,21 @@
       return !!e.vy;
     }
 
+    // The cocktail Jim carries trails behind him, across rooms too, until he lands: then it is his for good.
+    updateBerry(dt) {
+      const bz = this.berry, b = this.body;
+      if (!bz) return;
+      const k = Math.min(1, dt * 8);
+      bz.x += (b.x - b.face * 34 - bz.x) * k; bz.y += (b.y - 96 - bz.y) * k;
+      if (b.grounded && (this.state === 'free' || this.state === 'recover')) {
+        this.capsGot.add(bz.key); this.berry = null;
+        this.events.push('cap'); this.emit(bz.x, bz.y, '#e0484d', 16, 300, 220);
+      }
+    }
+
     die(cause) {
       if (this.state === 'dead') return;
+      this.berry = null;
       const b = this.body;
       this.state = 'dead';
       this.timer = TUNING.deathDelay;
@@ -933,9 +991,29 @@
       for (const k of this.roomCaps) this.capsGot.add(k);
       this.roomCaps = [];
       if (target === null) { this.phase = 'mapEnd'; this.timer = 0; return; }
+      const from = this.room, to = this.map.rooms.find(r => r.id === target);
+      if (side && from.at && to?.at) { this.panTo(side, to); return; }
       this.phase = 'transition';
       this.transT = TUNING.transition;
       this.nextRoom = target;
+    }
+
+    // Rooms on a map are one world: Jim goes on from the matching spot on the next room's edge with his speed,
+    // and the camera slides over. A death there sends him back to that room's own spawn.
+    panTo(side, to) {
+      const b = this.body, keep = { x: b.x, y: b.y, vx: b.vx, vy: b.vy, face: b.face, thrown: this.state === 'thrown', airUsed: this.chillAirUsed };
+      const [dx, dy] = { right: [-W, 0], left: [W, 0], top: [0, H], bottom: [0, -H] }[side];
+      const from = this.room.id;
+      this.enterRoom(to.id);
+      if (this.phase === 'intro') return;   // a room's cutscene card plays first, from its spawn
+      const nb = this.body;
+      Object.assign(nb, { x: keep.x + dx, y: keep.y + dy, vx: keep.vx, vy: side === 'top' ? Math.min(keep.vy, -TUNING.panBoost) : keep.vy, face: keep.face, grounded: false });
+      if (this.hitsSolid(this.box(nb))) Object.assign(nb, { x: this.spawn.x, y: this.spawn.y, vx: 0, vy: 0 });
+      else { if (keep.thrown) this.state = 'thrown'; this.chillAirUsed = keep.airUsed; }
+      this.pan = { side, from };
+      this.phase = 'transition';
+      this.transT = TUNING.pan;
+      this.nextRoom = null;
     }
 
     // A hard landing near an NPC half-wakes them.
@@ -973,8 +1051,8 @@
       if (this.phase === 'transition') {
         const before = this.transT;
         this.transT -= dt;
-        if (before > TUNING.transition / 2 && this.transT <= TUNING.transition / 2) this.enterRoom(this.nextRoom);
-        if (this.transT <= 0) this.phase = 'play';
+        if (this.nextRoom && before > TUNING.transition / 2 && this.transT <= TUNING.transition / 2) this.enterRoom(this.nextRoom);
+        if (this.transT <= 0) { this.phase = 'play'; this.pan = null; }
         return;
       }
       if (this.phase === 'mapEnd') {
@@ -1070,8 +1148,10 @@
         // conveyors push while grounded and keep pushing through the jump (like Celeste's lift boost)
         if (b.grounded) b.carry = this.beltUnder(b);
         const push = b.carry || 0;
-        // in the air, speed above a run (a charge jump-out) fades slowly while held; letting go only drifts to a stop
-        if (!b.grounded && dir && Math.sign(b.vx) === dir && Math.abs(b.vx) > TUNING.run) b.vx -= dir * Math.min(Math.abs(b.vx) - TUNING.run, TUNING.overDecel * dt);
+        // in the air, speed above a run (a charge jump-out) fades slowly while held; letting go only drifts to a stop.
+        // a belt or cart push carried into the jump counts as part of the run, so holding its way keeps it
+        const top = TUNING.run + (Math.sign(push) === dir ? Math.abs(push) : 0);
+        if (!b.grounded && dir && Math.sign(b.vx) === dir && Math.abs(b.vx) > top) b.vx -= dir * Math.min(Math.abs(b.vx) - top, TUNING.overDecel * dt);
         else {
           const acc = (b.grounded ? TUNING.accelGround : TUNING.accelAir * (dir || push ? 1 : TUNING.airDrag)) * dt;
           b.vx += clamp(dir * TUNING.run + push - b.vx, -acc, acc);
@@ -1177,6 +1257,7 @@
         if (this.state === 'charge') this.touchCrumble(this.stand);
         this.updateCrumbles(dt);
         this.updateEntities(dt);
+        this.updateBerry(dt);
       }
       if (this.state !== 'dead' && this.drunk) {
         const busy = this.chain.length || this.state === 'lift' || this.state === 'charge';
@@ -2040,12 +2121,16 @@
   // ---------- room layer ----------
   const rnd = (x, y, k = 0) => { const n = Math.sin(x * 127.1 + y * 311.7 + k * 74.7) * 43758.5453; return n - Math.floor(n); };
   const layer = document.createElement('canvas'); layer.width = W; layer.height = H;
-  let roomKey = '';
+  // the room being left, kept for the camera slide into the next one
+  const prevLayer = document.createElement('canvas'); prevLayer.width = W; prevLayer.height = H;
+  let roomKey = '', panFrom = '';
+  const PAN_DIR = { right: [1, 0], left: [-1, 0], top: [0, -1], bottom: [0, 1] };
   // Greybox: everything but Jim is a flat, readable block at its true collision size, over a tile grid
   // (fine line every tile, heavy line every five, numbered along the top and left edges).
   const GREY = { bg: '#2a2d36', grid: 'rgba(255,255,255,.05)', grid5: 'rgba(255,255,255,.13)', label: 'rgba(255,255,255,.35)',
     solid: '#70747f', solidEdge: '#4b4f59', glass: '#e0484d', plank: '#a3a9b5', crate: '#d9893b', crateInk: '#7a4518',
-    belt: '#4d515c', exit: '#f3f1ea', patrol: '#d8504a', faller: '#e8c34a', bottle: '#5fbf6a', cap: '#f2c24f', shadow: '#9b7be0' };
+    belt: '#4d515c', exit: '#f3f1ea', patrol: '#d8504a', faller: '#e8c34a', bottle: '#5fbf6a', cap: '#f2c24f', shadow: '#9b7be0',
+    sofa: '#b06ab3', sofaInk: '#5e2f61', cart: '#5fa8d3', cartInk: '#24506b' };
   function buildLayer() {
     const c = layer.getContext('2d'), tiles = game.tiles;
     c.clearRect(0, 0, W, H);
@@ -2069,6 +2154,12 @@
         for (let i = 0; i < 4; i++) { c.beginPath(); c.moveTo(tx + i * 10, ty + T); c.lineTo(tx + i * 10 + 5, ty + T - 16); c.lineTo(tx + i * 10 + 10, ty + T); c.closePath(); c.fill(); }
       } else if (t === '=') {
         c.fillStyle = GREY.plank; c.fillRect(tx, ty, T, 8);
+      } else if (t === 'S') {
+        // sofa: a cushion over a spring
+        c.fillStyle = GREY.sofa; c.fillRect(tx + 1, ty + 4, T - 2, 14);
+        c.strokeStyle = GREY.sofaInk; c.lineWidth = 2; c.beginPath(); c.moveTo(tx + 4, ty + 20);
+        for (let i = 0; i < 4; i++) { c.lineTo(tx + 8 + i * 9, ty + 32); c.lineTo(tx + 12 + i * 9, ty + 20); }
+        c.stroke(); c.fillStyle = GREY.sofaInk; c.fillRect(tx + 1, ty + T - 6, T - 2, 6);
       } else if (t === 'B') {
         c.fillStyle = GREY.crate; c.fillRect(tx + 1, ty + 1, T - 2, T - 2);
         c.strokeStyle = GREY.crateInk; c.lineWidth = 2; c.strokeRect(tx + 1, ty + 1, T - 2, T - 2);
@@ -2217,6 +2308,11 @@
       } else if (e.kind === 'bottle' && (!e.got || g.looped)) {
         // under loop rules a drunk bottle shows as an outline until it comes back
         drawBottle(e.x, e.y, 1, e.got ? 0.25 : 1);
+      } else if (e.kind === 'cart') {
+        ctx.fillStyle = GREY.cart; ctx.fillRect(e.x - e.w / 2, e.y, e.w, e.h);
+        ctx.fillStyle = GREY.cartInk; ctx.beginPath(); ctx.arc(e.x - e.w / 4, e.y + e.h + 5, 6, 0, Math.PI * 2); ctx.arc(e.x + e.w / 4, e.y + e.h + 5, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#eaf6fd'; ctx.beginPath();
+        ctx.moveTo(e.x + e.dir * 14, e.y + e.h / 2); ctx.lineTo(e.x - e.dir * 4, e.y + 3); ctx.lineTo(e.x - e.dir * 4, e.y + e.h - 3); ctx.closePath(); ctx.fill();
       } else if (e.kind === 'faller' && e.phase !== 'gone') {
         if (e.phase !== 'fall') { ctx.strokeStyle = 'rgba(232,195,74,.5)'; ctx.lineWidth = 1; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(e.x, 0); ctx.lineTo(e.x, e.y); ctx.stroke(); ctx.setLineDash([]); }
         const wob = e.phase === 'warn' ? Math.sin(e.t * 60) * 3 : 0;
@@ -2224,6 +2320,44 @@
         ctx.fillStyle = '#3a2e08'; ctx.font = `bold ${Math.min(24, e.h)}px ${FONT}`; ctx.textAlign = 'center'; ctx.fillText('!', e.x + wob, e.y + e.h - 3);
       }
     }
+  }
+
+  // Name tags for the special objects, so anyone looking at the greybox knows what each block is:
+  // one tag per connected run of a tile, and one per entity, just above it.
+  const TILE_NAMES = { '^': '碎玻璃', '=': '單向平台', B: '木箱', C: '紙箱', '<': '輸送帶', '>': '輸送帶', S: '沙發' };
+  let tagKey = '', tileTags = [];
+  function tileTagsNow(g) {
+    // crumbled boxes do not bump tilesVersion, so the boxes that are gone are part of the key
+    const key = g.room.id + ':' + g.tilesVersion + ':' + [...g.crumbles].filter(([, c]) => c.phase === 'gone').map(([k]) => k).join(';');
+    if (key === tagKey) return tileTags;
+    const seen = new Set(), tags = [];
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+      const name = TILE_NAMES[g.tiles[y][x]];
+      if (!name || seen.has(x + ',' + y)) continue;
+      const stack = [[x, y]], cells = [];
+      while (stack.length) {
+        const [cx, cy] = stack.pop();
+        if (cx < 0 || cy < 0 || cx >= COLS || cy >= ROWS || seen.has(cx + ',' + cy) || TILE_NAMES[g.tiles[cy][cx]] !== name) continue;
+        seen.add(cx + ',' + cy); cells.push([cx, cy]);
+        stack.push([cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]);
+      }
+      const top = Math.min(...cells.map(c => c[1])), row = cells.filter(c => c[1] === top).map(c => c[0]);
+      tags.push([name, (Math.min(...row) + Math.max(...row) + 1) / 2 * T, top * T - 4]);
+    }
+    tagKey = key; tileTags = tags;
+    return tags;
+  }
+  function drawTags() {
+    const g = game, tags = tileTagsNow(g).slice();
+    for (const e of g.entities) {
+      if (e.kind === 'patrol' && e.alive) tags.push([e.skin === 'chair' ? '轉椅' : '警衛', e.x, e.y - e.h - 6]);
+      else if (e.kind === 'faller' && e.phase !== 'gone') tags.push([e.skin === 'tube' ? '燈管' : '招牌', e.x, e.y + e.h + 14]);
+      else if (e.kind === 'bottle' && (!e.got || g.looped)) tags.push(['酒', e.x, e.y - 22]);
+      else if (e.kind === 'cap' && !e.got && g.looped) tags.push([flavorOf(e.key).name, e.x, e.y - 18]);
+      else if (e.kind === 'cart') tags.push(['台車', e.x, e.y - 4]);
+    }
+    ctx.font = `12px ${FONT}`; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(20,22,28,.85)'; ctx.fillStyle = 'rgba(255,255,255,.85)';
+    for (const [name, x, y] of tags) { ctx.strokeText(name, x, y); ctx.fillText(name, x, y); }
   }
 
   const roomNumber = g => `${g.mapIndex + 1}-${g.map.rooms.indexOf(g.room) + 1}`;
@@ -2354,7 +2488,20 @@
     ctx.restore();
   }
 
+  // Under loop rules a collectible is a cocktail, one flavour per day (Celeste's strawberries, made drinks).
+  const FLAVORS = [{ name: '柯夢波丹', color: '#e86a9a' }, { name: '莫希托', color: '#7fd38a' }, { name: '藍色夏威夷', color: '#4fb3e8' }, { name: '瑪格麗特', color: '#f2d45c' }];
+  const flavorOf = key => FLAVORS[Math.max(0, game.campaign.maps.findIndex(m => key?.startsWith(m.id + ':'))) % FLAVORS.length];
   function drawCap(e) {
+    if (game.looped) {
+      // a cocktail glass: the drink in the bowl, a stem, a foot
+      const c = flavorOf(e.key ?? '').color;
+      ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(e.x - 12, e.y - 10); ctx.lineTo(e.x + 12, e.y - 10); ctx.lineTo(e.x, e.y + 3); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#f3f1ea'; ctx.lineWidth = 2; ctx.beginPath();
+      ctx.moveTo(e.x - 14, e.y - 12); ctx.lineTo(e.x, e.y + 4); ctx.lineTo(e.x + 14, e.y - 12);
+      ctx.moveTo(e.x, e.y + 4); ctx.lineTo(e.x, e.y + 12); ctx.moveTo(e.x - 7, e.y + 13); ctx.lineTo(e.x + 7, e.y + 13); ctx.stroke();
+      ctx.fillStyle = '#f2d45c'; ctx.beginPath(); ctx.arc(e.x + 9, e.y - 13, 3, 0, Math.PI * 2); ctx.fill();
+      return;
+    }
     ctx.fillStyle = GREY.cap; ctx.beginPath(); ctx.arc(e.x, e.y, 10, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = '#6b5212'; ctx.lineWidth = 2; ctx.stroke();
   }
@@ -2382,13 +2529,26 @@
   function draw() {
     const g = game, b = g.body;
     const key = g.room.id + ':' + g.tilesVersion + ':' + g.mapIndex;
-    if (key !== roomKey) { roomKey = key; buildLayer(); }
+    if (!g.pan) panFrom = '';
+    if (key !== roomKey) {
+      if (g.pan && g.pan.from !== panFrom) { const c = prevLayer.getContext('2d'); c.clearRect(0, 0, W, H); c.drawImage(layer, 0, 0); panFrom = g.pan.from; }
+      roomKey = key; buildLayer();
+    }
     ctx.save();
+    if (g.pan) {
+      // the camera slides from the old room to the new one over a black void
+      const t = 1 - g.transT / TUNING.pan, p = t * t * (3 - 2 * t), [ux, uy] = PAN_DIR[g.pan.side];
+      ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+      ctx.drawImage(prevLayer, -ux * p * W, -uy * p * H);
+      ctx.translate(ux * (1 - p) * W, uy * (1 - p) * H);
+    }
     if (g.shake) ctx.translate((Math.random() - 0.5) * g.shake * 18, (Math.random() - 0.5) * g.shake * 18);
     ctx.drawImage(layer, 0, 0);
     drawDynamicTiles();
     drawHallucination();
     drawEntities();
+    if (g.berry) drawCap(g.berry);
+    drawTags();
     if (g.stand) {
       const st = g.stand, charging = g.state === 'charge';
       if (charging) {
@@ -2427,6 +2587,7 @@
     drawSlot();
     drawReady();
     if (g.flash) { ctx.globalAlpha = (g.flash.t / 0.45) * 0.4; ctx.fillStyle = g.flash.color; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
+    if (g.looped && g.capsGot.size) { drawCap({ x: 112, y: 30 }); text(String(g.capsGot.size), 128, 36, 20, 'left', 0.7); }
     text(g.looped ? roomNumber(g) : `${g.map.name}　${g.chill ? `${g.map.rooms.indexOf(g.room) + 1} / ${g.map.rooms.length}` : g.room.id}`, 22, 36, 20, 'left', 0.7);
     if (g.drunk) {
       // hud: false hides the grade panel (the office prologue has no drink yet)
@@ -2456,7 +2617,7 @@
       if (g.room === g.map.rooms[0]) text(g.map.name, W / 2, 52, 24, 'center', a * 0.8);
       text(g.room.name, W / 2, 96, 40, 'center', a);
     }
-    if (g.phase === 'transition') {
+    if (g.phase === 'transition' && !g.pan) {
       const half = TUNING.transition / 2;
       ctx.fillStyle = `rgba(14,11,28,${1 - Math.abs(g.transT - half) / half})`; ctx.fillRect(0, 0, W, H);
     }
@@ -2506,6 +2667,7 @@
     const bank = {
       jump: () => tone(380, 0.1, 'square', 0.06, 640),
       land: () => noise(0.06, 0.22, 500),
+      bounce: () => tone(160, 0.22, 'sine', 0.2, 520),
       slotOpen: () => tone(300, 0.16, 'triangle', 0.12, 620),
       tick: () => tone(1250, 0.025, 'square', 0.05),
       stop: () => tone(620, 0.07, 'triangle', 0.14),
@@ -2755,7 +2917,13 @@
     menuMsg.textContent = '';
   }
   function load(textData, name) {
-    try { const campaign = parseCampaign(textData); stopAuto(); game = new Game(campaign); roomKey = ''; if (game.chill) loadPuzzleRoutes(); updateInstructions(); toggleMenu(false); }
+    try {
+      const campaign = parseCampaign(textData); stopAuto(); game = new Game(campaign); roomKey = '';
+      // ?room=<id> starts straight in that room, for testing and screenshots
+      const roomId = new URLSearchParams(location.search).get('room'), mi = campaign.maps.findIndex(m => m.rooms.some(r => r.id === roomId));
+      if (mi >= 0) { game.startMap(mi); game.enterRoom(roomId); game.phase = 'play'; }
+      if (game.chill) loadPuzzleRoutes(); updateInstructions(); toggleMenu(false);
+    }
     catch (err) { toggleMenu(true); menuMsg.textContent = `${name} 讀不進來：\n${err.message}`; }
   }
   menu.addEventListener('click', e => {

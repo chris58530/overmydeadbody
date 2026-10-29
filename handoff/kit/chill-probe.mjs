@@ -68,8 +68,15 @@ function key(g, cool) {
 function portals(room) {
   const out = [];
   room.tiles.forEach((row, y) => { for (let x = 0; x < row.length; x++) if (row[x] === 'O') out.push({ x: x * T + T / 2, y: y * T + T / 2 }); });
+  // rooms on a map have no door: the way on is the open run of the right edge
+  if (!out.length && room.exits?.right !== undefined) {
+    const open = room.tiles.map((row, y) => row[row.length - 1] === '.' ? y : -1).filter(y => y >= 0);
+    if (open.length) out.push({ x: room.tiles[0].length * T, y: (open[0] + open.at(-1) + 1) / 2 * T });
+  }
   return out;
 }
+// out of the room the way it goes on; walking back out of the left edge does not count
+const gotOut = g => g.phase !== 'play' && !(g.pan && g.pan.side === 'left');
 
 export function probe(campaign, mapId, roomId, opt = {}) {
   const mode = opt.mode || 'full', beam = opt.beam ?? 1500, maxT = opt.maxT ?? 14;
@@ -96,7 +103,7 @@ export function probe(campaign, mapId, roomId, opt = {}) {
         if (g.state === 'dead') continue;
         const plan = node.plan.concat(label);
         const cool = grade && instant && g.targetStage() !== node.g.targetStage() ? 30 : Math.max(0, node.cool - 1);
-        if (capKey ? gotCap(g) : g.phase !== 'play') return { ok: true, plan, t: +((depth + 1) * 0.1).toFixed(1), expanded };
+        if (capKey ? gotCap(g) : gotOut(g)) return { ok: true, plan, t: +((depth + 1) * 0.1).toFixed(1), expanded };
         if (g.phase !== 'play') continue;
         const k = key(g, cool);
         if (seen.has(k)) continue;
