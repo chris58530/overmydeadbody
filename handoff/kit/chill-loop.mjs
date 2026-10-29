@@ -273,6 +273,24 @@ export const plans = {
   },
 };
 
+// Bottle-cap routes for the day-3 rooms that keep their old caps; checked when this file runs, not published as P.
+export const capPlans = {
+  'L3-1': r => {   // over the bottle, onto the sagging boxes, then jump and throw left onto the cabinet
+    r.until(g => g.body.x >= 330, 2, { right: true });
+    r.tick({ jumpPressed: true, jump: true, right: true }); r.until(g => g.body.grounded && g.body.y < 600, 2, { jump: true, right: true });
+    r.tick({ jumpPressed: true, jump: true, left: true }); r.wait(0.3, { jump: true, left: true }); r.skill(-1); r.wait(2, { left: true });
+  },
+  'L3-2': r => {   // drink, then jump and throw left onto the shelf
+    drunk(r, { right: true }); r.until(g => g.body.x >= 200, 2, { right: true });
+    r.tick({ jumpPressed: true, jump: true, left: true }); r.wait(0.3, { jump: true, left: true }); r.skill(-1); r.wait(2, { left: true });
+  },
+  'L3-3': r => {   // drink at the counter, jump and throw up the counter face into the pocket
+    drunk(r, { right: true }); r.wait(0.2, { right: true });
+    r.tick({ jumpPressed: true, jump: true, right: true }); r.wait(0.3, { jump: true, right: true });
+    r.skill(); r.wait(0.5); landRight(r);
+  },
+};
+
 const chain = list => list.map((room, i) => ({ ...room, portalTarget: list[i + 1]?.id ?? null }));
 
 export const campaign = {
@@ -306,6 +324,11 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       console.log(`${room.id}: ${(recorded.frames / STEP_HZ).toFixed(2)} s, replayed`);
     }
   });
+  for (const [id, plan] of Object.entries(capPlans)) {
+    const { game } = recordRoom(campaign, id, plan, { mapIndex: campaign.maps.findIndex(m => m.rooms.some(room => room.id === id)), requireExit: false });
+    assert.ok([...game.capsGot].some(key => key.includes(`:${id}:`)), `${id}: cap route missed the cap`);
+    console.log(`${id}: cap route ok`);
+  }
   writeFileSync(new URL('../../prototype/chill-loop.json', import.meta.url), JSON.stringify(campaign, null, 2) + '\n');
   writeFileSync(new URL('../../prototype/chill-loop-routes.json', import.meta.url), JSON.stringify(routes, null, 2) + '\n');
   console.log('Wrote prototype/chill-loop.json and chill-loop-routes.json');
