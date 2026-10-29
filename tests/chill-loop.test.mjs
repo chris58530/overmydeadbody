@@ -48,21 +48,27 @@ test('the office prologue has no shadow: J does nothing and the grade panel is h
   assert.equal(game.chillAirUsed, false);
 });
 
-test('the faint plays as a card the first time the third office room is entered', () => {
-  const game = make('P1-2');
-  game.enterRoom('P1-3');
-  assert.equal(game.phase, 'intro');
-  assert.equal(game.card.title, '醒來');
-  for (let n = 0; n < 0.6 * 240; n++) game.step(DT, {});
-  game.step(DT, { kPressed: true });
+test('the loop campaign carries no words: no day cards, room cards or wall signs', () => {
+  for (const map of campaign.maps) {
+    assert.equal(map.intro, undefined, `${map.id}: intro card`);
+    assert.equal(map.outro, undefined, `${map.id}: outro card`);
+    for (const room of map.rooms) {
+      assert.equal(room.cutscene, undefined, `${room.id}: cutscene`);
+      assert.equal(room.signs, undefined, `${room.id}: signs`);
+    }
+  }
+  // the day ends on a dark screen and the next day starts by itself
+  const game = make('P1-4');
+  game.leave('right', null);
+  assert.equal(game.phase, 'mapEnd');
+  for (let n = 0; n < 1.2 * 240; n++) game.step(DT, {});
+  assert.equal(game.mapIndex, 1);
   assert.equal(game.phase, 'play');
-  game.enterRoom('P1-3');
-  assert.notEqual(game.phase, 'intro', 'the card shows only once');
 });
 
 test('a hallucinated solid that lands on Jim kills him instead of waiting for him', () => {
-  // L2-1: the bottle brings a bridge over the glass three seconds later; stand where it will appear
-  const game = make('L2-1');
+  // L2-3: the bottle brings a bridge over the glass three seconds later; stand where it will appear
+  const game = make('L2-3');
   while (game.targetStage() === 0) game.step(DT, { right: true });
   while (game.stageWarn.t > 1.5 * DT) game.step(DT, {});   // the very next step lands the bridge
   const [x, y] = game.stageWarn.cells.find(([, , c]) => c === '#');

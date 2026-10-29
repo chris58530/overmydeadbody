@@ -114,7 +114,7 @@
     // bottles: "carry" — how many bottles Jim can hold; E drinks one
     carry: 1,
     // bottles: "drink" — a bottle drunk on touch comes back after bottleRespawn; K lowers a grade with a small hop
-    bottleRespawn: 3, fartHop: 480,
+    bottleRespawn: 3, fartHop: 560,
     // booze comes back by itself (cells per second), after a pause once J has spent it; a chain runs on its own
     regen: 0.4, regenDelay: 0.8, chainAscend: 0.45, chainCharge: 0.7,
   };
@@ -981,7 +981,8 @@
       }
       if (this.phase === 'mapEnd') {
         this.timer += dt;
-        if (input.confirmPressed && this.timer > 0.6) this.startMap(this.mapIndex + 1 < this.campaign.maps.length ? this.mapIndex + 1 : 0);
+        // loop rules have no end card: the screen goes dark and the next day starts
+        if ((input.confirmPressed || (this.looped && this.timer > 0.8)) && this.timer > 0.6) this.startMap(this.mapIndex + 1 < this.campaign.maps.length ? this.mapIndex + 1 : 0);
         return;
       }
 
@@ -2227,8 +2228,11 @@
     }
   }
 
+  const roomNumber = g => `${g.mapIndex + 1}-${g.map.rooms.indexOf(g.room) + 1}`;
+
   function drawBubbles() {
     const g = game;
+    if (g.looped) return;   // loop rules are wordless for now: the story is added later
     const placed = [];
     for (const bub of g.bubbles) {
       if (bub.delay > 0) continue;
@@ -2425,7 +2429,7 @@
     drawSlot();
     drawReady();
     if (g.flash) { ctx.globalAlpha = (g.flash.t / 0.45) * 0.4; ctx.fillStyle = g.flash.color; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
-    text(`${g.map.name}　${g.chill ? `${g.map.rooms.indexOf(g.room) + 1} / ${g.map.rooms.length}` : g.room.id}`, 22, 36, 20, 'left', 0.7);
+    text(g.looped ? roomNumber(g) : `${g.map.name}　${g.chill ? `${g.map.rooms.indexOf(g.room) + 1} / ${g.map.rooms.length}` : g.room.id}`, 22, 36, 20, 'left', 0.7);
     if (g.drunk) {
       // hud: false hides the grade panel (the office prologue has no drink yet)
       if (g.map.hud !== false) drawGauge();
@@ -2449,7 +2453,7 @@
       if (g.state === 'charge' && g.stand && g.stand.grounded) text('W 跳離', W / 2, H - 52, 20, 'center', 0.95, '#f2c24f');
       if (g.autoplay) text('自動通關中　P 取消', W / 2, H - 82, 20, 'center', 0.95, '#f2c24f');
     }
-    if (g.roomTitle > 0) {
+    if (g.roomTitle > 0 && !g.looped) {
       const a = Math.min(1, g.roomTitle / 0.6);
       if (g.room === g.map.rooms[0]) text(g.map.name, W / 2, 52, 24, 'center', a * 0.8);
       text(g.room.name, W / 2, 96, 40, 'center', a);
@@ -2458,7 +2462,8 @@
       const half = TUNING.transition / 2;
       ctx.fillStyle = `rgba(14,11,28,${1 - Math.abs(g.transT - half) / half})`; ctx.fillRect(0, 0, W, H);
     }
-    if (g.phase === 'mapEnd') {
+    if (g.phase === 'mapEnd' && g.looped) { ctx.fillStyle = `rgba(14,11,28,${Math.min(1, g.timer * 1.5)})`; ctx.fillRect(0, 0, W, H); }
+    else if (g.phase === 'mapEnd') {
       ctx.fillStyle = `rgba(14,11,28,${Math.min(0.75, g.timer * 1.5)})`; ctx.fillRect(0, 0, W, H);
       const a = Math.min(1, g.timer * 1.5);
       const total = g.map.rooms.reduce((n, r) => n + r.tiles.join('').split('*').length - 1, 0);
@@ -2793,7 +2798,7 @@
     const all = new URLSearchParams(location.search).get('all') === '1';
     if (game.chill) game.campaign.maps.forEach((map, mi) => (all || mi <= (game.reached ?? 0)) && map.rooms.forEach((room, ri) => {
       const button = document.createElement('button'); button.dataset.room = room.id; button.dataset.map = mi;
-      button.textContent = `${mi + 1}-${ri + 1} ${room.name}`; button.style.fontSize = '17px'; roomPicker.appendChild(button);
+      button.textContent = game.looped ? `${mi + 1}-${ri + 1}` : `${mi + 1}-${ri + 1} ${room.name}`; button.style.fontSize = '17px'; roomPicker.appendChild(button);
     }));
   }
   if (embedded('chill-puzzles-data')) {
