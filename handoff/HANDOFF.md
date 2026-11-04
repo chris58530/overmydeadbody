@@ -7,8 +7,8 @@
 - 專案：醉隱 Over My Dead Body，網頁平台跳躍原型。
 - 分支：`drink-loop-prototype`。
 - 主力版本：`prototype/game.html?chill=loop`，關卡定義在 [kit/chill-loop.mjs](kit/chill-loop.mjs)。
-- 線上版（知道連結才能看）：https://beaverkit.io/p/ngneLMrUCiZ。**目前還是舊版第三天**，見第 6 節。
-- 舊的 15 間解謎版：https://beaverkit.io/p/I6IdRlKpC2B，不再更新。
+- 線上版（知道連結才能看）：https://beaverkit.io/p/ffS8YGlc9yi，內容等於 commit `7d283da`。
+- 舊連結，都不再更新：https://beaverkit.io/p/ngneLMrUCiZ（舊版第三天）、https://beaverkit.io/p/I6IdRlKpC2B（15 間解謎版）。要不要刪由使用者決定。
 
 ## 2. 怎麼跑
 
@@ -93,11 +93,12 @@ node --test tests/*.test.mjs
 
 ## 6. 待辦（依優先順序）
 
-1. **更新 BeaverKit 線上版。** 使用者已要求，但沒成功：作品**編輯頁**在 Chrome 自動化下凍結，`file_upload` 逾時（2026-11-04、11-05 都一樣，舊作品和新作品都會）。沒有按過「更新」，線上版沒變。
-   - 請使用者在編輯頁右上「匯入」手動選檔，或把檔案拖進預覽區，是最直接的做法。
-   - 用 `build-beaverkit.mjs` 重建後，把 `prototype/beaverkit.html` 改名 `index.html` 壓成 zip 再上傳。
-   - 新作品頁（工作室 →「建立」）的自動上傳成功過，但那會多一個新連結，要先問使用者。
-2. **使用者試玩第三天**，特別是 3-2、3-3。依回饋調整。
+1. **使用者試玩第三天**，特別是 3-2、3-3。依回饋調整。
+2. **之後要更新 BeaverKit 時：** 作品**編輯頁**在 Chrome 自動化下會凍結（2026-11-04、11-05，舊作品和新作品都會）。直接上傳、先移除預覽 iframe、由頁面 JS 匯入都試過，不要再重試。
+   - 請使用者在編輯頁右上「匯入」手動選檔，連結不變。
+   - 或自動上傳成新作品（工作室 →「建立」），但會多一個連結，要先問使用者。
+   - 用 `build-beaverkit.mjs` 重建後，把 `prototype/beaverkit.html` 改名 `index.html` 壓成 zip 再上傳；直接傳 HTML 會失敗。
+   - 發布設定：知道連結的人才能看、關閉混搭、分類為遊戲。
 3. **重出第三天美術圖。** `handoff/art-maps/day-3*.png` 是 10/29 的舊房間。**如果美術已照它開工，要盡快通知。** `handoff/videos/day3-autoplay.mp4` 也是舊的。
 4. 以下三項等使用者決定：
    - 只有 3-3 有「只放屁」路線，其他屍體房都強制用屍體，是否符合使用者說的「也可以都不放」。

@@ -58,7 +58,7 @@ python -m http.server 4174 --bind 127.0.0.1 --directory prototype
 
 ### BeaverKit
 
-目前的 loop 版：https://beaverkit.io/p/ngneLMrUCiZ（知道連結的人都能看）；舊的十五間解謎版：https://beaverkit.io/p/I6IdRlKpC2B。更新時先執行 `node handoff/kit/build-beaverkit.mjs`，再到 BeaverKit 作品的編輯頁匯入 `prototype/beaverkit.html`。作品在沙盒 iframe 裡執行，localStorage 不可用，遊戲已能在沒有它的情況下正常運作。
+目前的 loop 版：https://beaverkit.io/p/ffS8YGlc9yi（知道連結的人都能看）；舊版：https://beaverkit.io/p/ngneLMrUCiZ、https://beaverkit.io/p/I6IdRlKpC2B（十五間解謎版）。更新時先執行 `node handoff/kit/build-beaverkit.mjs`，再到 BeaverKit 作品的編輯頁匯入 `prototype/beaverkit.html`。作品在沙盒 iframe 裡執行，localStorage 不可用，遊戲已能在沒有它的情況下正常運作。
 
 ## 規則
 
