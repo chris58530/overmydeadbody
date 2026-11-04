@@ -12,8 +12,8 @@ test('the BeaverKit single file is up to date with game.html, the rooms and the 
 test('the single file embeds both puzzle files and keeps the engine script first', () => {
   const html = read('beaverkit.html');
   const block = id => JSON.parse(html.match(new RegExp(`<script type="application/json" id="${id}">([\\s\\S]*?)</script>`))[1]);
-  assert.deepEqual(block('chill-puzzles-data'), JSON.parse(read('chill-puzzles.json')));
-  assert.deepEqual(block('chill-routes-data'), JSON.parse(read('chill-routes.json')));
+  assert.deepEqual(block('chill-puzzles-data'), JSON.parse(read('chill-loop.json')));
+  assert.deepEqual(block('chill-routes-data'), JSON.parse(read('chill-loop-routes.json')));
   assert.ok(html.indexOf('chill-routes-data') < html.indexOf('<script>'), 'data must exist before the game starts');
 });
 

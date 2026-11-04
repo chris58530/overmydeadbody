@@ -44,6 +44,10 @@ function clone(g) {
     else if (v && typeof v === 'object') c[k] = Array.isArray(v) ? v.slice() : { ...v };
     else c[k] = v;
   }
+  // a bottle's body and the anchor bottle are links into the entity list: keep them pointing at the copies
+  const copy = new Map(g.entities.map((e, i) => [e, c.entities[i]]));
+  for (const e of c.entities) if (e.corpse) e.corpse = copy.get(e.corpse);
+  if (g.anchor) c.anchor = copy.get(g.anchor);
   return c;
 }
 
@@ -60,7 +64,8 @@ function key(g, cool) {
   const b = g.body, s = g.stand;
   let k = (cool > 0 ? Math.ceil(cool / 5) : 0) + '|' + g.state + '|' + Math.round(b.x / 20) + '|' + Math.round(b.y / 20) + '|' + Math.round(b.vx / 150) + '|' + Math.round(b.vy / 250) + '|' + (b.grounded ? 1 : 0)
     + '|' + g.targetStage() + '|' + g.stage + '|' + (g.stageWarn ? Math.round(g.stageWarn.t * 4) : '') + '|' + (g.chillAirUsed ? 1 : 0) + '|' + g.chain.length + '|' + g.tilesVersion
-    + '|' + (g.held || 0) + '|' + g.entities.filter(e => e.kind === 'bottle' && e.got).length;
+    + '|' + (g.held || 0) + '|' + g.entities.filter(e => e.kind === 'bottle' && e.got).length
+    + '|' + g.entities.filter(e => e.kind === 'corpse').map(e => Math.round(e.x / 20) + ',' + Math.round(e.y / 20)).join(';');
   if (g.state === 'charge' || g.state === 'lift') k += '|' + Math.round(g.timer / 0.1) + '|' + (s ? Math.round(s.y / 20) : '');
   return k;
 }

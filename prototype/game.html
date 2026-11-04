@@ -116,6 +116,8 @@
     carry: 1,
     // bottles: "drink" — a bottle drunk on touch comes back after bottleRespawn; K lowers a grade with a small hop
     bottleRespawn: 3, fartHop: 560,
+    // zui: "corpse": the body left behind is a plank corpseW wide and corpseH thick; the jump to the bottle shows for warpTime
+    corpseW: 84, corpseH: 22, warpTime: 0.35,
     // sofa: landing bounces at least sofa px/s, or the landing speed times sofaKeep (a drop from a throw goes higher), at most sofaMax
     sofa: 900, sofaKeep: 1.2, sofaMax: 1150, cartSpeed: 120,
     // booze comes back by itself (cells per second), after a pause once J has spent it; a chain runs on its own
@@ -309,13 +311,15 @@
       this.aim = 1;
       this.roomTitle = 2.4;
       // drunk mode: a room starts from its own booze, or what was carried in; a death returns to that amount
-      this.cells = this.map.cells || 0;
+      // a room may hold the day's grades lower ("cells" on the room), so the body it teaches is the only move there
+      this.cells = this.room.cells ?? (this.map.cells || 0);
       this.booze = Math.min(this.cells, this.room.booze ?? this.carryBooze ?? 0);
       if (this.chill) this.booze = clamp(Math.round(this.booze), 0, this.cells);
       this.stage = 0; this.stageWarn = null; this.stageQueue = []; this.hallu = new Set(); this.stageDeferred = [];
       this.chillAirUsed = false;
       this.fartCd = 0; this.ascendT = 0; this.chain = []; this.chainT = 0; this.regenWait = 0;
       this.windupT = 0; this.pound = null; this.ascended = false; this.downHeld = false;
+      this.anchor = null; this.warp = null;
       if (this.cells) this.applyStage(this.targetStage(), true);
     }
 
@@ -330,6 +334,9 @@
     // K spends one with a hop, and the world is the body three seconds ago (changes queue instead of blocking)
     get looped() { return this.chill && this.campaign.bottles === 'drink'; }
     get hasShadow() { return !Array.isArray(this.map.abilities) || this.map.abilities.includes('wrestler'); }
+    // zui: "corpse" — one grade leaves Jim's body behind as a floating plank and sends him back to the last bottle he drank;
+    // two grades are the throw
+    get corpses() { return this.looped && this.map.zui === 'corpse'; }
     targetStage() { return Math.min(this.cells, Math.floor(this.booze + 1e-9)); }
     // The static tile of a cell at a drunk stage: the room, then every overlay up to that stage.
     stageChar(x, y, k) {
@@ -473,18 +480,37 @@
         this.events.push('deny');
         return;
       }
-      if (n === 2 && this.hitsSolid(this.box({ x: this.body.x, h: BODY_H + TUNING.carryOffset }, this.body.y))) { this.events.push('deny'); return; }
+      if (this.corpses) {
+        if (n === 1 && !this.anchor) { this.events.push('deny'); return; }
+      } else if (n === 2 && this.hitsSolid(this.box({ x: this.body.x, h: BODY_H + TUNING.carryOffset }, this.body.y))) { this.events.push('deny'); return; }
       if (this.chill) { this.chillAirUsed = true; this.chillFace = this.body.face; }
       else this.booze = 0;
       this.regenWait = TUNING.regenDelay;
       this.flash = { color: ZUI[n].tint, t: 0.25 };
       this.events.push('drink');
-      if (this.single) { if (n === 3) this.windup(); else if (n === 2) this.startCharge(); else this.startLift(); }
+      if (this.corpses) { if (n === 1) this.leaveCorpse(); else this.startLift(); }
+      else if (this.single) { if (n === 3) this.windup(); else if (n === 2) this.startCharge(); else this.startLift(); }
       else if (n === 3) { this.chain = ['charge', 'throw']; this.chainT = TUNING.chainAscend; this.ascend(); }
       else if (n === 2) { this.chain = ['throw']; this.startCharge(); this.timer = TUNING.chainCharge; }
       else this.startLift();
       // loop rules: the shadow eats a grade as the move starts (a refused charge eats nothing)
       if (this.looped && (n !== 2 || this.state === 'charge')) this.shiftGrade(n - 1);
+    }
+
+    // Jim's body stays where he is, lying in the air as a plank, and he wakes up on the spot of the last bottle he drank.
+    // That bottle stays empty for as long as the body is there; walking back into it takes the body away again.
+    leaveCorpse() {
+      const b = this.body, to = this.anchor;
+      const corpse = { kind: 'corpse', x: b.x, y: b.y - TUNING.corpseH, w: TUNING.corpseW, face: b.face, t: 0 };
+      this.entities.push(corpse);
+      Object.assign(to, { got: true, corpse, armed: false });
+      this.anchor = null;
+      this.warp = { x0: b.x, y0: b.y - BODY_H / 2, x1: to.x, y1: to.y, t: TUNING.warpTime };
+      this.emit(b.x, b.y - BODY_H / 2, '#c9d3e6', 14, 260, 160);
+      Object.assign(b, { x: to.x, y: to.y + T / 2, vx: 0, vy: 0, grounded: false });
+      this.state = 'free'; this.chillAirUsed = false; this.coyote = 0; this.jumpBuf = 0;
+      this.events.push('warp');
+      this.emit(to.x, to.y, '#c9d3e6', 14, 260, 160);
     }
 
     // Single-skill 升天 squats first: Jim holds still (in the air too) and the fart goes off when the timer runs out.
@@ -562,11 +588,11 @@
         if (dy > 0 && b === this.body) for (let sx = x0; sx <= x1; sx++) if (this.tileAt(sx, y) === 'S') { this.bounce(fall); break; }
         return true;
       }
-      // Jim lands on a cart's deck from above, like a plank; beltUnder makes it carry him
+      // Jim lands on a cart's deck, or a body he left behind, from above, like a plank; beltUnder makes a cart carry him
       if (dy > 0 && b === this.body) {
         const box = this.box(b);
-        const i = this.entities.findIndex(e => e.kind === 'cart' && box.x < e.x + e.w / 2 && box.x + box.w > e.x - e.w / 2 && prevBottom <= e.y + 0.01 && b.y >= e.y);
-        if (i >= 0) { b.y = this.entities[i].y; b.grounded = true; b.vy = 0; b.cart = i; return true; }
+        const i = this.entities.findIndex(e => (e.kind === 'cart' || e.kind === 'corpse') && box.x < e.x + e.w / 2 && box.x + box.w > e.x - e.w / 2 && prevBottom <= e.y + 0.01 && b.y >= e.y);
+        if (i >= 0) { b.y = this.entities[i].y; b.grounded = true; b.vy = 0; b.cart = this.entities[i].kind === 'cart' ? i : -1; return true; }
       }
       return false;
     }
@@ -885,9 +911,20 @@
           // drunk on touch below the day's top grade; it comes back once Jim has stepped off its spot
           const spot = { x: e.x - 12, y: e.y - 18, w: 24, h: 36 };
           // its own countdown: e.t is every entity's age and goes up each step
-          if (e.got) { if ((e.back -= dt) <= 0 && !overlap(bb, spot)) e.got = false; }
+          // a bottle holding a body stays empty; stepping off its spot and back in takes the body away and the bottle returns
+          if (e.corpse) {
+            const inside = overlap(bb, spot);
+            if (!inside) e.armed = true;
+            else if (e.armed && this.state !== 'dead') {
+              this.entities = this.entities.filter(c => c !== e.corpse);
+              this.emit(e.corpse.x, e.corpse.y, '#c9d3e6', 12, 220, 120);
+              e.corpse = null; e.got = false; e.back = 0;
+              this.events.push('recall');
+            }
+          } else if (e.got) { if ((e.back -= dt) <= 0 && !overlap(bb, spot)) e.got = false; }
           else if (this.state !== 'dead' && this.targetStage() < this.cells && overlap(bb, spot)) {
             e.got = true; e.back = TUNING.bottleRespawn;
+            if (this.corpses) this.anchor = e;
             this.shiftGrade(this.targetStage() + 1); this.events.push('ready');
             this.emit(e.x, e.y, '#8fd18a', 10, 220, 160);
           }
@@ -1063,6 +1100,7 @@
       }
 
       if (this.flash) { this.flash.t -= dt; if (this.flash.t <= 0) this.flash = null; }
+      if (this.warp && (this.warp.t -= dt) <= 0) this.warp = null;
       this.mapTime += dt;
       this.roomTitle = Math.max(0, this.roomTitle - dt);
       const b = this.body;
@@ -2130,7 +2168,7 @@
   const GREY = { bg: '#2a2d36', grid: 'rgba(255,255,255,.05)', grid5: 'rgba(255,255,255,.13)', label: 'rgba(255,255,255,.35)',
     solid: '#70747f', solidEdge: '#4b4f59', glass: '#e0484d', plank: '#a3a9b5', crate: '#d9893b', crateInk: '#7a4518',
     belt: '#4d515c', exit: '#f3f1ea', patrol: '#d8504a', faller: '#e8c34a', bottle: '#5fbf6a', cap: '#f2c24f', shadow: '#9b7be0',
-    sofa: '#b06ab3', sofaInk: '#5e2f61', cart: '#5fa8d3', cartInk: '#24506b' };
+    sofa: '#b06ab3', sofaInk: '#5e2f61', cart: '#5fa8d3', cartInk: '#24506b', corpse: '#c9d3e6', corpseInk: '#6b7487' };
   function buildLayer() {
     const c = layer.getContext('2d'), tiles = game.tiles;
     c.clearRect(0, 0, W, H);
@@ -2308,6 +2346,22 @@
       } else if (e.kind === 'bottle' && (!e.got || g.looped)) {
         // under loop rules a drunk bottle shows as an outline until it comes back
         drawBottle(e.x, e.y, 1, e.got ? 0.25 : 1);
+        // a bottle holding a body: a thread to the body and a ring round the outline, both in the body's colour
+        if (e.corpse) {
+          ctx.save(); ctx.strokeStyle = GREY.corpse; ctx.globalAlpha = 0.35; ctx.lineWidth = 2; ctx.setLineDash([6, 6]);
+          ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.lineTo(e.corpse.x, e.corpse.y + TUNING.corpseH / 2); ctx.stroke(); ctx.setLineDash([]);
+          ctx.globalAlpha = 0.8; ctx.beginPath(); ctx.arc(e.x, e.y, 22, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+        } else if (e === g.anchor && g.targetStage() === 1) {
+          // where J sends Jim now: the ring breathes until he uses it
+          ctx.save(); ctx.strokeStyle = GREY.corpse; ctx.globalAlpha = 0.35 + 0.25 * Math.sin(g.mapTime * 6); ctx.lineWidth = 2;
+          ctx.setLineDash([4, 5]); ctx.beginPath(); ctx.arc(e.x, e.y, 22, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+        }
+      } else if (e.kind === 'corpse') {
+        // Jim lying flat, head toward where he faced: the top edge is the plank
+        const h = TUNING.corpseH, x0 = e.x - e.w / 2;
+        ctx.fillStyle = GREY.corpse; ctx.fillRect(x0, e.y, e.w, h);
+        ctx.strokeStyle = GREY.corpseInk; ctx.lineWidth = 2; ctx.strokeRect(x0, e.y, e.w, h);
+        ctx.fillStyle = GREY.corpseInk; ctx.beginPath(); ctx.arc(e.x + e.face * (e.w / 2 - 12), e.y + h / 2, 6, 0, Math.PI * 2); ctx.fill();
       } else if (e.kind === 'cart') {
         ctx.fillStyle = GREY.cart; ctx.fillRect(e.x - e.w / 2, e.y, e.w, e.h);
         ctx.fillStyle = GREY.cartInk; ctx.beginPath(); ctx.arc(e.x - e.w / 4, e.y + e.h + 5, 6, 0, Math.PI * 2); ctx.arc(e.x + e.w / 4, e.y + e.h + 5, 6, 0, Math.PI * 2); ctx.fill();
@@ -2319,6 +2373,12 @@
         ctx.fillStyle = GREY.faller; ctx.fillRect(e.x - e.w / 2 + wob, e.y, e.w, e.h);
         ctx.fillStyle = '#3a2e08'; ctx.font = `bold ${Math.min(24, e.h)}px ${FONT}`; ctx.textAlign = 'center'; ctx.fillText('!', e.x + wob, e.y + e.h - 3);
       }
+    }
+    // the jump from the body to the bottle: a streak that fades
+    if (g.warp) {
+      const w = g.warp;
+      ctx.save(); ctx.strokeStyle = GREY.corpse; ctx.globalAlpha = w.t / TUNING.warpTime; ctx.lineWidth = 6; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(w.x0, w.y0); ctx.lineTo(w.x1, w.y1); ctx.stroke(); ctx.restore();
     }
   }
 
@@ -2355,11 +2415,13 @@
       else if (e.kind === 'bottle' && (!e.got || g.looped)) tags.push(['酒', e.x, e.y - 22]);
       else if (e.kind === 'cap' && !e.got && g.looped) tags.push([flavorOf(e.key).name, e.x, e.y - 18]);
       else if (e.kind === 'cart') tags.push(['台車', e.x, e.y - 4]);
+      else if (e.kind === 'corpse') tags.push(['屍體', e.x, e.y - 4]);
     }
     ctx.font = `12px ${FONT}`; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(20,22,28,.85)'; ctx.fillStyle = 'rgba(255,255,255,.85)';
     for (const [name, x, y] of tags) { ctx.strokeText(name, x, y); ctx.fillText(name, x, y); }
   }
 
+  const SHOT = new URLSearchParams(location.search).get('shot') === '1';
   const roomNumber = g => `${g.mapIndex + 1}-${g.map.rooms.indexOf(g.room) + 1}`;
 
   function drawBubbles() {
@@ -2429,9 +2491,11 @@
   // 1 丟 an arc, 2 衝 a flat arrow, 3 升天 an up arrow, 0 a dash: thin lines in the move's colour
   function moveIcon(grade, cx, cy, alpha) {
     ctx.save(); ctx.globalAlpha = alpha; ctx.translate(cx, cy);
-    ctx.lineWidth = 3; ctx.lineCap = ctx.lineJoin = 'round'; ctx.strokeStyle = grade ? ZUI[grade].tint : '#8a809f';
+    ctx.lineWidth = 3; ctx.lineCap = ctx.lineJoin = 'round'; ctx.strokeStyle = grade === 'body' ? GREY.corpse : grade ? ZUI[grade].tint : '#8a809f';
     ctx.beginPath();
-    if (grade === 1) { ctx.moveTo(-11, 8); ctx.quadraticCurveTo(-2, -16, 10, 6); ctx.moveTo(4, 5); ctx.lineTo(10, 6); ctx.lineTo(11, 0); }
+    // day 3's first grade: the body lying flat, head and all
+    if (grade === 'body') { ctx.moveTo(-11, 4); ctx.lineTo(5, 4); ctx.moveTo(14, 4); ctx.arc(10, 4, 4, 0, Math.PI * 2); }
+    else if (grade === 1) { ctx.moveTo(-11, 8); ctx.quadraticCurveTo(-2, -16, 10, 6); ctx.moveTo(4, 5); ctx.lineTo(10, 6); ctx.lineTo(11, 0); }
     else if (grade === 2) { ctx.moveTo(-11, 0); ctx.lineTo(11, 0); ctx.moveTo(5, -6); ctx.lineTo(11, 0); ctx.lineTo(5, 6); }
     else if (grade === 3) { ctx.moveTo(0, 11); ctx.lineTo(0, -11); ctx.moveTo(-6, -5); ctx.lineTo(0, -11); ctx.lineTo(6, -5); }
     else { ctx.moveTo(-8, 0); ctx.lineTo(8, 0); }
@@ -2442,7 +2506,7 @@
   // changing blink). Below: the move J plays now, and the bottles in hand. While the world lags, a bar runs down.
   function drawChillGauge() {
     const g = game, x = 22, y = 60, n = g.targetStage(), warn = g.stageWarn;
-    const moves = !n ? [0] : g.single ? [n] : Array.from({ length: n }, (_, i) => n - i);
+    const moves = !n ? [0] : g.corpses ? [n === 1 ? 'body' : 1] : g.single ? [n] : Array.from({ length: n }, (_, i) => n - i);
     ctx.fillStyle = 'rgba(18,14,35,.72)'; ctx.fillRect(x, y, 170, warn ? 84 : 74);
     for (let i = 1; i <= g.cells; i++) {   // only the grades this day can reach: no hint of what comes later
       const changing = warn && i > Math.min(g.stage, warn.to) && i <= Math.max(g.stage, warn.to);
@@ -2577,6 +2641,7 @@
     for (const p of g.particles) { ctx.globalAlpha = Math.max(0, p.life / p.max); ctx.fillStyle = p.color; ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size); }
     ctx.globalAlpha = 1;
     ctx.restore();
+    if (SHOT) return;   // ?shot=1: the room alone, no HUD, for map sheets
 
     if (g.drinkT > 0 && !g.slot) {
       const v = ctx.createRadialGradient(W / 2, H / 2, 240, W / 2, H / 2, 760);
@@ -2668,6 +2733,8 @@
       jump: () => tone(380, 0.1, 'square', 0.06, 640),
       land: () => noise(0.06, 0.22, 500),
       bounce: () => tone(160, 0.22, 'sine', 0.2, 520),
+      warp: () => { noise(0.12, 0.2, 900); tone(880, 0.18, 'triangle', 0.1, 330, 0.04); },
+      recall: () => tone(330, 0.16, 'triangle', 0.1, 880),
       slotOpen: () => tone(300, 0.16, 'triangle', 0.12, 620),
       tick: () => tone(1250, 0.025, 'square', 0.05),
       stop: () => tone(620, 0.07, 'triangle', 0.14),
@@ -2922,6 +2989,9 @@
       // ?room=<id> starts straight in that room, for testing and screenshots
       const roomId = new URLSearchParams(location.search).get('room'), mi = campaign.maps.findIndex(m => m.rooms.some(r => r.id === roomId));
       if (mi >= 0) { game.startMap(mi); game.enterRoom(roomId); game.phase = 'play'; }
+      // ?grade=1 shows the room drunk: its hallucinated tiles in place
+      const grade = Number(new URLSearchParams(location.search).get('grade'));
+      if (mi >= 0 && grade > 0 && game.cells) { game.booze = Math.min(grade, game.cells); game.applyStage(game.targetStage(), true); }
       if (game.chill) loadPuzzleRoutes(); updateInstructions(); toggleMenu(false);
     }
     catch (err) { toggleMenu(true); menuMsg.textContent = `${name} 讀不進來：\n${err.message}`; }

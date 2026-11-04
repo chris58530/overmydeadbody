@@ -1,5 +1,5 @@
-// Single-file build for BeaverKit (and phones): game.html with the chill-puzzle rooms and P routes
-// embedded, so it opens straight into the puzzle campaign without a server or ?chill=1.
+// Single-file build for BeaverKit (and phones): game.html with the drink-loop rooms and P routes
+// embedded, so it opens straight into the loop campaign without a server or ?chill=loop.
 // node handoff/kit/build-beaverkit.mjs   ->  prototype/beaverkit.html
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -12,7 +12,7 @@ export function buildBeaverkit() {
   const html = read('game.html');
   const at = html.indexOf('<script>');
   if (at < 0) throw new Error('game.html: engine script not found');
-  return html.slice(0, at) + inline('chill-puzzles-data', read('chill-puzzles.json')) + inline('chill-routes-data', read('chill-routes.json')) + html.slice(at);
+  return html.slice(0, at) + inline('chill-puzzles-data', read('chill-loop.json')) + inline('chill-routes-data', read('chill-loop-routes.json')) + html.slice(at);
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

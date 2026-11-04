@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
+import { campaign as source, fartsOnly } from '../handoff/kit/chill-loop.mjs';
+import { recordRoom } from '../handoff/kit/chill-room-tools.mjs';
+
 const context = vm.createContext({});
 const html = readFileSync(new URL('../prototype/game.html', import.meta.url), 'utf8');
 vm.runInContext(html.match(/<script>([\s\S]*?)<\/script>/)[1], context);
@@ -164,9 +167,9 @@ test('half on a sofa still bounces, with the floor on either side, and drops a b
 });
 
 test('a cocktail follows Jim, counts only when he lands, and a death before that loses it', () => {
-  const game = make('L3-1');
+  const game = make('L3-5');
   const cap = game.entities.find(e => e.kind === 'cap');
-  assert.ok(cap, 'L3-1 has a cocktail');
+  assert.ok(cap, 'L3-5 has a cocktail');
   // carried in the air: not yet counted
   game.body.x = cap.x; game.body.y = cap.y + 40; game.body.vy = -100; game.body.grounded = false;
   game.step(DT, {});
@@ -193,4 +196,62 @@ test('a drunk bottle comes back three seconds later once Jim has stepped off it'
   assert.equal(bottle.got, true, 'not before three seconds');
   run(game, 0.3, {});
   assert.equal(bottle.got, false, 'back after three seconds');
+});
+
+test('day 3: one grade leaves the body as a plank and wakes Jim at his bottle; walking back into it takes the body away', () => {
+  const game = make('L3-1');
+  assert.equal(game.cells, 1, 'the first room holds Jim to one grade');
+  game.step(DT, { skill: 'wrestler' });
+  assert.ok(!game.entities.some(e => e.kind === 'corpse'), 'no bottle drunk yet: nothing to wake at');
+  while (game.targetStage() === 0) game.step(DT, { right: true });
+  const bottle = game.entities.find(e => e.kind === 'bottle');
+  run(game, 0.2, { right: true });
+  game.step(DT, { jump: true, jumpPressed: true, right: true });
+  run(game, 0.2, { jump: true, right: true });
+  const at = { x: game.body.x, y: game.body.y };
+  game.step(DT, { skill: 'wrestler', right: true });
+  const corpse = game.entities.find(e => e.kind === 'corpse');
+  assert.ok(corpse, 'body left behind');
+  assert.ok(Math.abs(corpse.x - at.x) < 4 && Math.abs(corpse.y - (at.y - 22)) < 4, 'where Jim was');
+  assert.equal(game.targetStage(), 0, 'the grade is spent');
+  assert.ok(Math.abs(game.body.x - bottle.x) < 1, 'woke at the bottle');
+  assert.ok(bottle.got && bottle.corpse === corpse, 'the bottle holds the body');
+  run(game, 4, {});
+  assert.ok(bottle.got, 'stays empty while the body is there, even standing on its spot');
+  run(game, 0.6, { left: true });
+  run(game, 0.6, { right: true });
+  assert.ok(!game.entities.includes(corpse), 'walking back in takes the body away');
+  assert.equal(game.targetStage(), 1, 'and the bottle is drunk again');
+});
+
+test('day 3: two grades are the throw', () => {
+  const game = make('L3-5');
+  assert.equal(game.cells, 2);
+  while (game.targetStage() < 2) game.step(DT, { right: true });
+  game.step(DT, { skill: 'wrestler', right: true });
+  assert.equal(game.state, 'lift');
+  assert.ok(!game.entities.some(e => e.kind === 'corpse'));
+});
+
+test('day 3: the drunk bridge goes three seconds after the body, and the body stays', () => {
+  const game = make('L3-2');
+  while (game.targetStage() === 0) game.step(DT, { right: true });
+  const bridge = () => game.tiles[16][10];
+  assert.notEqual(bridge(), '#', 'no bridge yet');
+  run(game, 3.1, {});
+  assert.equal(bridge(), '#', 'the bridge comes three seconds after the sip');
+  run(game, 0.3, { jump: true, jumpPressed: true });
+  game.step(DT, { skill: 'wrestler' });
+  const corpse = game.entities.find(e => e.kind === 'corpse');
+  assert.ok(corpse, 'body left');
+  run(game, 2.8, {});
+  assert.equal(bridge(), '#', 'still there just before three seconds');
+  run(game, 0.3, {});
+  assert.notEqual(bridge(), '#', 'gone after three seconds');
+  assert.ok(game.entities.includes(corpse), 'the body stays');
+});
+
+test('day 3: the wall in L3-3 can be taken with farts alone, no body', () => {
+  const mapIndex = source.maps.findIndex(map => map.rooms.some(room => room.id === 'L3-3'));
+  assert.notEqual(recordRoom(source, 'L3-3', fartsOnly, { mapIndex }).game.phase, 'play');
 });
