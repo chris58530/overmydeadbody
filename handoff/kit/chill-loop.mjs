@@ -212,114 +212,184 @@ export const day2 = [
   }),
 ];
 
-// Day 3: the drunk shadow. One grade leaves Jim's body behind as a floating plank and sends him back to the last
-// bottle he drank, which stays empty while the body is there (walk back into it to take the body away); two grades
-// are the throw. J spends the grade like K does, so three seconds after the body the drunk world goes, and the body stays.
+// Day 3: the drunk shadow. One grade leaves Jim's body behind and sends him back to the last bottle he drank, which
+// stays empty while the body is there (walk back into it, or J with no grade left, to take the body away: a body in the
+// wrong place is never a reason to die); two grades are the throw. The body is more than a plank: it holds a sensor, stops a beam, turns a
+// chair back, and the jump home is a way out of anywhere. Rooms are one climbing map: every way on is right or up.
 // The first rooms hold Jim to one grade (cells: 1): the body and K are the moves there, and the throw comes in its own room.
 // A throw lifts Jim 2 tiles, tops out 7.8 above where he stood and lands about 17 tiles on; holding the
-// other way pulls the landing back to about 9.5. J at the top of a jump tops out 10.5 up, 10 tiles on:
-// every door sits above that, or behind a wall it cannot clear.
+// other way pulls the landing back to about 9.5. J at the top of a jump tops out 10.5 up, 10 tiles on.
 export const day3 = [
   // Leave your body over the pit, wake up by the bottle, and cross on it. A jump and a double jump fall short.
   { ...artRoom('L3-1', '留位置', 'office', 0, [], [
-    ...Array(9).fill(EMPTY),
+    ...Array(6).fill('...............................#'),
+    ...Array(3).fill(EMPTY),
     '.P..D...........................',
     ...Array(6).fill('#######.............############'),
     '#######^^^^^^^^^^^^^############',
     FLOOR,
   ]), cells: 1 },
 
-  // Drunk, a bridge runs out over the glass and stops short. Run out, jump off its end and leave the body in the air.
-  // The body sobers Jim: three seconds later the bridge goes, so run back out over it, onto the body and across.
-  // Too far for a jump and a double jump from the end of the bridge. Too slow: walk back into the bottle and drink again.
-  { ...artRoom('L3-2', '趁橋還在', 'office', 0, [], [
-    ...Array(15).fill(EMPTY),
-    '.P.D............................',
-    '#####^^^^^^^^^^^^^^^^^^^^^^^^^##',
+  // The door opens while the sensor over the glass holds something. Leave the body inside it: it holds the door and
+  // it is the only step across. Too high and it cannot be reached, too far and it misses the sensor.
+  // Cocktail: straight up from the body.
+  { ...artRoom('L3-2', '開門', 'office', 0, [], [
+    '##########################...###',
+    '#.......................#......#',
+    '#.......................#..==..#',
+    '#.......................#......#',
+    '#..............*........#.==...#',
+    '#.......................#......#',
+    '........................G..==..#',
+    '...............HH.......G......#',
+    '...............HH.......G==....#',
+    '.P.....D.......HH.......G......#',
+    ...Array(6).fill('##########............##########'),
+    '##########^^^^^^^^^^^^##########',
     FLOOR,
-  ], {
-    1: [...Array(16).fill(EMPTY), '.....############...............', EMPTY],
-  }), cells: 1 },
+  ]), cells: 1 },
 
-  // All of it, and a choice. Drunk, a ledge hangs over the glass; a wall stands too high for a jump from there.
-  // Farts alone: jump off the ledge, K at the top into the hanging bottle, K again onto the wall. Hard and quick.
-  // With the body: leave it past the ledge, run back before the ledge goes, stand on it, and go up through the bottle:
-  // K from there, or J by the bottle: the second body lies right under the spot Jim wakes on, a jump from the wall.
-  // Cocktail: a jump from the second body, or K from the first, right at the top. Farts alone come in under it.
-  { ...artRoom('L3-3', '放不放', 'office', 0, [], [
-    ...Array(4).fill(EMPTY),
-    '......................*.........',
-    ...Array(2).fill(EMPTY),
-    '......................D.........',
-    ...Array(7).fill('........................########'),
-    '.P.D....................########',
-    '######^^^^^^^^^^^^^^^^^^########',
-    FLOOR,
-  ], {
-    1: [...Array(14).fill(EMPTY), '...........#####................', ...Array(3).fill(EMPTY)],
-  }), cells: 1 },
+  // Beams from the ceiling of the tunnel. A body lying across a beam stops it: leave it from the side, close enough to
+  // reach and not close enough to burn, and walk under. Each bottle is good for one beam, and the last for the step up
+  // the wall: left too high it cannot be reached, so go back and leave it lower.
+  { ...artRoom('L3-3', '遮', 'office', 0, [], [
+    '################################',
+    '#..............................#',
+    ...Array(4).fill('#...............................'),
+    ...Array(3).fill('#.........................######'),
+    '#......................D..######',
+    '#.....==.V######V###############',
+    '#..............................#',
+    '#..==..........................#',
+    '#..............................#',
+    '#.....==.......................#',
+    '#...........D.........D.P......#',
+    '##########################===###',
+    '##########################...###',
+  ]), cells: 1 },
 
-  // The sofa: walk onto it and it throws you 5 tiles up, jump onto it for 6.
-  // Cocktail: from the pillar, jump back down onto the first sofa: from that high it throws you to the cocktail. Drop onto one from high up and it
-  // throws you 8: the door is only that high.
-  artRoom('L3-4', '沙發', 'office', 0, [], [
-    ...Array(7).fill(EMPTY),
-    '.......*........................',
-    '..............................O.',
-    '........................########',
-    '........................########',
-    '........................########',
-    '............####........########',
-    '............####........########',
-    '............####........########',
-    '.P..........####........########',
-    '####^^SS^^^^####^^^SS^^^########',
+  // The bridge is there only while the chair is in its nook, under a roof Jim cannot fit. Left alone the chair rolls
+  // out again and the bridge goes before anyone is across. Follow it in and leave the body at the mouth: it turns the
+  // chair back, the chair stays in, and the bridge stays up.
+  { ...artRoom('L3-4', '關椅子', 'pantry', 0, [], [
+    FLOOR, FLOOR,
+    ...Array(3).fill('............####################'),
+    '.P..........####################',
+    '#######.....####################',
+    '#######.........................',
+    '#######.........................',
+    '#####HH..RD.....................',
+    '############gggggggggggggggggg##',
+    ...Array(5).fill('############..................##'),
+    '############^^^^^^^^^^^^^^^^^^##',
     FLOOR,
-  ]),
+  ]), cells: 1 },
+
+  // The sensor is down the shaft, and the jump home is the way back up: drink, go down, leave the body in it on the way
+  // past, and wake on the ledge. Then the sofa, not a jump, carries Jim over to the open door.
+  // Nothing here kills: fall in with nothing and the sofa throws you back out.
+  { ...artRoom('L3-5', '下去再回來', 'pantry', 0, [], [
+    '####################...#########',
+    '#.................#............#',
+    '#.................#.==.........#',
+    '#.................#............#',
+    '#.................#..==........#',
+    '#.................#............#',
+    '#.................G==..........#',
+    '..................G............#',
+    '..................G...==.......#',
+    '.P..D.............G............#',
+    '######........##################',
+    ...Array(4).fill('######..HHHHH.##################'),
+    '######SSSSSSSS##################',
+    FLOOR, FLOOR,
+  ]), cells: 1 },
+
+  // Which bottle you wake at. The body from the first bottle is the step up to the second; drink that one, and the body
+  // left in the sensor sends you back up to it, not down to the floor. The hatch above opens only with the sensor held.
+  { ...artRoom('L3-6', '先後', 'pantry', 0, [], [
+    '########...#####################',
+    '#..............................#',
+    '#.......==.....................#',
+    '##########################GGG###',
+    '#############.............==...#',
+    '#############..................#',
+    '#############..............==..#',
+    '#############..................#',
+    '#############........HHH==.....#',
+    '#############........HHH.......#',
+    '#############.D......HHH.......#',
+    ...Array(4).fill('#################..............#'),
+    '#################..D....P......#',
+    '####################===#########',
+    '####################...#########',
+  ]), cells: 1 },
 
   // Two bottles for the throw: over a wall nothing else clears, onto a pillar the throw overshoots: pull back in the air.
-  // Cocktail: a throw from the top of a jump, straight into the wall, comes up high enough for it.
-  artRoom('L3-5', '丟', 'office', 0, [], [
-    ...Array(4).fill(EMPTY),
-    '.......*........................',
-    ...Array(5).fill(EMPTY),
-    '........##......................',
-    '........##......................',
-    '........##....................O.',
-    '........##.....##......#########',
-    '........##.....##......#########',
-    '.P.DD...##.....##......#########',
-    '##########^^^^^##^^^^^^#########',
+  artRoom('L3-7', '丟', 'street', 0, [], [
     FLOOR,
+    ...Array(6).fill('#..............................#'),
+    ...Array(2).fill('#...............................'),
+    ...Array(2).fill('#.............##................'),
+    ...Array(2).fill('#.............##............####'),
+    ...Array(2).fill('#.............##.......##...####'),
+    '#.DD..P.......##.......##...####',
+    '########===#####^^^^^^^##^^^####',
+    '########...#####################',
   ]),
 
-  // Drink both and throw: the throw comes down on the sofa, and from that high a sofa sends you back up 8 tiles,
+  // Drink both and throw: the throw comes down on the sofa, and from that high a sofa sends you up to the high ledge,
   // where no jump onto it reaches. The ceiling stops a throw from up in a jump going straight over.
-  artRoom('L3-6', '丟上沙發', 'office', 0, [], [
-    ...Array(4).fill(EMPTY),
-    '....#################...........',
-    '....#################...........',
-    EMPTY, EMPTY, EMPTY,
-    ...Array(6).fill('.....................###########'),
+  artRoom('L3-8', '丟上沙發', 'street', 0, [], [
+    FLOOR,
+    '#..##################...........',
+    ...Array(3).fill('#...............................'),
+    ...Array(2).fill('#....................###########'),
+    ...Array(3).fill('.....................###########'),
     '.P.DD................###########',
-    '####^^^^^^^^SSS^^^^^^###########',
+    '#######..............###########',
+    '#######.......SSS....###########',
+    ...Array(3).fill('#######.......###....###########'),
+    '#######^^^^^^^###^^^^###########',
     FLOOR,
   ]),
 
-  // All of it: drink twice on the floor that goes, jump to the ledge as it comes, jump and throw from it, grab the
-  // bottle at the top, and K over the glass-topped wall onto the way out. Fall short and the sofa below
-  // throws you back up to it. The glass overhangs the wall by a tile, so its corner is no place to stand.
-  // Cocktail: come down on the sofa on purpose; it hangs in the bounce up to the way out.
-  artRoom('L3-7', '醉了又醒', 'street', 0, [], [
-    EMPTY, EMPTY,
-    '.....................D..........',
-    '.......................^^^......',
-    ...Array(3).fill('........................##......'),
-    '........................##....O.',
-    ...Array(4).fill('........................##....##'),
-    '........................##..*.##',
-    ...Array(2).fill('........................##....##'),
-    '.P..D.D.................##....##',
+  // The sensor is up where you came in, the door down on the floor. Drink on the floor, climb back up, leave the body in
+  // the sensor, and the jump home drops you at the door. The two bottles past it are the throw over the glass.
+  artRoom('L3-9', '留一手', 'street', 0, [], [
+    FLOOR,
+    ...Array(2).fill('............####################'),
+    '..HH........####################',
+    '.PHH........####################',
+    '#####.......####################',
+    '#.......==..#..................#',
+    '#...........#..................#',
+    '#....==.....#..................#',
+    '#...........#..................#',
+    '#.......==..#..................#',
+    '#...........#..................#',
+    '#....==.....G...................',
+    '#...........G...................',
+    '#.......==..G...................',
+    '#..D........GDD.................',
+    '###############^^^^^^^^^^^^^####',
+    FLOOR,
+  ]),
+
+  // All of it. Shut in at the start: the sensor overhead takes the first bottle's body. Then drink twice on the floor that
+  // goes, jump to the ledge as it comes, jump and throw from it, grab the bottle at the top, and K over the glass-topped wall.
+  // Fall short and the sofa below throws you back up to it. Cocktail: come down on the sofa on purpose.
+  artRoom('L3-10', '醉了又醒', 'street', 0, [], [
+    ...Array(2).fill('#.......#......................#'),
+    '#.......#............D.........#',
+    '#.......#..............^^^.....#',
+    ...Array(4).fill('#.......#...............##......'),
+    ...Array(2).fill('#.......#...............##....##'),
+    ...Array(2).fill('#.......G...............##....##'),
+    '.HHH....G...............##..*.##',
+    '.HHH....G...............##....##',
+    '........G...............##....##',
+    '.PD.D.D.G...............##....##',
     '########^^^^^^^^^^^^^^^^##^SSS##',
     '####....########################',
   ], {
@@ -420,6 +490,16 @@ const leaveBody = (r, from, when, full = true) => {
 const deck = r => r.game.entities.filter(e => e.kind === 'corpse').at(-1).y;
 const plank = r => r.game.entities.filter(e => e.kind === 'corpse').at(-1).x;
 const drunk = (r, input) => r.until(g => g.targetStage() > 0, 10, input);
+// jump out through the hatch overhead
+const out = r => { r.tick({ jump: true, jumpPressed: true }); r.wait(1, { jump: true }); };
+// run left past x and stop, jump straight up, and J at the top: the body lies across the beam just left of Jim, and he wakes at his bottle
+const shade = (r, x) => {
+  r.until(g => g.body.x <= x, 4, { left: true });
+  r.until(g => Math.abs(g.body.vx) < 5, 1);
+  r.tick({ jump: true, jumpPressed: true });
+  r.until(g => g.body.vy >= 0, 2, { jump: true });
+  r.skill(-1);
+};
 
 export const plans = {
   'P1-1': r => {
@@ -542,52 +622,107 @@ export const plans = {
   },
   'L3-2': r => {
     drunk(r, { right: true });
-    r.world();
-    leaveBody(r, 660, g => g.body.vy > 0 && g.body.y >= 640);   // off the end of the bridge, and J back at its height
+    leaveBody(r, 370, g => g.body.vy > 0 && g.body.y >= 350);   // into the sensor, on the way down
     const x = plank(r);
-    leap(r, 660, x, deck(r));   // the bridge is still there: run back out and onto the body
-    leap(r, x + 30, 1225, 640);
-    r.finish();
+    assert.ok(r.game.sensed, 'the sensor holds the body');
+    leap(r, 370, x, deck(r));
+    fetch(r, 620, x, deck(r));
+    leap(r, x + 10, 900, 400);
+    r.until(g => g.body.x >= 1000, 2, { right: true });
+    for (const [x, y] of [[1040, 320], [1130, 240], [1090, 160], [1100, 80]]) leap(r, 0, x, y);
+    out(r);
   },
   'L3-3': r => {
+    drunk(r, { left: true });
+    shade(r, 705);   // beside the first beam
+    r.until(g => g.targetStage() > 0, 4, { left: true });
+    shade(r, 425);   // the second, from its own bottle
+    r.until(g => g.body.x <= 320, 3, { left: true });
+    for (const [x, y] of [[280, 560], [160, 480], [280, 400]]) leap(r, 0, x, y);
     drunk(r, { right: true });
-    r.world();
-    leap(r, 225, 500, 560);
-    leaveBody(r, 625, g => g.body.vy > 0 && g.body.y >= 472);   // off the ledge, and J on the way down, under the hanging bottle
-    const x = plank(r);
-    leap(r, 225, 500, 560);   // back up onto the ledge before it goes
-    leap(r, 625, x, deck(r));
-    fetch(r, 900, 1040, 320, 1);   // up through the bottle, K at the top for the cocktail, and onto the wall
+    leaveBody(r, 960, g => g.body.vy < 0 && g.body.y <= 350);   // low enough to reach: a step up the wall
+    leap(r, 0, plank(r) - 10, deck(r));
+    leap(r, 0, 1100, 240);
     r.finish();
   },
   'L3-4': r => {
-    toSofa(r, 150, 290);
-    landOn(r, 560, 480);
-    toSofa(r, 0, 290);   // back down onto the first sofa from the pillar: high enough for the cocktail
-    fetch(r, 300, 560, 480, 0, false);
-    toSofa(r, 620, 800);
-    landOn(r, 1100, 360);
+    const chair = () => r.game.entities.find(e => e.kind === 'patrol');
+    r.until(g => g.body.x >= 258, 2, { right: true });
+    r.until(() => chair().dir < 0 && chair().x < 400, 12);   // down behind the chair as it rolls for the nook
+    drunk(r, { right: true });
+    r.until(g => g.body.x <= 325, 2, { left: true });
+    r.until(g => Math.abs(g.body.vx) < 5, 1);
+    r.until(() => chair().x < 284, 3);
+    r.skill();
+    assert.ok(chair().x < plank(r) && plank(r) < 362, 'the chair is shut in behind the body');
+    r.until(g => g.tiles[10][12] === 'G', 4);
+    r.wait(0.3);
     r.finish();
   },
   'L3-5': r => {
-    r.until(g => g.targetStage() === 2, 4, { right: true });
-    jumpThrow(r, 150);
-    r.skill();   // a throw from the top of the jump, into the wall and up to the cocktail
-    r.until(g => g.body.grounded && g.state === 'free', 4);
-    r.until(g => g.targetStage() === 2, 8, { left: true });
-    r.until(g => g.body.x <= 110, 2, { left: true });   // back to where a throw clears the wall
-    fling(r, 640, 520);
-    leap(r, 670, 1000, 520);
-    r.finish();
+    drunk(r, { right: true });
+    leaveBody(r, 150, g => g.body.vy > 0 && g.body.y >= 480);   // down the shaft and into the sensor
+    assert.ok(r.game.sensed, 'the sensor holds the body');
+    toSofa(r, 215, 530);
+    landOn(r, 640, 400);
+    r.until(g => g.body.x >= 820, 3, { right: true });
+    for (const [x, y] of [[920, 320], [810, 240], [880, 160], [850, 80]]) leap(r, 0, x, y);
+    out(r);
   },
   'L3-6': r => {
-    r.until(g => g.targetStage() === 2, 4, { right: true });
-    r.until(g => g.body.x <= 110, 2, { left: true });   // the throw from the first bottle comes down on the sofa
-    fling(r, 540, 640);
-    landOn(r, 880, 360);
-    r.finish();
+    drunk(r, { left: true });
+    r.until(g => g.body.x <= 730, 2, { left: true });
+    r.tick({ left: true, jump: true, jumpPressed: true });
+    r.until(g => g.body.vy < 0 && g.body.y <= 572, 2, { jump: true });
+    r.skill();
+    leap(r, 0, plank(r) + 6, deck(r));
+    leap(r, 0, 660, 440);
+    drunk(r, { left: true });   // the second bottle
+    leaveBody(r, 640, g => g.body.vy > 0 && g.body.y >= 400);
+    assert.ok(r.game.sensed, 'the sensor holds the body');
+    leap(r, 640, plank(r), deck(r));
+    leap(r, 0, 1000, 320);
+    leap(r, 0, 1110, 240);
+    leap(r, 0, 1085, 160);
+    leap(r, 0, 1020, 120);
+    r.until(g => g.body.x <= 385, 3, { left: true });
+    r.until(g => Math.abs(g.body.vx) < 5, 1);
+    leap(r, 0, 372, 80);
+    out(r);
   },
   'L3-7': r => {
+    r.until(g => g.targetStage() === 2, 4, { left: true });
+    r.until(g => g.body.x >= 330, 2, { right: true });
+    fling(r, 990, 520);
+    leap(r, 980, 1180, 440);
+    r.finish();
+  },
+  'L3-8': r => {
+    r.until(g => g.targetStage() === 2, 4, { right: true });
+    r.until(g => g.body.x <= 110, 2, { left: true });   // the throw comes down on the sofa
+    fling(r, 600, 480);
+    landOn(r, 880, 200);
+    r.finish();
+  },
+  'L3-9': r => {
+    r.until(g => g.body.y >= 640, 3, { right: true });
+    drunk(r, { left: true });
+    r.until(g => g.body.x >= 260, 2, { right: true });
+    for (const [x, y] of [[360, 560], [240, 480], [360, 400], [240, 320], [360, 240], [180, 200]]) leap(r, 0, x, y);
+    r.until(g => g.body.x <= 120, 2, { left: true });
+    r.skill();   // the body holds the sensor, and Jim wakes on the floor
+    r.until(g => g.targetStage() === 2, 4, { right: true });
+    r.until(g => g.body.x >= 585, 1, { right: true });
+    fling(r, 1180, 640);
+    r.finish();
+  },
+  'L3-10': r => {
+    drunk(r, { right: true });
+    r.tick({ jump: true, jumpPressed: true });
+    r.until(g => g.body.vy < 0 && g.body.y <= 540, 2, { jump: true });
+    r.skill();
+    assert.ok(r.game.sensed, 'the sensor holds the body');
+    r.world();
     r.until(g => g.targetStage() === 2, 4, { right: true });
     r.until(g => g.body.x >= 290, 2, { right: true });
     r.until(g => g.stageWarn.t < 0.35, 3);
@@ -599,20 +734,10 @@ export const plans = {
   },
 };
 
-// L3-3 without a body: farts alone reach the wall. Not the P route; the tests hold the room to it.
-export const fartsOnly = r => {
-  drunk(r, { right: true });
-  r.world();
-  leap(r, 225, 500, 560);
-  leap(r, 625, 1040, 320, 1, 2);
-  assert.ok(!r.game.entities.some(e => e.kind === 'corpse'), 'a body was left');
-  r.finish();
-};
-
 // A day is one map: its rooms sit side by side ("at"), each walked out of its right edge into the next one's left.
 // bands[i] is the run of rows open between room i and room i + 1 (the last one leaves the day). The rest of
 // both edge columns is wall; the row under an entrance band is the ledge you come in on. Doors (O) are gone.
-const PASS = c => !'#BC<>S'.includes(c);
+const PASS = c => !'#BC<>SGV'.includes(c);
 const setCol = (rows, x, keep) => rows.map((row, y) => row.slice(0, x) + (keep(y) ? row[x] === 'O' ? '.' : row[x] : '#') + row.slice(x + 1));
 // The way out of a room drops down a two-tile shaft (columns 29-30) to floor height: the wall stops a running
 // Jim, and he walks into the next room at its floor instead of falling into it from high up.
@@ -646,6 +771,27 @@ function connect(list, bands) {
   return rooms;
 }
 
+// Day 3 climbs: each room says which way it goes on ('right' or 'top'), and the rooms stand where that puts them.
+// The open cells on both sides of a seam must match. A way up comes in through a one-way plank in the next room's floor.
+function climb(list, ways) {
+  assert.equal(ways.length, list.length, 'one way on per room');
+  let [col, row] = [0, 0];
+  const rooms = list.map((room, i) => {
+    const exits = { [ways[i]]: list[i + 1]?.id ?? null };
+    if (ways[i - 1] === 'right') exits.left = list[i - 1].id;
+    const placed = { ...room, at: [col, row], exits, portalTarget: undefined };
+    if (ways[i] === 'right') col++; else row--;
+    return placed;
+  });
+  rooms.slice(1).forEach((room, i) => {
+    const from = rooms[i];
+    const edge = ways[i] === 'right' ? [from.tiles.map(row => PASS(row[31])).join(), room.tiles.map(row => PASS(row[0])).join()]
+      : [[...from.tiles[0]].map(PASS).join(), [...room.tiles[17]].map(PASS).join()];
+    assert.equal(edge[0], edge[1], `${from.id} → ${room.id}: the edges do not line up`);
+  });
+  return rooms;
+}
+
 export const campaign = {
   format: 'drunken-rooms', version: 2, rules: 'chill-puzzle', skills: 'single', bottles: 'drink',
   maps: [{
@@ -656,7 +802,7 @@ export const campaign = {
     rooms: connect(day2.map((room, i) => [0, 1, 5, 6].includes(i) ? shaft(room) : room), [[12, 15], [12, 15], [8, 11], [6, 9], [10, 13], [12, 15], [12, 15], [6, 9]]),
   }, {
     id: 'day-3', name: '第三天　醉影', cells: 2, abilities: ['wrestler'], zui: 'corpse',
-    rooms: connect(day3.map((room, i) => i < 6 ? shaft(room) : room), [[12, 15], [12, 15], [12, 15], [12, 15], [12, 15], [12, 15], [4, 7]]),
+    rooms: climb(day3, ['right', 'top', 'right', 'right', 'top', 'top', 'right', 'right', 'right', 'right']),
   }],
 };
 

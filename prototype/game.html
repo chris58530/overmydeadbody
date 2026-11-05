@@ -132,7 +132,9 @@
   // . empty  # ground  ^ shards  = plank  B crate (charge breaks)  C crumbling boxes  < > conveyor
   // R patrol (office chair / night guard)  L falling light (tube / sign)  * bottle cap  P spawn  D a bottle of booze (bottles rules)
   // S sofa (bounces Jim up)  M cart (a moving platform that rolls until something solid turns it)
-  const TILE_CHARS = '.#^=BCP<>RL*ONDSM';
+  // H sensor (works the room's doors while Jim, a body or a chair is in it)  G door (open while sensed)  g bridge (solid while sensed)
+  // V beam fixture (a beam runs straight down from it to the first solid or body, and kills)
+  const TILE_CHARS = '.#^=BCP<>RL*ONDSMHGgV';
   // stage overlays: '.' keeps the tile below, '_' clears it, anything else replaces it
   const STAGE_CHARS = '.#^=BC<>S_';
   // the drunk shadow's moves, one per cell: the last cell left is always the throw
@@ -157,7 +159,7 @@
     other: ['再一杯……', '嗝。', '這不算！', '加班加到眼花了'],
   };
   const GUARD_LINES = ['下班了還想去哪？', '這裡不能過。', '你是不是喝酒了？'];
-  const SOLID = '#BC<>S';
+  const SOLID = '#BC<>SGV';
   const SIDES = ['left', 'right', 'top', 'bottom'];
   const THEMES = ['office', 'pantry', 'elevator', 'lobby', 'street'];
 
@@ -270,10 +272,14 @@
       this.exits = this.room.exits || {};
       this.entities = [];
       this.crumbles = new Map();
+      this.sensors = []; this.doors = []; this.beams = []; this.sensed = false;
       const street = (this.room.theme || 'street') === 'street';
       for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
         const t = this.tiles[y][x];
         if (t === 'P') this.spawn = { x: x * T + T / 2, y: (y + 1) * T };
+        if (t === 'H') this.sensors.push({ x: x * T, y: y * T, w: T, h: T });
+        if (t === 'G' || t === 'g') { this.doors.push({ x, y, bridge: t === 'g' }); this.tiles[y][x] = t === 'G' ? 'G' : '.'; }
+        if (t === 'V') this.beams.push({ x, y });
         if (t === 'R') { this.entities.push({ kind: 'patrol', x: x * T + T / 2, y: (y + 1) * T, dir: -1, alive: true, w: street ? 44 : 40, h: street ? 110 : 34, skin: street ? 'guard' : 'chair', t: 0 }); this.tiles[y][x] = '.'; }
         if (t === 'L') { this.entities.push({ kind: 'faller', x: x * T + T / 2, y: y * T, vy: 0, phase: 'idle', t: 0, w: 72, h: street ? 30 : 14, skin: street ? 'sign' : 'tube' }); this.tiles[y][x] = '.'; }
         if (t === 'D') { this.entities.push({ kind: 'bottle', x: x * T + T / 2, y: y * T + T / 2, got: false }); this.tiles[y][x] = '.'; }
@@ -474,6 +480,7 @@
       if (this.state === 'dead' || this.chain.length || this.state === 'lift' || this.state === 'charge') return;
       if (this.chill && this.chillAirUsed) return;
       const n = Math.min(this.cells, Math.floor(this.booze + 1e-9));
+      if (n < 1 && this.corpses && this.callBack()) return;
       if (n < 1) {
         this.bubbles = this.bubbles.filter(bub => !bub.deny);
         this.bubbles.push({ who: 'body', text: '還不夠醉……', delay: 0, t: 0.8, deny: true });
@@ -511,6 +518,62 @@
       this.state = 'free'; this.chillAirUsed = false; this.coyote = 0; this.jumpBuf = 0;
       this.events.push('warp');
       this.emit(to.x, to.y, '#c9d3e6', 14, 260, 160);
+    }
+
+    // Nothing left to spend: J calls the last body back and Jim wakes at its bottle, wherever he got stuck.
+    // A body in the wrong place never costs a death.
+    callBack() {
+      const body = this.entities.filter(e => e.kind === 'corpse').at(-1), to = body && this.entities.find(e => e.kind === 'bottle' && e.corpse === body);
+      if (!to) return false;
+      const b = this.body;
+      this.entities = this.entities.filter(e => e !== body);
+      this.emit(body.x, body.y, '#c9d3e6', 12, 220, 120);
+      this.warp = { x0: b.x, y0: b.y - BODY_H / 2, x1: to.x, y1: to.y, t: TUNING.warpTime };
+      Object.assign(to, { corpse: null, got: false, back: 0 });
+      Object.assign(b, { x: to.x, y: to.y + T / 2, vx: 0, vy: 0, grounded: false });
+      this.state = 'free'; this.coyote = 0; this.jumpBuf = 0;
+      this.events.push('recall', 'warp');
+      return true;
+    }
+
+    // A sensor holds while Jim, a body or a chair is in it: doors open and bridges appear. Nothing solid comes down on Jim:
+    // a door waits until he is clear of it.
+    updateDoors() {
+      if (!this.sensors.length) return;
+      const hit = box => this.sensors.some(s => overlap(box, s));
+      const sensed = hit(this.box(this.body)) || this.entities.some(e => e.kind === 'corpse' ? hit({ x: e.x - e.w / 2, y: e.y, w: e.w, h: TUNING.corpseH })
+        : e.kind === 'patrol' && e.alive && hit({ x: e.x - e.w / 2, y: e.y - e.h, w: e.w, h: e.h }));
+      if (sensed === this.sensed) return;
+      const solid = d => sensed === d.bridge, jim = this.box(this.body);
+      if (this.doors.some(d => solid(d) && overlap(jim, { x: d.x * T, y: d.y * T, w: T, h: T }))) return;
+      for (const d of this.doors) this.tiles[d.y][d.x] = solid(d) ? 'G' : '.';
+      this.tilesVersion++;
+      this.sensed = sensed;
+      this.events.push(sensed ? 'stageUp' : 'stageDown');
+    }
+
+    // Where a beam stops: the first solid under its fixture, or a body lying across it.
+    beamEnd(v) {
+      const cx = v.x * T + T / 2, top = (v.y + 1) * T;
+      let cy = v.y + 1;
+      while (cy < ROWS && !this.solid(v.x, cy)) cy++;
+      let end = cy * T;
+      for (const e of this.entities) if (e.kind === 'corpse' && Math.abs(e.x - cx) <= e.w / 2 && e.y >= top && e.y < end) end = e.y;
+      return end;
+    }
+
+    updateBeams() {
+      const bb = this.box(this.body), hurt = { x: bb.x + 10, y: bb.y + 6, w: bb.w - 20, h: bb.h - 6 };
+      for (const v of this.beams) {
+        const top = (v.y + 1) * T;
+        if (overlap(hurt, { x: v.x * T + T / 2 - 2, y: top, w: 4, h: this.beamEnd(v) - top })) { this.die('beam'); return; }
+      }
+    }
+
+    // A body across a walker's way turns him back like a wall; it reaches the floor under it, arms hanging.
+    bodyAhead(e, nx) {
+      const box = { x: nx - e.w / 2, y: e.y - e.h, w: e.w, h: e.h };
+      return this.entities.some(c => c.kind === 'corpse' && e.dir * (c.x - e.x) > 0 && overlap(box, { x: c.x - c.w / 2, y: c.y, w: c.w, h: TUNING.corpseH + 40 }));
     }
 
     // Single-skill 升天 squats first: Jim holds still (in the air too) and the fart goes off when the timer runs out.
@@ -891,7 +954,7 @@
           // puzzle rules: a guard whose floor fades three seconds late falls; glass or the pit ends his shift
           if (this.chill && this.patrolFall(e, dt)) continue;
           const nx = e.x + e.dir * TUNING.patrolSpeed * dt, front = Math.floor((nx + e.dir * e.w / 2) / T);
-          if (this.solid(front, Math.floor((e.y - 10) / T)) || !this.solid(front, Math.floor(e.y / T)) || nx < e.w / 2 || nx > W - e.w / 2) e.dir = -e.dir;
+          if (this.solid(front, Math.floor((e.y - 10) / T)) || !this.solid(front, Math.floor(e.y / T)) || nx < e.w / 2 || nx > W - e.w / 2 || this.bodyAhead(e, nx)) e.dir = -e.dir;
           else e.x = nx;
           const box = { x: e.x - e.w / 2, y: e.y - e.h, w: e.w, h: e.h };
           if (this.state === 'charge' && overlap(this.box(this.stand), box)) {
@@ -1295,6 +1358,8 @@
         if (this.state === 'charge') this.touchCrumble(this.stand);
         this.updateCrumbles(dt);
         this.updateEntities(dt);
+        this.updateDoors();
+        if (this.state !== 'dead') this.updateBeams();
         this.updateBerry(dt);
       }
       if (this.state !== 'dead' && this.drunk) {
@@ -2168,7 +2233,7 @@
   const GREY = { bg: '#2a2d36', grid: 'rgba(255,255,255,.05)', grid5: 'rgba(255,255,255,.13)', label: 'rgba(255,255,255,.35)',
     solid: '#70747f', solidEdge: '#4b4f59', glass: '#e0484d', plank: '#a3a9b5', crate: '#d9893b', crateInk: '#7a4518',
     belt: '#4d515c', exit: '#f3f1ea', patrol: '#d8504a', faller: '#e8c34a', bottle: '#5fbf6a', cap: '#f2c24f', shadow: '#9b7be0',
-    sofa: '#b06ab3', sofaInk: '#5e2f61', cart: '#5fa8d3', cartInk: '#24506b', corpse: '#c9d3e6', corpseInk: '#6b7487' };
+    sensor: '#4fd1c5', beam: '#ff4d6d', sofa: '#b06ab3', sofaInk: '#5e2f61', cart: '#5fa8d3', cartInk: '#24506b', corpse: '#c9d3e6', corpseInk: '#6b7487' };
   function buildLayer() {
     const c = layer.getContext('2d'), tiles = game.tiles;
     c.clearRect(0, 0, W, H);
@@ -2303,7 +2368,17 @@
     const g = game;
     for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
       const t = g.tiles[y][x], tx = x * T, ty = y * T;
-      if (t === 'N') {
+      if (t === 'H') {
+        // a sensor glows while something is in it
+        ctx.save(); ctx.fillStyle = GREY.sensor; ctx.globalAlpha = g.sensed ? 0.4 : 0.14; ctx.fillRect(tx, ty, T, T);
+        ctx.globalAlpha = 0.7; ctx.strokeStyle = GREY.sensor; ctx.lineWidth = 1; ctx.setLineDash([4, 4]); ctx.strokeRect(tx + 1, ty + 1, T - 2, T - 2); ctx.restore();
+      } else if (t === 'G') {
+        ctx.fillStyle = GREY.sensor; ctx.fillRect(tx + 1, ty + 1, T - 2, T - 2);
+        ctx.fillStyle = 'rgba(10,50,48,.55)'; for (let i = 0; i < 3; i++) ctx.fillRect(tx + 1, ty + 6 + i * 12, T - 2, 4);
+      } else if (t === 'V') {
+        ctx.fillStyle = '#2b2d36'; ctx.fillRect(tx, ty, T, T);
+        ctx.fillStyle = GREY.beam; ctx.fillRect(tx + T / 2 - 7, ty + T - 10, 14, 10);
+      } else if (t === 'N') {
         ctx.fillStyle = '#b9a0d8'; ctx.fillRect(tx + T / 2 - 16, ty + T - 72, 32, 72);
         text(g.room.npcs?.[`${x},${y}`]?.name || 'NPC', tx + T / 2, ty - T, 16, 'center');
       } else if (t === 'O') {
@@ -2326,6 +2401,20 @@
         ctx.restore();
       }
     }
+  }
+
+  // Doors that are open show as a dashed outline; beams run down from their fixtures.
+  function drawMachines() {
+    const g = game;
+    ctx.save(); ctx.strokeStyle = GREY.sensor; ctx.globalAlpha = 0.4; ctx.lineWidth = 2; ctx.setLineDash([5, 5]);
+    for (const d of g.doors) if (g.tiles[d.y][d.x] !== 'G') ctx.strokeRect(d.x * T + 2, d.y * T + 2, T - 4, T - 4);
+    ctx.restore();
+    for (const v of g.beams) {
+      const top = (v.y + 1) * T, end = g.beamEnd(v), cx = v.x * T + T / 2;
+      ctx.fillStyle = GREY.beam; ctx.globalAlpha = 0.25 + 0.1 * Math.sin(g.time * 20); ctx.fillRect(cx - 5, top, 10, end - top);
+      ctx.globalAlpha = 1; ctx.fillRect(cx - 1.5, top, 3, end - top);
+    }
+    ctx.globalAlpha = 1;
   }
 
   // Entities as their hit boxes: a guard or chair is the box that kills, with an arrow for where it walks.
@@ -2384,7 +2473,7 @@
 
   // Name tags for the special objects, so anyone looking at the greybox knows what each block is:
   // one tag per connected run of a tile, and one per entity, just above it.
-  const TILE_NAMES = { '^': '碎玻璃', '=': '單向平台', B: '木箱', C: '紙箱', '<': '輸送帶', '>': '輸送帶', S: '沙發' };
+  const TILE_NAMES = { '^': '碎玻璃', '=': '單向平台', B: '木箱', C: '紙箱', '<': '輸送帶', '>': '輸送帶', S: '沙發', H: '感應區', G: '感應門', V: '雷射' };
   let tagKey = '', tileTags = [];
   function tileTagsNow(g) {
     // crumbled boxes do not bump tilesVersion, so the boxes that are gone are part of the key
@@ -2609,6 +2698,7 @@
     if (g.shake) ctx.translate((Math.random() - 0.5) * g.shake * 18, (Math.random() - 0.5) * g.shake * 18);
     ctx.drawImage(layer, 0, 0);
     drawDynamicTiles();
+    drawMachines();
     drawHallucination();
     drawEntities();
     if (g.berry) drawCap(g.berry);

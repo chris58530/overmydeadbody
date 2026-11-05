@@ -4666,7 +4666,7 @@
       ]
     },
     "day-3:L3-1": {
-      "signature": "[\"chill-puzzle\",\"day-3\",2,[\"wrestler\"],{\"id\":\"L3-1\",\"name\":\"留位置\",\"theme\":\"office\",\"booze\":0,\"tiles\":[\"...............................#\",\"...............................#\",\"...............................#\",\"...............................#\",\"...............................#\",\"...............................#\",\"...............................#\",\"...............................#\",\"...............................#\",\".P..D..........................#\",\"#######.............#########..#\",\"#######.............#########..#\",\"#######.............#########...\",\"#######.............#########...\",\"#######.............#########...\",\"#######.............#########...\",\"#######^^^^^^^^^^^^^############\",\"################################\"],\"exits\":{\"right\":\"L3-2\"},\"lines\":[],\"cells\":1,\"at\":[0,0]}]",
+      "signature": "[\"chill-puzzle\",\"day-3\",2,[\"wrestler\"],{\"id\":\"L3-1\",\"name\":\"留位置\",\"theme\":\"office\",\"booze\":0,\"tiles\":[\"...............................#\",\"...............................#\",\"...............................#\",\"...............................#\",\"...............................#\",\"...............................#\",\"................................\",\"................................\",\"................................\",\".P..D...........................\",\"#######.............############\",\"#######.............############\",\"#######.............############\",\"#######.............############\",\"#######.............############\",\"#######.............############\",\"#######^^^^^^^^^^^^^############\",\"################################\"],\"exits\":{\"right\":\"L3-2\"},\"lines\":[],\"cells\":1,\"at\":[0,0]}]",
       "steps": [
         {
           "frames": 163,
@@ -4758,7 +4758,7 @@
           }
         },
         {
-          "frames": 360,
+          "frames": 286,
           "input": {
             "right": true
           }
@@ -4766,20 +4766,10 @@
       ]
     },
     "day-3:L3-2": {
-      "signature": "[\"chill-puzzle\",\"day-3\",2,[\"wrestler\"],{\"id\":\"L3-2\",\"name\":\"趁橋還在\",\"theme\":\"office\",\"booze\":0,\"tiles\":[\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"................................\",\"................................\",\"................................\",\"..PD............................\",\"#####^^^^^^^^^^^^^^^^^^^^^^^^^##\",\"################################\"],\"stages\":{\"1\":[\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\".....############...............\",\"................................\"]},\"exits\":{\"right\":\"L3-3\",\"left\":\"L3-1\"},\"lines\":[],\"cells\":1,\"at\":[1,0]}]",
+      "signature": "[\"chill-puzzle\",\"day-3\",2,[\"wrestler\"],{\"id\":\"L3-2\",\"name\":\"開門\",\"theme\":\"office\",\"booze\":0,\"tiles\":[\"##########################...###\",\"#.......................#......#\",\"#.......................#..==..#\",\"#.......................#......#\",\"#..............*........#.==...#\",\"#.......................#......#\",\"........................G..==..#\",\"...............HH.......G......#\",\"...............HH.......G==....#\",\".P.....D.......HH.......G......#\",\"##########............##########\",\"##########............##########\",\"##########............##########\",\"##########............##########\",\"##########............##########\",\"##########............##########\",\"##########^^^^^^^^^^^^##########\",\"################################\"],\"exits\":{\"top\":\"L3-3\",\"left\":\"L3-1\"},\"lines\":[],\"cells\":1,\"at\":[1,0]}]",
       "steps": [
         {
-          "frames": 15,
-          "input": {
-            "right": true
-          }
-        },
-        {
-          "frames": 720,
-          "input": {}
-        },
-        {
-          "frames": 370,
+          "frames": 215,
           "input": {
             "right": true
           }
@@ -4793,7 +4783,7 @@
           }
         },
         {
-          "frames": 162,
+          "frames": 145,
           "input": {
             "right": true,
             "jump": true
@@ -4807,7 +4797,7 @@
           }
         },
         {
-          "frames": 351,
+          "frames": 59,
           "input": {
             "right": true
           }
@@ -4821,7 +4811,7 @@
           }
         },
         {
-          "frames": 130,
+          "frames": 113,
           "input": {
             "jump": true,
             "right": true
@@ -4831,17 +4821,285 @@
           "frames": 10,
           "input": {
             "jump": true
+          }
+        },
+        {
+          "frames": 13,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "jumpPressed": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 3,
+          "input": {
+            "jump": true,
+            "right": true
           }
         },
         {
           "frames": 16,
           "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 6,
+          "input": {
             "jump": true,
             "left": true
           }
         },
         {
-          "frames": 32,
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 33,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 9,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 9,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 7,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 5,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 4,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 4,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 4,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 4,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 3,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 3,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 4,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 3,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 3,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 3,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 4,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 3,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 3,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 11,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 12,
           "input": {
             "right": true
           }
@@ -4855,7 +5113,62 @@
           }
         },
         {
-          "frames": 150,
+          "frames": 164,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 11,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 5,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 83,
+          "input": {
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jumpPressed": true,
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 36,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 94,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jumpPressed": true,
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 47,
           "input": {
             "jump": true,
             "right": true
@@ -4868,37 +5181,29 @@
           }
         },
         {
-          "frames": 7,
+          "frames": 29,
           "input": {
             "jump": true,
             "left": true
           }
         },
         {
-          "frames": 54,
+          "frames": 4,
           "input": {
-            "right": true
-          }
-        }
-      ]
-    },
-    "day-3:L3-3": {
-      "signature": "[\"chill-puzzle\",\"day-3\",2,[\"wrestler\"],{\"id\":\"L3-3\",\"name\":\"放不放\",\"theme\":\"office\",\"booze\":0,\"tiles\":[\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#.....................*........#\",\"#..............................#\",\"#..............................#\",\"#.....................D........#\",\"#.......................#####..#\",\"#.......................#####..#\",\"#.......................#####..#\",\"#.......................#####..#\",\"........................#####...\",\"........................#####...\",\"........................#####...\",\"..PD....................#####...\",\"######^^^^^^^^^^^^^^^^^^########\",\"################################\"],\"stages\":{\"1\":[\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"...........#####................\",\"................................\",\"................................\",\"................................\"]},\"exits\":{\"right\":\"L3-4\",\"left\":\"L3-2\"},\"lines\":[],\"cells\":1,\"at\":[2,0]}]",
-      "steps": [
-        {
-          "frames": 15,
-          "input": {
-            "right": true
+            "jump": true
           }
         },
         {
-          "frames": 720,
-          "input": {}
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
         },
         {
-          "frames": 88,
+          "frames": 39,
           "input": {
-            "right": true
+            "jump": true
           }
         },
         {
@@ -4906,48 +5211,33 @@
           "input": {
             "jumpPressed": true,
             "jump": true,
-            "right": true
+            "left": true
           }
         },
         {
-          "frames": 130,
+          "frames": 24,
           "input": {
             "jump": true,
-            "right": true
+            "left": true
           }
         },
         {
-          "frames": 128,
+          "frames": 37,
           "input": {
-            "right": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "right": true,
-            "jump": true,
-            "jumpPressed": true
-          }
-        },
-        {
-          "frames": 125,
-          "input": {
-            "right": true,
             "jump": true
           }
         },
         {
           "frames": 1,
           "input": {
-            "skill": "wrestler",
+            "jump": true,
             "right": true
           }
         },
         {
           "frames": 68,
           "input": {
-            "right": true
+            "jump": true
           }
         },
         {
@@ -4959,28 +5249,20 @@
           }
         },
         {
-          "frames": 130,
+          "frames": 3,
           "input": {
             "jump": true,
             "right": true
           }
         },
         {
-          "frames": 129,
+          "frames": 2,
           "input": {
-            "right": true
+            "jump": true
           }
         },
         {
           "frames": 1,
-          "input": {
-            "jumpPressed": true,
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 93,
           "input": {
             "jump": true,
             "right": true
@@ -4996,12 +5278,1213 @@
           "frames": 1,
           "input": {
             "jump": true,
-            "jumpPressed": true,
             "right": true
           }
         },
         {
-          "frames": 46,
+          "frames": 5,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 5,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 3,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 4,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 4,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 3,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 4,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 3,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 3,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 3,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 4,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 3,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 3,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 3,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 54,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "jumpPressed": true
+          }
+        },
+        {
+          "frames": 38,
+          "input": {
+            "jump": true
+          }
+        }
+      ]
+    },
+    "day-3:L3-3": {
+      "signature": "[\"chill-puzzle\",\"day-3\",2,[\"wrestler\"],{\"id\":\"L3-3\",\"name\":\"遮\",\"theme\":\"office\",\"booze\":0,\"tiles\":[\"################################\",\"#..............................#\",\"#...............................\",\"#...............................\",\"#...............................\",\"#...............................\",\"#.........................######\",\"#.........................######\",\"#.........................######\",\"#......................D..######\",\"#.....==.V######V###############\",\"#..............................#\",\"#..==..........................#\",\"#..............................#\",\"#.....==.......................#\",\"#...........D.........D.P......#\",\"##########################===###\",\"##########################...###\"],\"exits\":{\"right\":\"L3-4\"},\"lines\":[],\"cells\":1,\"at\":[1,-1]}]",
+      "steps": [
+        {
+          "frames": 192,
+          "input": {
+            "left": true
+          }
+        },
+        {
+          "frames": 21,
+          "input": {}
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "jumpPressed": true
+          }
+        },
+        {
+          "frames": 92,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "skill": "wrestler",
+            "left": true
+          }
+        },
+        {
+          "frames": 321,
+          "input": {
+            "left": true
+          }
+        },
+        {
+          "frames": 21,
+          "input": {}
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "jumpPressed": true
+          }
+        },
+        {
+          "frames": 92,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "skill": "wrestler",
+            "left": true
+          }
+        },
+        {
+          "frames": 130,
+          "input": {
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jumpPressed": true,
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 36,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 94,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jumpPressed": true,
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 66,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 11,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 30,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 23,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jumpPressed": true,
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 72,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 10,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 29,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 17,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 452,
+          "input": {
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "right": true,
+            "jump": true,
+            "jumpPressed": true
+          }
+        },
+        {
+          "frames": 21,
+          "input": {
+            "right": true,
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "skill": "wrestler",
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jumpPressed": true,
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 25,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 28,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 3,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 6,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 67,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jumpPressed": true,
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 88,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 11,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 26,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 2,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 128,
+          "input": {
+            "right": true
+          }
+        }
+      ]
+    },
+    "day-3:L3-4": {
+      "signature": "[\"chill-puzzle\",\"day-3\",2,[\"wrestler\"],{\"id\":\"L3-4\",\"name\":\"關椅子\",\"theme\":\"pantry\",\"booze\":0,\"tiles\":[\"################################\",\"################################\",\"............####################\",\"............####################\",\"............####################\",\".P..........####################\",\"#######.....####################\",\"#######.........................\",\"#######.........................\",\"#####HH..RD.....................\",\"############gggggggggggggggggg##\",\"############..................##\",\"############..................##\",\"############..................##\",\"############..................##\",\"############..................##\",\"############^^^^^^^^^^^^^^^^^^##\",\"################################\"],\"exits\":{\"right\":\"L3-5\",\"left\":\"L3-3\"},\"lines\":[],\"cells\":1,\"at\":[2,-1]}]",
+      "steps": [
+        {
+          "frames": 239,
+          "input": {
+            "right": true
+          }
+        },
+        {
+          "frames": 116,
+          "input": {
+            "left": true
+          }
+        },
+        {
+          "frames": 21,
+          "input": {}
+        },
+        {
+          "frames": 1,
+          "input": {
+            "skill": "wrestler",
+            "right": true
+          }
+        },
+        {
+          "frames": 72,
+          "input": {}
+        },
+        {
+          "frames": 572,
+          "input": {
+            "right": true
+          }
+        }
+      ]
+    },
+    "day-3:L3-5": {
+      "signature": "[\"chill-puzzle\",\"day-3\",2,[\"wrestler\"],{\"id\":\"L3-5\",\"name\":\"下去再回來\",\"theme\":\"pantry\",\"booze\":0,\"tiles\":[\"####################...#########\",\"#.................#............#\",\"#.................#.==.........#\",\"#.................#............#\",\"#.................#..==........#\",\"#.................#............#\",\"#.................G==..........#\",\"..................G............#\",\"..................G...==.......#\",\".P..D.............G............#\",\"######........##################\",\"######..HHHHH.##################\",\"######..HHHHH.##################\",\"######..HHHHH.##################\",\"######..HHHHH.##################\",\"######SSSSSSSS##################\",\"################################\",\"################################\"],\"exits\":{\"top\":\"L3-6\",\"left\":\"L3-4\"},\"lines\":[],\"cells\":1,\"at\":[3,-1]}]",
+      "steps": [
+        {
+          "frames": 72,
+          "input": {
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "right": true,
+            "jump": true,
+            "jumpPressed": true
+          }
+        },
+        {
+          "frames": 183,
+          "input": {
+            "right": true,
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "skill": "wrestler",
+            "right": true
+          }
+        },
+        {
+          "frames": 36,
+          "input": {
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "right": true,
+            "jump": true,
+            "jumpPressed": true
+          }
+        },
+        {
+          "frames": 171,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 38,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 2,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 3,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 42,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 114,
+          "input": {
+            "right": true
+          }
+        },
+        {
+          "frames": 10,
+          "input": {}
+        },
+        {
+          "frames": 29,
+          "input": {
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {}
+        },
+        {
+          "frames": 1,
+          "input": {
+            "left": true
+          }
+        },
+        {
+          "frames": 35,
+          "input": {}
+        },
+        {
+          "frames": 130,
+          "input": {
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jumpPressed": true,
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 31,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 10,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 29,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 58,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jumpPressed": true,
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 61,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 10,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 29,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 2,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 27,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jumpPressed": true,
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 42,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 11,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 16,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 2,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 2,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 2,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 2,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 49,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jumpPressed": true,
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 18,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 56,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 3,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 3,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 3,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 3,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 3,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 35,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "jumpPressed": true
+          }
+        },
+        {
+          "frames": 38,
+          "input": {
+            "jump": true
+          }
+        }
+      ]
+    },
+    "day-3:L3-6": {
+      "signature": "[\"chill-puzzle\",\"day-3\",2,[\"wrestler\"],{\"id\":\"L3-6\",\"name\":\"先後\",\"theme\":\"pantry\",\"booze\":0,\"tiles\":[\"########...#####################\",\"#..............................#\",\"#.......==.....................#\",\"##########################GGG###\",\"#############.............==...#\",\"#############..................#\",\"#############..............==..#\",\"#############..................#\",\"#############........HHH==.....#\",\"#############........HHH.......#\",\"#############.D......HHH.......#\",\"#################..............#\",\"#################..............#\",\"#################..............#\",\"#################..............#\",\"#################..D....P......#\",\"####################===#########\",\"####################...#########\"],\"exits\":{\"top\":\"L3-7\"},\"lines\":[],\"cells\":1,\"at\":[3,-2]}]",
+      "steps": [
+        {
+          "frames": 176,
+          "input": {
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "left": true,
+            "jump": true,
+            "jumpPressed": true
+          }
+        },
+        {
+          "frames": 30,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "skill": "wrestler",
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jumpPressed": true,
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 40,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 13,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 17,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 2,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 2,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 4,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 41,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jumpPressed": true,
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 98,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 61,
+          "input": {
+            "left": true
+          }
+        },
+        {
+          "frames": 72,
+          "input": {
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "right": true,
+            "jump": true,
+            "jumpPressed": true
+          }
+        },
+        {
+          "frames": 148,
+          "input": {
+            "right": true,
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "skill": "wrestler",
+            "right": true
+          }
+        },
+        {
+          "frames": 52,
+          "input": {
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jumpPressed": true,
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 116,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 10,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 14,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jumpPressed": true,
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 66,
           "input": {
             "jump": true,
             "right": true
@@ -5021,7 +6504,7 @@
           }
         },
         {
-          "frames": 5,
+          "frames": 2,
           "input": {
             "jump": true
           }
@@ -5034,72 +6517,7 @@
           }
         },
         {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "kPressed": true
-          }
-        },
-        {
-          "frames": 51,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 80,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 283,
-          "input": {
-            "right": true
-          }
-        }
-      ]
-    },
-    "day-3:L3-4": {
-      "signature": "[\"chill-puzzle\",\"day-3\",2,[\"wrestler\"],{\"id\":\"L3-4\",\"name\":\"沙發\",\"theme\":\"office\",\"booze\":0,\"tiles\":[\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#......*.......................#\",\"#..............................#\",\"#.......................#####..#\",\"#.......................#####..#\",\"#.......................#####..#\",\"............####........#####...\",\"............####........#####...\",\"............####........#####...\",\"..P.........####........#####...\",\"####^^SS^^^^####^^^SS^^^########\",\"################################\"],\"exits\":{\"right\":\"L3-5\",\"left\":\"L3-3\"},\"lines\":[],\"at\":[3,0]}]",
-      "steps": [
-        {
-          "frames": 46,
-          "input": {
-            "right": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "right": true,
-            "jump": true,
-            "jumpPressed": true
-          }
-        },
-        {
-          "frames": 57,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 11,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 29,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 3,
+          "frames": 32,
           "input": {
             "jump": true
           }
@@ -5107,96 +6525,112 @@
         {
           "frames": 1,
           "input": {
+            "jumpPressed": true,
             "jump": true,
-            "left": true
+            "right": true
           }
         },
         {
-          "frames": 61,
+          "frames": 60,
           "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 165,
-          "input": {
+            "jump": true,
             "right": true
           }
         },
         {
           "frames": 7,
-          "input": {}
+          "input": {
+            "jump": true
+          }
         },
         {
           "frames": 1,
           "input": {
-            "left": true,
+            "jumpPressed": true,
             "jump": true,
-            "jumpPressed": true
+            "right": true
           }
         },
         {
-          "frames": 203,
+          "frames": 60,
           "input": {
             "jump": true,
             "left": true
           }
         },
         {
-          "frames": 1,
+          "frames": 27,
           "input": {
             "jump": true
-          }
-        },
-        {
-          "frames": 36,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 37,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 160,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 71,
-          "input": {
-            "right": true
           }
         },
         {
           "frames": 1,
           "input": {
-            "right": true,
             "jump": true,
-            "jumpPressed": true
+            "left": true
           }
         },
         {
-          "frames": 83,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 11,
+          "frames": 6,
           "input": {
             "jump": true
           }
         },
         {
-          "frames": 29,
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 5,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 5,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 4,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 4,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
           "input": {
             "jump": true,
             "left": true
@@ -5216,69 +6650,115 @@
           }
         },
         {
-          "frames": 76,
+          "frames": 4,
           "input": {
             "jump": true
           }
         },
         {
-          "frames": 418,
-          "input": {
-            "right": true
-          }
-        }
-      ]
-    },
-    "day-3:L3-5": {
-      "signature": "[\"chill-puzzle\",\"day-3\",2,[\"wrestler\"],{\"id\":\"L3-5\",\"name\":\"丟\",\"theme\":\"office\",\"booze\":0,\"tiles\":[\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#......*.......................#\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#.......##.....................#\",\"#.......##.....................#\",\"........##......................\",\"........##.....##......######...\",\"........##.....##......######...\",\"..PDD...##.....##......######...\",\"##########^^^^^##^^^^^^#########\",\"################################\"],\"exits\":{\"right\":\"L3-6\",\"left\":\"L3-4\"},\"lines\":[],\"at\":[4,0]}]",
-      "steps": [
-        {
-          "frames": 46,
-          "input": {
-            "right": true
-          }
-        },
-        {
           "frames": 1,
           "input": {
-            "right": true,
             "jump": true,
-            "jumpPressed": true
+            "left": true
           }
         },
         {
-          "frames": 92,
+          "frames": 3,
           "input": {
-            "right": true,
             "jump": true
           }
         },
         {
           "frames": 1,
           "input": {
-            "skill": "wrestler",
-            "right": true
-          }
-        },
-        {
-          "frames": 366,
-          "input": {}
-        },
-        {
-          "frames": 136,
-          "input": {
+            "jump": true,
             "left": true
           }
         },
         {
           "frames": 1,
           "input": {
+            "jumpPressed": true,
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 37,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 5,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 437,
+          "input": {
+            "left": true
+          }
+        },
+        {
+          "frames": 21,
+          "input": {}
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jumpPressed": true,
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 148,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "jumpPressed": true
+          }
+        },
+        {
+          "frames": 38,
+          "input": {
+            "jump": true
+          }
+        }
+      ]
+    },
+    "day-3:L3-7": {
+      "signature": "[\"chill-puzzle\",\"day-3\",2,[\"wrestler\"],{\"id\":\"L3-7\",\"name\":\"丟\",\"theme\":\"street\",\"booze\":0,\"tiles\":[\"################################\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#...............................\",\"#...............................\",\"#.............##................\",\"#.............##................\",\"#.............##............####\",\"#.............##............####\",\"#.............##.......##...####\",\"#.............##.......##...####\",\"#.DD..P.......##.......##...####\",\"########===#####^^^^^^^##^^^####\",\"########...#####################\"],\"exits\":{\"right\":\"L3-8\"},\"lines\":[],\"at\":[3,-3]}]",
+      "steps": [
+        {
+          "frames": 96,
+          "input": {
+            "left": true
+          }
+        },
+        {
+          "frames": 183,
+          "input": {
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
             "skill": "wrestler",
             "right": true
           }
         },
         {
-          "frames": 187,
+          "frames": 235,
           "input": {
             "right": true
           }
@@ -5288,13 +6768,13 @@
           "input": {}
         },
         {
-          "frames": 90,
+          "frames": 42,
           "input": {
             "left": true
           }
         },
         {
-          "frames": 57,
+          "frames": 78,
           "input": {
             "right": true
           }
@@ -5308,25 +6788,38 @@
           }
         },
         {
-          "frames": 162,
+          "frames": 96,
           "input": {
             "jump": true,
             "right": true
           }
         },
         {
-          "frames": 266,
+          "frames": 10,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 24,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 76,
           "input": {
             "right": true
           }
         }
       ]
     },
-    "day-3:L3-6": {
-      "signature": "[\"chill-puzzle\",\"day-3\",2,[\"wrestler\"],{\"id\":\"L3-6\",\"name\":\"丟上沙發\",\"theme\":\"office\",\"booze\":0,\"tiles\":[\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#...#################..........#\",\"#...#################..........#\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#....................########..#\",\"#....................########..#\",\"#....................########..#\",\".....................########...\",\".....................########...\",\".....................########...\",\"..PDD................########...\",\"####^^^^^^^^SSS^^^^^^###########\",\"################################\"],\"exits\":{\"right\":\"L3-7\",\"left\":\"L3-5\"},\"lines\":[],\"at\":[5,0]}]",
+    "day-3:L3-8": {
+      "signature": "[\"chill-puzzle\",\"day-3\",2,[\"wrestler\"],{\"id\":\"L3-8\",\"name\":\"丟上沙發\",\"theme\":\"street\",\"booze\":0,\"tiles\":[\"################################\",\"#..##################...........\",\"#...............................\",\"#...............................\",\"#...............................\",\"#....................###########\",\"#....................###########\",\".....................###########\",\".....................###########\",\".....................###########\",\".P.DD................###########\",\"#######..............###########\",\"#######.......SSS....###########\",\"#######.......###....###########\",\"#######.......###....###########\",\"#######.......###....###########\",\"#######^^^^^^^###^^^^###########\",\"################################\"],\"exits\":{\"right\":\"L3-9\",\"left\":\"L3-7\"},\"lines\":[],\"at\":[4,-3]}]",
       "steps": [
         {
-          "frames": 44,
+          "frames": 70,
           "input": {
             "right": true
           }
@@ -5345,32 +6838,399 @@
           }
         },
         {
-          "frames": 150,
+          "frames": 172,
           "input": {
             "right": true
           }
         },
         {
-          "frames": 4,
+          "frames": 5,
           "input": {}
         },
         {
-          "frames": 159,
+          "frames": 103,
           "input": {
             "left": true
           }
         },
         {
-          "frames": 556,
+          "frames": 147,
+          "input": {
+            "right": true
+          }
+        },
+        {
+          "frames": 10,
+          "input": {}
+        },
+        {
+          "frames": 20,
+          "input": {
+            "left": true
+          }
+        },
+        {
+          "frames": 272,
           "input": {
             "right": true
           }
         }
       ]
     },
-    "day-3:L3-7": {
-      "signature": "[\"chill-puzzle\",\"day-3\",2,[\"wrestler\"],{\"id\":\"L3-7\",\"name\":\"醉了又醒\",\"theme\":\"street\",\"booze\":0,\"tiles\":[\"#..............................#\",\"#..............................#\",\"#....................D.........#\",\"#......................^^^.....#\",\"#.......................##......\",\"#.......................##......\",\"#.......................##......\",\"#.......................##......\",\"#.......................##....##\",\"#.......................##....##\",\"#.......................##....##\",\"#.......................##....##\",\"........................##..*.##\",\"........................##....##\",\"........................##....##\",\"..P.D.D.................##....##\",\"########^^^^^^^^^^^^^^^^##^SSS##\",\"####....########################\"],\"stages\":{\"1\":[\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"..........####..................\",\"................................\",\"....____........................\",\"................................\"]},\"exits\":{\"right\":null,\"left\":\"L3-6\"},\"lines\":[],\"at\":[6,0]}]",
+    "day-3:L3-9": {
+      "signature": "[\"chill-puzzle\",\"day-3\",2,[\"wrestler\"],{\"id\":\"L3-9\",\"name\":\"留一手\",\"theme\":\"street\",\"booze\":0,\"tiles\":[\"################################\",\"............####################\",\"............####################\",\"..HH........####################\",\".PHH........####################\",\"#####.......####################\",\"#.......==..#..................#\",\"#...........#..................#\",\"#....==.....#..................#\",\"#...........#..................#\",\"#.......==..#..................#\",\"#...........#..................#\",\"#....==.....G...................\",\"#...........G...................\",\"#.......==..G...................\",\"#..D........GDD.................\",\"###############^^^^^^^^^^^^^####\",\"################################\"],\"exits\":{\"right\":\"L3-10\",\"left\":\"L3-8\"},\"lines\":[],\"at\":[5,-3]}]",
       "steps": [
+        {
+          "frames": 347,
+          "input": {
+            "right": true
+          }
+        },
+        {
+          "frames": 198,
+          "input": {
+            "left": true
+          }
+        },
+        {
+          "frames": 111,
+          "input": {
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jumpPressed": true,
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 31,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 11,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 29,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 2,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 56,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jumpPressed": true,
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 67,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 11,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 29,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 21,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jumpPressed": true,
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 72,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 10,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 29,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 2,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 16,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jumpPressed": true,
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 73,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 11,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 30,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 16,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jumpPressed": true,
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 74,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 10,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 30,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 2,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 13,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jumpPressed": true,
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 112,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 10,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 26,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 51,
+          "input": {
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "skill": "wrestler",
+            "right": true
+          }
+        },
+        {
+          "frames": 302,
+          "input": {
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "skill": "wrestler",
+            "right": true
+          }
+        },
+        {
+          "frames": 211,
+          "input": {
+            "right": true
+          }
+        },
+        {
+          "frames": 5,
+          "input": {}
+        },
+        {
+          "frames": 97,
+          "input": {
+            "left": true
+          }
+        },
+        {
+          "frames": 97,
+          "input": {
+            "right": true
+          }
+        }
+      ]
+    },
+    "day-3:L3-10": {
+      "signature": "[\"chill-puzzle\",\"day-3\",2,[\"wrestler\"],{\"id\":\"L3-10\",\"name\":\"醉了又醒\",\"theme\":\"street\",\"booze\":0,\"tiles\":[\"#.......#......................#\",\"#.......#......................#\",\"#.......#............D.........#\",\"#.......#..............^^^.....#\",\"#.......#...............##......\",\"#.......#...............##......\",\"#.......#...............##......\",\"#.......#...............##......\",\"#.......#...............##....##\",\"#.......#...............##....##\",\"#.......G...............##....##\",\"#.......G...............##....##\",\".HHH....G...............##..*.##\",\".HHH....G...............##....##\",\"........G...............##....##\",\".PD.D.D.G...............##....##\",\"########^^^^^^^^^^^^^^^^##^SSS##\",\"####....########################\"],\"stages\":{\"1\":[\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"..........####..................\",\"................................\",\"....____........................\",\"................................\"]},\"exits\":{\"right\":null,\"left\":\"L3-9\"},\"lines\":[],\"at\":[6,-3]}]",
+      "steps": [
+        {
+          "frames": 15,
+          "input": {
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "jumpPressed": true
+          }
+        },
+        {
+          "frames": 57,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "skill": "wrestler",
+            "right": true
+          }
+        },
+        {
+          "frames": 720,
+          "input": {}
+        },
         {
           "frames": 137,
           "input": {
