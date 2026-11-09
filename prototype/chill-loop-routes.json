@@ -4666,7 +4666,7 @@
       ]
     },
     "day-3:L3-1": {
-      "signature": "[\"chill-puzzle\",\"day-3\",2,[\"wrestler\"],{\"id\":\"L3-1\",\"name\":\"留位置\",\"theme\":\"office\",\"booze\":0,\"tiles\":[\"...............................#\",\"...............................#\",\"...............................#\",\"...............................#\",\"...............................#\",\"...............................#\",\"................................\",\"................................\",\"................................\",\".P..D...........................\",\"#######.............############\",\"#######.............############\",\"#######.............############\",\"#######.............############\",\"#######.............############\",\"#######.............############\",\"#######^^^^^^^^^^^^^############\",\"################################\"],\"exits\":{\"right\":\"L3-2\"},\"lines\":[],\"cells\":1,\"at\":[0,0]}]",
+      "signature": "[\"chill-puzzle\",\"day-3\",1,[\"wrestler\"],{\"id\":\"L3-1\",\"name\":\"留位置\",\"theme\":\"office\",\"booze\":0,\"tiles\":[\"...............................#\",\"...............................#\",\"...............................#\",\"...............................#\",\"...............................#\",\"...............................#\",\"................................\",\"................................\",\"................................\",\".P..D.......................#...\",\"#######.............####^^######\",\"#######.............############\",\"#######.............############\",\"#######.............############\",\"#######.............############\",\"#######.............############\",\"#######^^^^^^^^^^^^^############\",\"################################\"],\"exits\":{\"right\":\"L3-2\"},\"lines\":[],\"at\":[0,0]}]",
       "steps": [
         {
           "frames": 163,
@@ -4758,51 +4758,6 @@
           }
         },
         {
-          "frames": 286,
-          "input": {
-            "right": true
-          }
-        }
-      ]
-    },
-    "day-3:L3-2": {
-      "signature": "[\"chill-puzzle\",\"day-3\",2,[\"wrestler\"],{\"id\":\"L3-2\",\"name\":\"開門\",\"theme\":\"office\",\"booze\":0,\"tiles\":[\"##########################...###\",\"#.......................#......#\",\"#.......................#..==..#\",\"#.......................#......#\",\"#..............*........#.==...#\",\"#.......................#......#\",\"........................G..==..#\",\"...............HH.......G......#\",\"...............HH.......G==....#\",\".P.....D.......HH.......G......#\",\"##########............##########\",\"##########............##########\",\"##########............##########\",\"##########............##########\",\"##########............##########\",\"##########............##########\",\"##########^^^^^^^^^^^^##########\",\"################################\"],\"exits\":{\"top\":\"L3-3\",\"left\":\"L3-1\"},\"lines\":[],\"cells\":1,\"at\":[1,0]}]",
-      "steps": [
-        {
-          "frames": 215,
-          "input": {
-            "right": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "right": true,
-            "jump": true,
-            "jumpPressed": true
-          }
-        },
-        {
-          "frames": 145,
-          "input": {
-            "right": true,
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "skill": "wrestler",
-            "right": true
-          }
-        },
-        {
-          "frames": 59,
-          "input": {
-            "right": true
-          }
-        },
-        {
           "frames": 1,
           "input": {
             "jumpPressed": true,
@@ -4811,813 +4766,7 @@
           }
         },
         {
-          "frames": 113,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 10,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 13,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "jumpPressed": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 3,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 16,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 6,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 33,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 9,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 9,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 7,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 5,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 4,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 4,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 4,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 4,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 3,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 3,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 4,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 3,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 3,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 3,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 4,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 3,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 3,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 11,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 12,
-          "input": {
-            "right": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jumpPressed": true,
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 164,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 11,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 5,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 83,
-          "input": {
-            "right": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jumpPressed": true,
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 36,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 94,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jumpPressed": true,
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 47,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 10,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 29,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 4,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 39,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jumpPressed": true,
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 24,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 37,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 68,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jumpPressed": true,
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 3,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 2,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 5,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 5,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 5,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 3,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 4,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 4,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 3,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 4,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 3,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 3,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 3,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 4,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 3,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 3,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 3,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 54,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "jumpPressed": true
-          }
-        },
-        {
-          "frames": 38,
-          "input": {
-            "jump": true
-          }
-        }
-      ]
-    },
-    "day-3:L3-3": {
-      "signature": "[\"chill-puzzle\",\"day-3\",2,[\"wrestler\"],{\"id\":\"L3-3\",\"name\":\"遮\",\"theme\":\"office\",\"booze\":0,\"tiles\":[\"################################\",\"#..............................#\",\"#...............................\",\"#...............................\",\"#...............................\",\"#...............................\",\"#.........................######\",\"#.........................######\",\"#.........................######\",\"#......................D..######\",\"#.....==.V######V###############\",\"#..............................#\",\"#..==..........................#\",\"#..............................#\",\"#.....==.......................#\",\"#...........D.........D.P......#\",\"##########################===###\",\"##########################...###\"],\"exits\":{\"right\":\"L3-4\"},\"lines\":[],\"cells\":1,\"at\":[1,-1]}]",
-      "steps": [
-        {
-          "frames": 192,
-          "input": {
-            "left": true
-          }
-        },
-        {
-          "frames": 21,
-          "input": {}
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "jumpPressed": true
-          }
-        },
-        {
-          "frames": 92,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "skill": "wrestler",
-            "left": true
-          }
-        },
-        {
-          "frames": 321,
-          "input": {
-            "left": true
-          }
-        },
-        {
-          "frames": 21,
-          "input": {}
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "jumpPressed": true
-          }
-        },
-        {
-          "frames": 92,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "skill": "wrestler",
-            "left": true
-          }
-        },
-        {
-          "frames": 130,
-          "input": {
-            "left": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jumpPressed": true,
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 36,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 94,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jumpPressed": true,
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 66,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 11,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 30,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 23,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jumpPressed": true,
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 72,
+          "frames": 123,
           "input": {
             "jump": true,
             "right": true
@@ -5639,133 +4788,13 @@
         {
           "frames": 1,
           "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 17,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 452,
-          "input": {
-            "right": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "right": true,
-            "jump": true,
-            "jumpPressed": true
-          }
-        },
-        {
-          "frames": 21,
-          "input": {
-            "right": true,
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "skill": "wrestler",
-            "right": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
             "jumpPressed": true,
             "jump": true,
             "right": true
           }
         },
         {
-          "frames": 25,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 28,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 3,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 6,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 67,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jumpPressed": true,
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 88,
+          "frames": 60,
           "input": {
             "jump": true,
             "right": true
@@ -5778,261 +4807,8 @@
           }
         },
         {
-          "frames": 26,
+          "frames": 30,
           "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 2,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 128,
-          "input": {
-            "right": true
-          }
-        }
-      ]
-    },
-    "day-3:L3-4": {
-      "signature": "[\"chill-puzzle\",\"day-3\",2,[\"wrestler\"],{\"id\":\"L3-4\",\"name\":\"關椅子\",\"theme\":\"pantry\",\"booze\":0,\"tiles\":[\"################################\",\"################################\",\"............####################\",\"............####################\",\"............####################\",\".P..........####################\",\"#######.....####################\",\"#######.........................\",\"#######.........................\",\"#####HH..RD.....................\",\"############gggggggggggggggggg##\",\"############..................##\",\"############..................##\",\"############..................##\",\"############..................##\",\"############..................##\",\"############^^^^^^^^^^^^^^^^^^##\",\"################################\"],\"exits\":{\"right\":\"L3-5\",\"left\":\"L3-3\"},\"lines\":[],\"cells\":1,\"at\":[2,-1]}]",
-      "steps": [
-        {
-          "frames": 239,
-          "input": {
-            "right": true
-          }
-        },
-        {
-          "frames": 116,
-          "input": {
-            "left": true
-          }
-        },
-        {
-          "frames": 21,
-          "input": {}
-        },
-        {
-          "frames": 1,
-          "input": {
-            "skill": "wrestler",
-            "right": true
-          }
-        },
-        {
-          "frames": 72,
-          "input": {}
-        },
-        {
-          "frames": 572,
-          "input": {
-            "right": true
-          }
-        }
-      ]
-    },
-    "day-3:L3-5": {
-      "signature": "[\"chill-puzzle\",\"day-3\",2,[\"wrestler\"],{\"id\":\"L3-5\",\"name\":\"下去再回來\",\"theme\":\"pantry\",\"booze\":0,\"tiles\":[\"####################...#########\",\"#.................#............#\",\"#.................#.==.........#\",\"#.................#............#\",\"#.................#..==........#\",\"#.................#............#\",\"#.................G==..........#\",\"..................G............#\",\"..................G...==.......#\",\".P..D.............G............#\",\"######........##################\",\"######..HHHHH.##################\",\"######..HHHHH.##################\",\"######..HHHHH.##################\",\"######..HHHHH.##################\",\"######SSSSSSSS##################\",\"################################\",\"################################\"],\"exits\":{\"top\":\"L3-6\",\"left\":\"L3-4\"},\"lines\":[],\"cells\":1,\"at\":[3,-1]}]",
-      "steps": [
-        {
-          "frames": 72,
-          "input": {
-            "right": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "right": true,
-            "jump": true,
-            "jumpPressed": true
-          }
-        },
-        {
-          "frames": 183,
-          "input": {
-            "right": true,
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "skill": "wrestler",
-            "right": true
-          }
-        },
-        {
-          "frames": 36,
-          "input": {
-            "right": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "right": true,
-            "jump": true,
-            "jumpPressed": true
-          }
-        },
-        {
-          "frames": 171,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 38,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 2,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 3,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 42,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 114,
-          "input": {
-            "right": true
-          }
-        },
-        {
-          "frames": 10,
-          "input": {}
-        },
-        {
-          "frames": 29,
-          "input": {
-            "left": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {}
-        },
-        {
-          "frames": 1,
-          "input": {
-            "left": true
-          }
-        },
-        {
-          "frames": 35,
-          "input": {}
-        },
-        {
-          "frames": 130,
-          "input": {
-            "right": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jumpPressed": true,
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 31,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 10,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 29,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 58,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jumpPressed": true,
             "jump": true,
             "left": true
           }
@@ -6040,295 +4816,63 @@
         {
           "frames": 61,
           "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 10,
-          "input": {
             "jump": true
           }
         },
         {
-          "frames": 29,
+          "frames": 65,
           "input": {
-            "jump": true,
             "right": true
-          }
-        },
-        {
-          "frames": 2,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 27,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jumpPressed": true,
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 42,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 11,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 16,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 2,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 2,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 2,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 2,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 49,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jumpPressed": true,
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 18,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 56,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 3,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 3,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 3,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 3,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 3,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 35,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "jumpPressed": true
-          }
-        },
-        {
-          "frames": 38,
-          "input": {
-            "jump": true
           }
         }
       ]
     },
-    "day-3:L3-6": {
-      "signature": "[\"chill-puzzle\",\"day-3\",2,[\"wrestler\"],{\"id\":\"L3-6\",\"name\":\"先後\",\"theme\":\"pantry\",\"booze\":0,\"tiles\":[\"########...#####################\",\"#..............................#\",\"#.......==.....................#\",\"##########################GGG###\",\"#############.............==...#\",\"#############..................#\",\"#############..............==..#\",\"#############..................#\",\"#############........HHH==.....#\",\"#############........HHH.......#\",\"#############.D......HHH.......#\",\"#################..............#\",\"#################..............#\",\"#################..............#\",\"#################..............#\",\"#################..D....P......#\",\"####################===#########\",\"####################...#########\"],\"exits\":{\"top\":\"L3-7\"},\"lines\":[],\"cells\":1,\"at\":[3,-2]}]",
+    "day-3:L3-2": {
+      "signature": "[\"chill-puzzle\",\"day-3\",1,[\"wrestler\"],{\"id\":\"L3-2\",\"name\":\"台車\",\"theme\":\"pantry\",\"booze\":0,\"tiles\":[\"#############################..#\",\"#...........................===#\",\"#..............................#\",\"#...........................===#\",\"#..............................#\",\"#................####^^#^^######\",\".................###############\",\".................###############\",\"......D....^.....###############\",\".P.D.............###############\",\"####.M...........###############\",\"####.............###############\",\"####.............###############\",\"####.............###############\",\"####.............###############\",\"####.............###############\",\"####^^^^^^^^^^^^^###############\",\"################################\"],\"exits\":{\"top\":\"L3-3\",\"left\":\"L3-1\"},\"lines\":[],\"cartSpeed\":220,\"at\":[1,0]}]",
       "steps": [
         {
-          "frames": 176,
+          "frames": 44,
           "input": {
-            "left": true
+            "right": true
           }
+        },
+        {
+          "frames": 895,
+          "input": {}
         },
         {
           "frames": 1,
           "input": {
-            "left": true,
             "jump": true,
             "jumpPressed": true
           }
         },
         {
-          "frames": 30,
+          "frames": 148,
           "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "skill": "wrestler",
+            "jump": true,
             "right": true
           }
         },
         {
-          "frames": 1,
-          "input": {
-            "jumpPressed": true,
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 40,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 13,
+          "frames": 14,
           "input": {
             "jump": true
           }
         },
         {
-          "frames": 17,
+          "frames": 54,
+          "input": {}
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "jumpPressed": true
+          }
+        },
+        {
+          "frames": 8,
           "input": {
             "jump": true,
             "right": true
@@ -6361,6 +4905,19 @@
           }
         },
         {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
           "frames": 2,
           "input": {
             "jump": true
@@ -6374,7 +4931,631 @@
           }
         },
         {
-          "frames": 4,
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 2,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 2,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 2,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 2,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 2,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
           "input": {
             "jump": true
           }
@@ -6393,6 +5574,1260 @@
           }
         },
         {
+          "frames": 56,
+          "input": {}
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "jumpPressed": true
+          }
+        },
+        {
+          "frames": 92,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "skill": "wrestler",
+            "right": true
+          }
+        },
+        {
+          "frames": 398,
+          "input": {}
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "jumpPressed": true
+          }
+        },
+        {
+          "frames": 25,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 6,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 49,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 51,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 4,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 3,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 4,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 3,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 3,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 3,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 3,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 77,
+          "input": {}
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "jumpPressed": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 153,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jumpPressed": true,
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 29,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 14,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 31,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 3,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 2,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 2,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 2,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 2,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "kPressed": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 2,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 2,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 2,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 2,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 2,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 2,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 2,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jumpPressed": true,
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 87,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 10,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 29,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 9,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jumpPressed": true,
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 99,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 9,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jumpPressed": true,
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 95,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 10,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 3,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 66,
+          "input": {
+            "right": true
+          }
+        },
+        {
+          "frames": 21,
+          "input": {}
+        },
+        {
           "frames": 1,
           "input": {
             "jumpPressed": true,
@@ -6401,16 +6836,190 @@
           }
         },
         {
-          "frames": 98,
+          "frames": 130,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jumpPressed": true,
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 130,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "jumpPressed": true
+          }
+        },
+        {
+          "frames": 16,
+          "input": {
+            "jump": true
+          }
+        }
+      ]
+    },
+    "day-3:L3-3": {
+      "signature": "[\"chill-puzzle\",\"day-3\",1,[\"wrestler\"],{\"id\":\"L3-3\",\"name\":\"續攤\",\"theme\":\"street\",\"booze\":0,\"tiles\":[\"################################\",\"################################\",\"#..............................#\",\"#...............................\",\"#...............................\",\"#...............................\",\"#########====.D.===>>>>>....####\",\"#..............................#\",\"#................D.............#\",\"#..............................#\",\"#....................D.........#\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#..........................P...#\",\"######################SSS####..#\",\"#############################==#\"],\"exits\":{\"right\":\"L3-4\"},\"lines\":[],\"at\":[1,-1]}]",
+      "steps": [
+        {
+          "frames": 185,
+          "input": {
+            "left": true,
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "left": true,
+            "jump": true,
+            "kPressed": true
+          }
+        },
+        {
+          "frames": 79,
+          "input": {
+            "left": true,
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "left": true,
+            "jump": true,
+            "kPressed": true
+          }
+        },
+        {
+          "frames": 79,
+          "input": {
+            "left": true,
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "left": true,
+            "jump": true,
+            "kPressed": true
+          }
+        },
+        {
+          "frames": 124,
+          "input": {
+            "left": true,
+            "jump": true
+          }
+        },
+        {
+          "frames": 109,
+          "input": {
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jumpPressed": true,
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 108,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 154,
+          "input": {
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "right": true,
+            "jump": true,
+            "jumpPressed": true
+          }
+        },
+        {
+          "frames": 163,
+          "input": {
+            "right": true,
+            "jump": true
+          }
+        }
+      ]
+    },
+    "day-3:L3-4": {
+      "signature": "[\"chill-puzzle\",\"day-3\",1,[\"wrestler\"],{\"id\":\"L3-4\",\"name\":\"斷橋\",\"theme\":\"lobby\",\"booze\":0,\"tiles\":[\"################################\",\"#..............................#\",\"#..............................#\",\"...............................#\",\"...D.............######........#\",\".P...............######........#\",\"#####..........................#\",\"#####..........................#\",\"#####..........................#\",\"#####^^^^^^^^^^^^^^^^^^^.......#\",\"########################.......#\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#........R.....#..............D#\",\"##..################^^##########\",\"##..############################\"],\"stages\":{\"1\":[\"................................\",\"................................\",\"................................\",\"................................\",\".................______.........\",\".................______.........\",\".....###..###...................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\"]},\"exits\":{\"bottom\":\"L3-5\",\"left\":\"L3-3\"},\"lines\":[],\"at\":[2,-1]}]",
+      "steps": [
+        {
+          "frames": 44,
+          "input": {
+            "right": true
+          }
+        },
+        {
+          "frames": 720,
+          "input": {}
+        },
+        {
+          "frames": 124,
+          "input": {
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jumpPressed": true,
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 63,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 11,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 30,
           "input": {
             "jump": true,
             "left": true
           }
         },
         {
-          "frames": 61,
+          "frames": 58,
           "input": {
-            "left": true
+            "jump": true
           }
         },
         {
@@ -6428,7 +7037,7 @@
           }
         },
         {
-          "frames": 148,
+          "frames": 165,
           "input": {
             "right": true,
             "jump": true
@@ -6439,6 +7048,59 @@
           "input": {
             "skill": "wrestler",
             "right": true
+          }
+        },
+        {
+          "frames": 119,
+          "input": {
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jumpPressed": true,
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 64,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 10,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 29,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 4,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 54,
+          "input": {
+            "jump": true
           }
         },
         {
@@ -6456,23 +7118,16 @@
           }
         },
         {
-          "frames": 116,
+          "frames": 153,
           "input": {
             "jump": true,
             "right": true
           }
         },
         {
-          "frames": 10,
+          "frames": 6,
           "input": {
             "jump": true
-          }
-        },
-        {
-          "frames": 14,
-          "input": {
-            "jump": true,
-            "left": true
           }
         },
         {
@@ -6484,10 +7139,103 @@
           }
         },
         {
-          "frames": 66,
+          "frames": 228,
           "input": {
             "jump": true,
             "right": true
+          }
+        },
+        {
+          "frames": 11,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 27,
+          "input": {
+            "jump": false,
+            "left": true
+          }
+        },
+        {
+          "frames": 35,
+          "input": {
+            "right": true
+          }
+        },
+        {
+          "frames": 228,
+          "input": {
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jumpPressed": true,
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 70,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 10,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 29,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 4,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 48,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 39,
+          "input": {
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jumpPressed": true,
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 71,
+          "input": {
+            "jump": true,
+            "left": true
           }
         },
         {
@@ -6500,179 +7248,26 @@
           "frames": 30,
           "input": {
             "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 2,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 32,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jumpPressed": true,
-            "jump": true,
             "right": true
           }
         },
         {
-          "frames": 60,
+          "frames": 1,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 1,
           "input": {
             "jump": true,
             "right": true
           }
         },
         {
-          "frames": 7,
+          "frames": 49,
           "input": {
             "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jumpPressed": true,
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 60,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 27,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 6,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 5,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 5,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 4,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 4,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 3,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 4,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 3,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
           }
         },
         {
@@ -6684,70 +7279,70 @@
           }
         },
         {
-          "frames": 37,
+          "frames": 92,
           "input": {
             "jump": true,
             "left": true
           }
         },
         {
-          "frames": 5,
+          "frames": 1,
           "input": {
-            "jump": true
+            "jump": true,
+            "kPressed": true,
+            "left": true
           }
         },
         {
-          "frames": 437,
+          "frames": 51,
           "input": {
+            "jump": true,
             "left": true
+          }
+        },
+        {
+          "frames": 11,
+          "input": {
+            "jump": true
           }
         },
         {
           "frames": 21,
-          "input": {}
-        },
-        {
-          "frames": 1,
           "input": {
-            "jumpPressed": true,
             "jump": true,
             "right": true
           }
         },
         {
-          "frames": 148,
+          "frames": 206,
           "input": {
-            "jump": true
+            "left": true
+          }
+        }
+      ]
+    },
+    "day-3:L3-5": {
+      "signature": "[\"chill-puzzle\",\"day-3\",1,[\"wrestler\"],{\"id\":\"L3-5\",\"name\":\"下班\",\"theme\":\"street\",\"booze\":0,\"tiles\":[\"##..############################\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#.P.............................\",\"#######.........................\",\"#...............................\",\"#..........................#####\",\"#..........................#####\",\"#..........................#####\",\"#.......C..................#####\",\"#..........................#####\",\"#...........D...D..........#####\",\"#^^^^^^^^^^#>>>>>>>^^^^^^^^#####\",\"################################\"],\"exits\":{\"right\":null},\"lines\":[],\"at\":[2,0]}]",
+      "steps": [
+        {
+          "frames": 359,
+          "input": {
+            "right": true
           }
         },
         {
           "frames": 1,
           "input": {
+            "right": true,
             "jump": true,
             "jumpPressed": true
           }
         },
         {
-          "frames": 38,
+          "frames": 136,
           "input": {
+            "right": true,
             "jump": true
-          }
-        }
-      ]
-    },
-    "day-3:L3-7": {
-      "signature": "[\"chill-puzzle\",\"day-3\",2,[\"wrestler\"],{\"id\":\"L3-7\",\"name\":\"丟\",\"theme\":\"street\",\"booze\":0,\"tiles\":[\"################################\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#...............................\",\"#...............................\",\"#.............##................\",\"#.............##................\",\"#.............##............####\",\"#.............##............####\",\"#.............##.......##...####\",\"#.............##.......##...####\",\"#.DD..P.......##.......##...####\",\"########===#####^^^^^^^##^^^####\",\"########...#####################\"],\"exits\":{\"right\":\"L3-8\"},\"lines\":[],\"at\":[3,-3]}]",
-      "steps": [
-        {
-          "frames": 96,
-          "input": {
-            "left": true
-          }
-        },
-        {
-          "frames": 183,
-          "input": {
-            "right": true
           }
         },
         {
@@ -6758,23 +7353,7 @@
           }
         },
         {
-          "frames": 235,
-          "input": {
-            "right": true
-          }
-        },
-        {
-          "frames": 5,
-          "input": {}
-        },
-        {
-          "frames": 42,
-          "input": {
-            "left": true
-          }
-        },
-        {
-          "frames": 78,
+          "frames": 131,
           "input": {
             "right": true
           }
@@ -6788,7 +7367,50 @@
           }
         },
         {
-          "frames": 96,
+          "frames": 81,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 10,
+          "input": {
+            "jump": true
+          }
+        },
+        {
+          "frames": 33,
+          "input": {
+            "jump": true,
+            "left": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jumpPressed": true,
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 92,
+          "input": {
+            "jump": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 1,
+          "input": {
+            "jump": true,
+            "kPressed": true,
+            "right": true
+          }
+        },
+        {
+          "frames": 89,
           "input": {
             "jump": true,
             "right": true
@@ -6808,553 +7430,7 @@
           }
         },
         {
-          "frames": 76,
-          "input": {
-            "right": true
-          }
-        }
-      ]
-    },
-    "day-3:L3-8": {
-      "signature": "[\"chill-puzzle\",\"day-3\",2,[\"wrestler\"],{\"id\":\"L3-8\",\"name\":\"丟上沙發\",\"theme\":\"street\",\"booze\":0,\"tiles\":[\"################################\",\"#..##################...........\",\"#...............................\",\"#...............................\",\"#...............................\",\"#....................###########\",\"#....................###########\",\".....................###########\",\".....................###########\",\".....................###########\",\".P.DD................###########\",\"#######..............###########\",\"#######.......SSS....###########\",\"#######.......###....###########\",\"#######.......###....###########\",\"#######.......###....###########\",\"#######^^^^^^^###^^^^###########\",\"################################\"],\"exits\":{\"right\":\"L3-9\",\"left\":\"L3-7\"},\"lines\":[],\"at\":[4,-3]}]",
-      "steps": [
-        {
-          "frames": 70,
-          "input": {
-            "right": true
-          }
-        },
-        {
-          "frames": 79,
-          "input": {
-            "left": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "skill": "wrestler",
-            "right": true
-          }
-        },
-        {
-          "frames": 172,
-          "input": {
-            "right": true
-          }
-        },
-        {
-          "frames": 5,
-          "input": {}
-        },
-        {
-          "frames": 103,
-          "input": {
-            "left": true
-          }
-        },
-        {
-          "frames": 147,
-          "input": {
-            "right": true
-          }
-        },
-        {
-          "frames": 10,
-          "input": {}
-        },
-        {
-          "frames": 20,
-          "input": {
-            "left": true
-          }
-        },
-        {
-          "frames": 272,
-          "input": {
-            "right": true
-          }
-        }
-      ]
-    },
-    "day-3:L3-9": {
-      "signature": "[\"chill-puzzle\",\"day-3\",2,[\"wrestler\"],{\"id\":\"L3-9\",\"name\":\"留一手\",\"theme\":\"street\",\"booze\":0,\"tiles\":[\"################################\",\"............####################\",\"............####################\",\"..HH........####################\",\".PHH........####################\",\"#####.......####################\",\"#.......==..#..................#\",\"#...........#..................#\",\"#....==.....#..................#\",\"#...........#..................#\",\"#.......==..#..................#\",\"#...........#..................#\",\"#....==.....G...................\",\"#...........G...................\",\"#.......==..G...................\",\"#..D........GDD.................\",\"###############^^^^^^^^^^^^^####\",\"################################\"],\"exits\":{\"right\":\"L3-10\",\"left\":\"L3-8\"},\"lines\":[],\"at\":[5,-3]}]",
-      "steps": [
-        {
-          "frames": 347,
-          "input": {
-            "right": true
-          }
-        },
-        {
-          "frames": 198,
-          "input": {
-            "left": true
-          }
-        },
-        {
-          "frames": 111,
-          "input": {
-            "right": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jumpPressed": true,
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 31,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 11,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 29,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 2,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 56,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jumpPressed": true,
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 67,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 11,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 29,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 21,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jumpPressed": true,
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 72,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 10,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 29,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 2,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 16,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jumpPressed": true,
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 73,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 11,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 30,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 16,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jumpPressed": true,
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 74,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 10,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 30,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 2,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 13,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jumpPressed": true,
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 112,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 10,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 26,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 51,
-          "input": {
-            "left": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "skill": "wrestler",
-            "right": true
-          }
-        },
-        {
-          "frames": 302,
-          "input": {
-            "right": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "skill": "wrestler",
-            "right": true
-          }
-        },
-        {
-          "frames": 211,
-          "input": {
-            "right": true
-          }
-        },
-        {
-          "frames": 5,
-          "input": {}
-        },
-        {
-          "frames": 97,
-          "input": {
-            "left": true
-          }
-        },
-        {
-          "frames": 97,
-          "input": {
-            "right": true
-          }
-        }
-      ]
-    },
-    "day-3:L3-10": {
-      "signature": "[\"chill-puzzle\",\"day-3\",2,[\"wrestler\"],{\"id\":\"L3-10\",\"name\":\"醉了又醒\",\"theme\":\"street\",\"booze\":0,\"tiles\":[\"#.......#......................#\",\"#.......#......................#\",\"#.......#............D.........#\",\"#.......#..............^^^.....#\",\"#.......#...............##......\",\"#.......#...............##......\",\"#.......#...............##......\",\"#.......#...............##......\",\"#.......#...............##....##\",\"#.......#...............##....##\",\"#.......G...............##....##\",\"#.......G...............##....##\",\".HHH....G...............##..*.##\",\".HHH....G...............##....##\",\"........G...............##....##\",\".PD.D.D.G...............##....##\",\"########^^^^^^^^^^^^^^^^##^SSS##\",\"####....########################\"],\"stages\":{\"1\":[\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"................................\",\"..........####..................\",\"................................\",\"....____........................\",\"................................\"]},\"exits\":{\"right\":null,\"left\":\"L3-9\"},\"lines\":[],\"at\":[6,-3]}]",
-      "steps": [
-        {
-          "frames": 15,
-          "input": {
-            "right": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true,
-            "jumpPressed": true
-          }
-        },
-        {
-          "frames": 57,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "skill": "wrestler",
-            "right": true
-          }
-        },
-        {
-          "frames": 720,
-          "input": {}
-        },
-        {
-          "frames": 137,
-          "input": {
-            "right": true
-          }
-        },
-        {
-          "frames": 543,
-          "input": {}
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jumpPressed": true,
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 90,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 10,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 29,
-          "input": {
-            "jump": true,
-            "left": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "right": true,
-            "jump": true,
-            "jumpPressed": true
-          }
-        },
-        {
-          "frames": 92,
-          "input": {
-            "right": true,
-            "jump": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "skill": "wrestler",
-            "right": true
-          }
-        },
-        {
-          "frames": 178,
-          "input": {
-            "right": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {
-            "right": true,
-            "kPressed": true
-          }
-        },
-        {
-          "frames": 8,
-          "input": {
-            "right": true
-          }
-        },
-        {
-          "frames": 5,
-          "input": {}
-        },
-        {
-          "frames": 198,
-          "input": {
-            "left": true
-          }
-        },
-        {
-          "frames": 27,
-          "input": {}
-        },
-        {
-          "frames": 1,
-          "input": {
-            "right": true
-          }
-        },
-        {
-          "frames": 1,
-          "input": {}
-        },
-        {
-          "frames": 161,
-          "input": {
-            "jump": true,
-            "right": true
-          }
-        },
-        {
-          "frames": 7,
-          "input": {
-            "jump": true
-          }
-        },
-        {
-          "frames": 48,
+          "frames": 77,
           "input": {
             "right": true
           }

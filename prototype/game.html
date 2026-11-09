@@ -139,6 +139,8 @@
   const STAGE_CHARS = '.#^=BC<>S_';
   // the drunk shadow's moves, one per cell: the last cell left is always the throw
   const ZUI = { 1: { name: '丟', tint: '#e0605a' }, 2: { name: '衝', tint: '#5aa7d6' }, 3: { name: '升天', tint: '#b5c25a' } };
+  // how drunk Jim is, by grade: his glow, the gauge, and the fart that lets it out all wear this colour
+  const STAGE_TINT = { 1: '#f2b84f', 2: '#ef6a4f', 3: '#d65cc8' };
   function validateDialogue(d) {
     if (!d || typeof d.name !== 'string' || !d.nodes || Array.isArray(d.nodes) || typeof d.nodes !== 'object' || typeof d.start !== 'string' || !Object.hasOwn(d.nodes, d.start)) throw Error('Dialogue needs name, start and nodes');
     const link = id => id === null || (typeof id === 'string' && Object.hasOwn(d.nodes, id));
@@ -283,8 +285,8 @@
         if (t === 'R') { this.entities.push({ kind: 'patrol', x: x * T + T / 2, y: (y + 1) * T, dir: -1, alive: true, w: street ? 44 : 40, h: street ? 110 : 34, skin: street ? 'guard' : 'chair', t: 0 }); this.tiles[y][x] = '.'; }
         if (t === 'L') { this.entities.push({ kind: 'faller', x: x * T + T / 2, y: y * T, vy: 0, phase: 'idle', t: 0, w: 72, h: street ? 30 : 14, skin: street ? 'sign' : 'tube' }); this.tiles[y][x] = '.'; }
         if (t === 'D') { this.entities.push({ kind: 'bottle', x: x * T + T / 2, y: y * T + T / 2, got: false }); this.tiles[y][x] = '.'; }
-        // a cart is two tiles wide with its deck on the top of its tile, rolling right first
-        if (t === 'M') { this.entities.push({ kind: 'cart', x: x * T + T / 2, y: y * T, w: 80, h: 16, dir: 1, t: 0 }); this.tiles[y][x] = '.'; }
+        // a cart is two tiles wide with its deck on the top of its tile, rolling right first; a room may set its speed
+        if (t === 'M') { this.entities.push({ kind: 'cart', x: x * T + T / 2, y: y * T, w: 80, h: 16, dir: 1, t: 0, speed: this.room.cartSpeed ?? TUNING.cartSpeed }); this.tiles[y][x] = '.'; }
         if (t === '*') {
           const key = `${this.map.id}:${this.room.id}:${x},${y}`;
           if (!this.capsGot.has(key)) this.entities.push({ kind: 'cap', key, x: x * T + T / 2, y: y * T + T / 2, got: false, t: 0 });
@@ -385,8 +387,8 @@
     // Puzzle rules keep the player's grade stable (0 sober to 3). The world follows exactly three seconds later.
     changeGrade(delta) {
       if (!this.chill || this.phase !== 'play' || (!this.looped && (this.stageWarn || this.stageDeferred.length)) || this.chain.length || this.windupT > 0 || this.pound || !['free', 'thrown', 'recover'].includes(this.state)) return false;
-      const next = clamp(this.targetStage() + delta, 0, this.cells);
-      if (next === this.targetStage()) return false;
+      const from = this.targetStage(), next = clamp(from + delta, 0, this.cells);
+      if (next === from) return false;
       if (delta > 0 && this.bottled) {
         if (!this.held) {
           this.bubbles = this.bubbles.filter(bub => !bub.deny);
@@ -403,7 +405,8 @@
         this.events.push('warn');
       }
       this.events.push(delta > 0 ? 'ready' : 'fart');
-      if (delta < 0) this.emit(this.body.x, this.body.y - 12, '#b5c25a', 10, 120, 80);
+      // the fart carries the grade's colour away: a cloud below Jim in the colour he is losing
+      if (delta < 0) for (let i = 0; i < 12 && this.particles.length < 300; i++) this.particles.push({ x: this.body.x + (Math.random() - 0.5) * 20, y: this.body.y - 14, vx: (Math.random() - 0.5) * 200, vy: 120 + Math.random() * 180, life: 0.45 + Math.random() * 0.3, max: 0.75, size: 7 + Math.random() * 9, color: STAGE_TINT[from] });
       return true;
     }
 
@@ -449,6 +452,10 @@
           const b = this.body;
           b.vy = Math.min(b.vy, -TUNING.fartHop); b.grounded = false; b.puff = true; this.coyote = 0; this.jumpBuf = 0;
           if (this.state === 'recover') this.state = 'free';
+        } else if (this.looped && this.map.hud !== false && !this.targetStage() && this.fartCd <= 0 && this.phase === 'play' && this.state !== 'dead') {
+          // sober: a dry little puff and nothing else, so K tells you it wants a drink
+          this.fartCd = 0.3; this.events.push('deny');
+          this.emit(this.body.x, this.body.y - 10, '#8a809f', 4, 80, 30);
         }
         return;
       }
@@ -910,7 +917,7 @@
       if (!a.grounded) return 0;
       // a cart's deck pushes like a belt running at the cart's speed, so a jump off it keeps that speed
       const cart = a === this.body && a.cart >= 0 && this.entities[a.cart];
-      if (cart) return cart.dir * TUNING.cartSpeed;
+      if (cart) return cart.dir * cart.speed;
       const t = this.tileAt(Math.floor(a.x / T), Math.round(a.y / T));
       return t === '>' ? TUNING.belt : t === '<' ? -TUNING.belt : 0;
     }
@@ -1009,7 +1016,7 @@
             this.emit(e.x, e.y, '#f2c24f', 14, 300, 220);
           }
         } else if (e.kind === 'cart') {
-          const step = e.dir * TUNING.cartSpeed * dt, ahead = e.x + step + e.dir * e.w / 2;
+          const step = e.dir * e.speed * dt, ahead = e.x + step + e.dir * e.w / 2;
           const col = Math.floor((e.dir > 0 ? ahead - 1e-6 : ahead) / T);
           if (ahead < 0 || ahead > W || this.solid(col, Math.floor(e.y / T)) || this.solid(col, Math.floor((e.y + e.h - 1) / T))) e.dir = -e.dir;
           else e.x += step;
@@ -1401,7 +1408,7 @@
     }
   }
 
-  root.Drunk = { T, COLS, ROWS, W, H, BODY_W, BODY_H, TUNING, ABILITIES, ZUI, THEMES, Game, validateCampaign, parseCampaign, validateDialogue };
+  root.Drunk = { T, COLS, ROWS, W, H, BODY_W, BODY_H, TUNING, ABILITIES, ZUI, STAGE_TINT, THEMES, Game, validateCampaign, parseCampaign, validateDialogue };
 })(typeof window !== 'undefined' ? window : globalThis);
 // Default campaign. Same shape the editor exports (drunken-rooms v2). The previous day 1-2 rooms are kept in legacy-days.json.
 (function (root) {
@@ -2183,7 +2190,7 @@
 <script>
 (function () {
   'use strict';
-  const { T, COLS, ROWS, W, H, BODY_W, TUNING, ABILITIES, ZUI, Game, parseCampaign, AUTO } = window.Drunk;
+  const { T, COLS, ROWS, W, H, BODY_W, TUNING, ABILITIES, ZUI, STAGE_TINT, Game, parseCampaign, AUTO } = window.Drunk;
   const canvas = document.getElementById('game'), ctx = canvas.getContext('2d');
   const menu = document.getElementById('menu'), fileInput = document.getElementById('file'), menuMsg = document.getElementById('menuMsg');
   const FONT = '"Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif';
@@ -2600,7 +2607,7 @@
     for (let i = 1; i <= g.cells; i++) {   // only the grades this day can reach: no hint of what comes later
       const changing = warn && i > Math.min(g.stage, warn.to) && i <= Math.max(g.stage, warn.to);
       ctx.globalAlpha = changing ? 0.5 + 0.5 * Math.sin(g.time * 14) : 1;
-      ctx.fillStyle = i <= n ? ZUI[i].tint : '#352c49'; ctx.fillRect(x + 14 + (i - 1) * 50, y + 14, 42, 8);
+      ctx.fillStyle = i <= n ? STAGE_TINT[i] : '#352c49'; ctx.fillRect(x + 14 + (i - 1) * 50, y + 14, 42, 8);
     }
     ctx.globalAlpha = 1;
     if (g.hasShadow) moves.forEach((m, i) => moveIcon(m, x + 28 + i * 32, y + 48, n && !g.chillAirUsed ? 1 : 0.35));
@@ -2722,7 +2729,19 @@
     if (g.state !== 'dead') {
       const [anim, f] = bodyPose(g);
       const squash = b.landT > 0 ? 0.85 : b.grounded ? 1 : 1 + Math.max(-0.2, Math.min(0.25, -b.vy / 3000));
+      // puzzle rules: Jim glows in his grade's colour, and the move J plays now floats over his head
+      const grade = g.chill && g.drunk ? g.targetStage() : 0;
+      if (grade) {
+        const glow = ctx.createRadialGradient(b.x, b.y - 40, 8, b.x, b.y - 40, 78);
+        glow.addColorStop(0, STAGE_TINT[grade] + '66'); glow.addColorStop(1, STAGE_TINT[grade] + '00');
+        ctx.fillStyle = glow; ctx.fillRect(b.x - 80, b.y - 120, 160, 160);
+      }
       drawFrame(anim, f, b.x, b.y, b.face, 118, null, 1, squash);
+      if (grade && g.hasShadow) {
+        ctx.save(); ctx.fillStyle = 'rgba(18,14,35,.7)'; ctx.strokeStyle = STAGE_TINT[grade]; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(b.x, b.y - 132, 17, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.restore();
+        moveIcon(g.corpses ? (grade === 1 ? 'body' : 1) : grade, b.x, b.y - 132, g.chillAirUsed ? 0.35 : 1);
+      }
     } else if (g.ghost) {
       const gh = g.ghost;
       drawFrame('fall', 0, gh.x + Math.sin(gh.t * 9) * 6, gh.y - gh.t * 120, gh.face, 118, '#cfe6f2', 0.5);

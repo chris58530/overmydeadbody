@@ -144,24 +144,24 @@ test('walking off a room edge slides into the next room and keeps going; a death
   assert.deepEqual([game.body.x, game.body.y], [spawn.x, spawn.y]);
 });
 
-test('days 1 and 2 are one map side by side; day 3 climbs, only ever right or up, each room leading into the next', () => {
+test('days 1 and 2 are one map side by side; day 3 climbs and falls, each room leading into the next', () => {
   for (const map of campaign.maps.slice(0, 2)) map.rooms.forEach((room, i) => {
     assert.equal(JSON.stringify(room.at), JSON.stringify([i, 0]), `${room.id} position`);
     assert.equal(room.exits.right, map.rooms[i + 1]?.id ?? null, `${room.id} leads on`);
   });
-  const day3 = campaign.maps[2].rooms;
-  assert.equal(day3.length, 10);
+  const day3 = campaign.maps[2].rooms, step = { right: [1, 0], top: [0, -1], bottom: [0, 1] };
+  const wayOf = room => Object.keys(step).find(side => room.exits[side] !== undefined);
+  assert.equal(day3.length, 5);
   day3.forEach((room, i) => {
-    const next = day3[i + 1];
+    const next = day3[i + 1], way = wayOf(room);
     assert.ok(!room.tiles.join('').includes('O'), `${room.id} has no door`);
-    const way = room.exits.top !== undefined ? 'top' : 'right';
     assert.equal(room.exits[way], next?.id ?? null, `${room.id} leads on`);
-    if (next) assert.equal(JSON.stringify(next.at), JSON.stringify(way === 'top' ? [room.at[0], room.at[1] - 1] : [room.at[0] + 1, room.at[1]]), `${next.id} stands where ${room.id} leads`);
+    if (next) assert.equal(JSON.stringify(next.at), JSON.stringify([room.at[0] + step[way][0], room.at[1] + step[way][1]]), `${next.id} stands where ${room.id} leads`);
   });
-  assert.ok(day3.some(room => room.exits.top !== undefined), 'some ways on go up');
-  // the seams change: at most one pair of ways on at the same height (L3-4 and L3-7)
-  const seams = day3.map(room => room.exits.top !== undefined ? 'top ' + room.tiles[0].indexOf('.') : 'right ' + room.tiles.findIndex(row => row[31] === '.'));
-  assert.equal(new Set(seams).size, seams.length - 1, seams.join(', '));
+  assert.deepEqual([...new Set(day3.map(wayOf))].sort(), ['bottom', 'right', 'top'], 'the day goes right, up and down');
+  // no two ways on at the same spot
+  const seams = day3.map(room => ({ right: () => 'right ' + room.tiles.findIndex(row => row[31] === '.'), top: () => 'top ' + room.tiles[0].indexOf('.'), bottom: () => 'bottom ' + room.tiles[17].indexOf('.') })[wayOf(room)]());
+  assert.equal(new Set(seams).size, seams.length, seams.join(', '));
 });
 
 test('half on a sofa still bounces, with the floor on either side, and drops a belt push', () => {
@@ -233,32 +233,51 @@ test('day 3: one grade leaves the body as a plank and wakes Jim at his bottle; w
   assert.equal(game.targetStage(), 1, 'and the bottle is drunk again');
 });
 
-test('day 3: two grades are the throw', () => {
-  const game = make('L3-7');
-  assert.equal(game.cells, 2);
-  while (game.targetStage() < 2) game.step(DT, { left: true });
-  game.step(DT, { skill: 'wrestler', right: true });
-  assert.equal(game.state, 'lift');
-  assert.ok(!game.entities.some(e => e.kind === 'corpse'));
+test('day 3 holds Jim to one bottle: the world is only drunk or sober, and J is only ever the body', () => {
+  assert.equal(campaign.maps[2].cells, 1);
+  for (const room of campaign.maps[2].rooms) assert.ok(Object.keys(room.stages || {}).every(k => k === '1'), `${room.id}: one drunk world`);
+  const game = make('L3-2');
+  while (game.targetStage() === 0) game.step(DT, { right: true });
+  game.step(DT, { skill: 'wrestler' });
+  assert.ok(game.entities.some(e => e.kind === 'corpse'), 'the body');
+  assert.notEqual(game.state, 'lift', 'not the throw');
 });
 
-test('day 3: the drunk ledge goes three seconds after the body, and the body stays', () => {
-  const game = make('L3-10');
+test('day 3: the drunk bridge goes three seconds after the body, and the body stays', () => {
+  const game = make('L3-4');
   while (game.targetStage() === 0) game.step(DT, { right: true });
-  const ledge = () => game.tiles[14][10];
-  assert.notEqual(ledge(), '#', 'no ledge yet');
+  const bridge = () => game.tiles[6][6];
+  assert.notEqual(bridge(), '#', 'no bridge yet');
   run(game, 3.1, {});
-  assert.equal(ledge(), '#', 'the ledge comes three seconds after the sip');
-  run(game, 0.3, { jump: true, jumpPressed: true });
+  assert.equal(bridge(), '#', 'the bridge comes three seconds after the sip');
   game.step(DT, { skill: 'wrestler' });
   const corpse = game.entities.find(e => e.kind === 'corpse');
   assert.ok(corpse, 'body left');
   run(game, 2.8, {});
-  assert.equal(ledge(), '#', 'still there just before three seconds');
+  assert.equal(bridge(), '#', 'still there just before three seconds');
   run(game, 0.3, {});
-  assert.notEqual(ledge(), '#', 'gone after three seconds');
+  assert.notEqual(bridge(), '#', 'gone after three seconds');
   assert.ok(game.entities.includes(corpse), 'the body stays');
 });
+
+test('L3-4: no standing on the body: three seconds after it, a sober wall comes down where Jim would stand', () => {
+  const game = make('L3-4');
+  while (game.targetStage() === 0) game.step(DT, { right: true });
+  run(game, 3.1, {});
+  Object.assign(game.body, { x: 780, y: 250, vy: 0, grounded: false });
+  game.step(DT, { skill: 'wrestler' });
+  const corpse = game.entities.find(e => e.kind === 'corpse');
+  assert.ok(corpse, 'body left over the glass');
+  Object.assign(game.body, { x: corpse.x, y: corpse.y, vx: 0, vy: 0, grounded: true });
+  run(game, 2.8, {});
+  assert.notEqual(game.state, 'dead', 'safe for now');
+  run(game, 0.4, {});
+  assert.equal(game.state, 'dead', 'the wall lands on him');
+});
+
+// The body's other uses (sensors, beams, walkers) are in the engine but in no room of day 3 yet: rooms of their own.
+function bodyRoom(rows) { const game = sandbox(rows, ['wrestler']); game.map.zui = 'corpse'; return game; }
+const machines = [...Array(13).fill(E), '..........HH...........G........', '..........HH...........G........', '.P..D.....HH...........G........', F, F];
 
 const leaveAt = (game, x, y) => {
   while (game.targetStage() === 0 && !game.anchor) game.body.x = game.entities.find(e => e.kind === 'bottle').x, game.step(DT, {});
@@ -268,14 +287,14 @@ const leaveAt = (game, x, y) => {
 };
 
 test('a sensor works the door while Jim or a body is in it, and taking the body away shuts it', () => {
-  const game = make('L3-2');
-  const door = () => game.tiles[8][24];
+  const game = bodyRoom(machines);
+  const door = () => game.tiles[14][23];
   assert.equal(door(), 'G', 'shut to start with');
-  game.body.x = 640; game.body.y = 360; game.body.vy = 0; game.step(DT, {});
+  game.body.x = 440; game.body.y = 640; game.body.vy = 0; game.step(DT, {});
   assert.equal(door(), '.', 'Jim in the sensor opens it');
-  game.body.x = 100; game.body.y = 400; game.step(DT, {});
+  game.body.x = 60; game.body.y = 640; game.step(DT, {});
   assert.equal(door(), 'G', 'and it shuts when he leaves');
-  const corpse = leaveAt(game, 640, 360);
+  const corpse = leaveAt(game, 440, 640);
   assert.ok(corpse);
   run(game, 0.5, {});
   assert.equal(door(), '.', 'a body holds it open');
@@ -286,11 +305,11 @@ test('a sensor works the door while Jim or a body is in it, and taking the body 
 });
 
 test('a door does not shut on Jim', () => {
-  const game = make('L3-2');
-  game.body.x = 640; game.body.y = 360; game.step(DT, {});
-  game.body.x = 980; game.body.y = 400; game.body.vy = 0;
+  const game = bodyRoom(machines);
+  game.body.x = 440; game.body.y = 640; game.step(DT, {});
+  game.body.x = 940; game.body.y = 640; game.body.vy = 0;
   run(game, 0.1, {});
-  assert.equal(game.tiles[8][24], '.', 'he is standing in it');
+  assert.equal(game.tiles[14][23], '.', 'he is standing in it');
   assert.notEqual(game.state, 'dead');
 });
 
@@ -299,7 +318,7 @@ test('J with no grade left calls the last body back and wakes Jim at its bottle,
   const corpse = leaveAt(game, 640, 360);
   const bottle = game.entities.find(e => e.kind === 'bottle');
   assert.equal(game.targetStage(), 0);
-  game.body.x = 860; game.body.y = 400; game.body.vy = 0;
+  game.body.x = 500; game.body.y = 300; game.body.vy = 0;
   run(game, 0.1, {});
   game.step(DT, { skill: 'wrestler' });
   assert.ok(!game.entities.includes(corpse), 'the body is gone');
@@ -310,7 +329,7 @@ test('J with no grade left calls the last body back and wakes Jim at its bottle,
 });
 
 test('a beam kills, and a body across it stops it short', () => {
-  const game = make('L3-3');
+  const game = bodyRoom([...Array(10).fill(E), '................V...............', ...Array(4).fill(E), '.P..............................', F, F]);
   const beam = game.beams.find(v => v.x === 16);
   assert.equal(game.beamEnd(beam), 640, 'down to the floor');
   game.entities.push({ kind: 'corpse', x: 660, y: 540, w: 84, t: 0, face: 1 });
@@ -323,18 +342,14 @@ test('a beam kills, and a body across it stops it short', () => {
   assert.equal(game.state, 'dead');
 });
 
-test('L3-4: the chair works the bridge from its nook, and a body at the mouth keeps it in there', () => {
-  const game = make('L3-4');
+test('a body turns a walker back like a wall', () => {
+  const game = bodyRoom([...Array(15).fill(E), '.P........R.....................', F, F]);
   const chair = game.entities.find(e => e.kind === 'patrol');
-  game.body.x = 120; game.body.y = 240;   // out of the way on the shelf
-  const bridge = () => game.tiles[10][20];
-  const seen = new Set();
-  for (let n = 0; n < 8 * 240; n++) { game.step(DT, {}); seen.add(bridge()); }
-  assert.deepEqual([...seen].sort(), ['.', 'G'].sort(), 'it comes and goes by itself');
-  while (chair.x > 240) game.step(DT, {});
-  game.entities.push({ kind: 'corpse', x: 330, y: 378, w: 84, t: 0, face: 1 });
-  for (let n = 0; n < 12 * 240; n++) { game.step(DT, {}); assert.equal(bridge(), 'G', 'stays up'); }
-  assert.ok(chair.x < 300 && chair.alive, 'shut in');
+  game.body.x = 1200;   // out of the way
+  game.entities.push({ kind: 'corpse', x: 600, y: 618, w: 84, t: 0, face: 1 });
+  let right = 0;
+  for (let n = 0; n < 12 * 240; n++) { game.step(DT, {}); right = Math.max(right, chair.x); }
+  assert.ok(right < 600 - 42 && chair.alive, `kept to its side of the body (got to ${right.toFixed(0)})`);
 });
 
 // Nothing the jump home cannot fix is left: from every spot Jim can get to on his feet, sober, with no body out,
@@ -369,6 +384,8 @@ test('day 3 has no dead ends: no room makes you die to start over', () => {
         if (g.state === 'dead') return null;
         if (!fart && atGoal(g)) return 'goal';
         if (g.phase !== 'play' || g.room.id !== room.id) return 'goal';
+        // a cart always rolls back to where it set off: riding it is never stuck
+        if (g.body.grounded && g.body.cart >= 0) return 'goal';
         if (g.body.grounded && (jump ? n > 2 : Math.floor(g.body.x / 40) !== cx || n > 60)) return cellOf(g).join();
       }
       return null;
