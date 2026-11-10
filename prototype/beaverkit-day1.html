@@ -1,0 +1,3243 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>醉隱</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500&display=swap">
+<style>
+  html, body { margin: 0; height: 100%; background: #0e0b1c; overflow: hidden; }
+  body { display: flex; align-items: center; justify-content: center; font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; }
+  canvas { display: block; width: min(100vw, 177.78vh); height: min(56.25vw, 100vh); background: #2b2860; }
+  #menu { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: rgba(14, 11, 28, .82); color: #f3e9d2; }
+  #menu[hidden] { display: none; }
+  #menu h2 { font-weight: normal; font-size: 34px; margin: 0 0 18px; letter-spacing: 4px; }
+  #menu button { font: inherit; font-size: 22px; color: inherit; background: none; border: 0; padding: 6px 14px; cursor: pointer; opacity: .78; }
+  #menu button:hover, #menu button:focus-visible { opacity: 1; text-decoration: underline wavy rgba(243, 233, 210, .5); outline: none; }
+  #menu small { margin-top: 22px; opacity: .55; font-size: 15px; text-align: center; line-height: 1.8; }
+  #tune { position: fixed; top: 10px; right: 10px; width: 250px; max-height: calc(100vh - 20px); overflow: auto; padding: 12px 14px; background: rgba(14, 11, 28, .88); color: #f3e9d2; font-size: 14px; border-radius: 4px; }
+  #tune[hidden] { display: none; }
+  #tune b { display: block; font-weight: normal; font-size: 18px; margin-bottom: 6px; }
+  #tune label { display: grid; grid-template-columns: 1fr 44px; gap: 0 6px; margin: 6px 0; }
+  #tune input { grid-column: 1; width: 100%; accent-color: #e0a87a; }
+  #tune span { grid-column: 2; grid-row: 1 / 3; align-self: end; text-align: right; opacity: .8; }
+  #tune button { font: inherit; color: inherit; background: none; border: 1px solid rgba(243, 233, 210, .35); padding: 3px 10px; margin: 8px 6px 0 0; cursor: pointer; }
+  #tune textarea { width: 100%; height: 70px; margin-top: 8px; font-size: 11px; background: #1b1633; color: inherit; border: 0; }
+  #menuMsg { color: #f0a49c; white-space: pre-line; font-size: 15px; max-width: 80vw; text-align: center; }
+  /* touch controls: shown on phones and tablets only */
+  #pad { position: fixed; inset: 0; pointer-events: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+  #pad[hidden], #pad .btn[hidden] { display: none; }
+  #pad .btn { position: absolute; pointer-events: auto; touch-action: none; display: flex; flex-direction: column; align-items: center; justify-content: center; box-sizing: border-box; border-radius: 50%; background: rgba(243, 233, 210, .13); border: 2px solid rgba(243, 233, 210, .32); color: rgba(243, 233, 210, .92); font-size: 3.4vmin; line-height: 1.15; }
+  #pad .btn b { font-size: 6vmin; font-weight: normal; }
+  #pad .btn.on { background: rgba(243, 233, 210, .36); }
+  #pad .dpad { left: max(3vmin, env(safe-area-inset-left)); bottom: 4vmin; width: 46vmin; height: 22vmin; border-radius: 11vmin; flex-direction: row; justify-content: space-between; padding: 0 5vmin; font-size: 7vmin; }
+  #pad .dpad span { opacity: .55; }
+  #pad .dpad.left span:first-child, #pad .dpad.right span:last-child { opacity: 1; }
+  #pad .jump { right: max(3vmin, env(safe-area-inset-right)); bottom: 4vmin; width: 23vmin; height: 23vmin; }
+  #pad .zui { right: calc(max(3vmin, env(safe-area-inset-right)) + 26vmin); bottom: 5vmin; width: 21vmin; height: 21vmin; }
+  #pad .up { right: calc(max(3vmin, env(safe-area-inset-right)) + 4vmin); bottom: 30vmin; width: 16vmin; height: 16vmin; }
+  #pad .down { right: calc(max(3vmin, env(safe-area-inset-right)) + 24vmin); bottom: 30vmin; width: 16vmin; height: 16vmin; }
+  #pad .sys { top: 3vmin; width: 11vmin; height: 11vmin; font-size: 3vmin; }
+  #pad .sys.menu { right: max(3vmin, env(safe-area-inset-right)); }
+  #pad .sys.retry { right: calc(max(3vmin, env(safe-area-inset-right)) + 13vmin); }
+  #pad .sys.auto { right: calc(max(3vmin, env(safe-area-inset-right)) + 26vmin); }
+  #pad .hint { position: absolute; left: 0; right: 0; text-align: center; color: rgba(243, 233, 210, .5); font-size: 3.6vmin; display: none; }
+  @media (orientation: portrait) {
+    body.touch { align-items: flex-start; }
+    body.touch #pad .sys { top: calc(56.25vw + 3vmin); }
+    body.touch #pad .hint { display: block; top: calc(56.25vw + 18vmin); }
+  }
+</style>
+</head>
+<body>
+<canvas id="game" width="1280" height="720" tabindex="0"></canvas>
+<div id="talk" hidden style="position:fixed;bottom:5%;left:15%;width:70%;max-height:45vh;overflow:auto;background:#151127;color:#f3e9d2;padding:18px;box-sizing:border-box;border:1px solid #e0a87a;white-space:pre-wrap"></div>
+<div id="menu" hidden>
+  <h2>暫停</h2>
+  <button data-act="resume">繼續</button>
+  <button data-act="retry">重來這間</button>
+  <button data-act="restart">從第一間開始</button>
+  <button data-act="autoAll">從頭一路自動通關</button>
+  <button data-act="autoHere">從這間一路自動通關</button>
+  <button data-act="load">載入關卡 JSON</button>
+  <button data-act="default">換回內建關卡</button>
+  <p id="menuMsg"></p>
+  <small>A D 走　W 跳　K 放屁（按住 A/D 是加速，不按方向或按 W 往上噴，要一直點）　J 叫醉影　R 重來　P 自動通關本間　M 靜音　` 調手感<br>醉意會自己回滿。J 一次用掉全部滿格，自動連段：一格 丟、兩格 衝→丟、三格 升天→衝→丟；放屁扣小格<br>滿格越多越醉：醉影越強，地圖也越危險（先預告，落地才變；預告時放屁可以取消）<br>舊關卡（沒有 cells）沿用 J 摔角手、L 保鑣　·　也可以直接把 JSON 拖進畫面</small>
+</div>
+<div id="tune" hidden></div>
+<div id="pad" hidden>
+  <div class="btn dpad" data-pad="dpad"><span>◀</span><span>▶</span></div>
+  <div class="btn jump" data-pad="jump"><b>跳</b></div>
+  <div class="btn zui" data-pad="skill"><b>J</b>醉影</div>
+  <div class="btn up" data-pad="talk"><b>E</b>喝一口</div>
+  <div class="btn down" data-pad="k"><b>K</b>放屁</div>
+  <div class="btn sys menu" data-pad="menu">選單</div>
+  <div class="btn sys retry" data-pad="r">重來</div>
+  <div class="btn sys auto" data-pad="auto">帶路</div>
+  <p class="hint">手機橫過來玩，畫面比較大</p>
+</div>
+<input id="file" type="file" accept=".json,application/json" hidden>
+<script type="application/json" id="chill-puzzles-data">{"format":"drunken-rooms","version":2,"rules":"chill-puzzle","skills":"single","bottles":"drink","maps":[{"id":"day-1","name":"第一天　辦公室","cells":1,"abilities":[],"hud":false,"rooms":[{"id":"P1-1","name":"碎杯","theme":"office","booze":0,"tiles":["...............................#","...............................#","...............................#","...............................#","...............................#","...............................#","...............................#","...............................#","...............................#","...............................#","......................*........#","...............................#","................................","................................",".......................#........",".P.....................#........","#####^^^###^^^^^##^^^^^#^^^^^###","################################"],"exits":{"right":"P1-2"},"lines":[],"at":[0,0]},{"id":"P1-2","name":"紙箱","theme":"office","booze":0,"tiles":["#..............................#","#..............................#","#..............................#","#..............................#","#..............................#","#..............................#","#...............................","#...............................","#...............................","#...............................","#...*.........CC...C...C...#####","#..........................#####","..........CC...............#####","...........................#####","......CC...................#####","..P........................#####","####^^^^^^^^^^^^^^^^^^^^^^^#####","################################"],"exits":{"right":"P1-3","left":"P1-1"},"lines":[],"at":[1,0]},{"id":"P1-3","name":"走廊","theme":"office","booze":0,"tiles":["################################","################################","################################","################################","################################","################################","......##########################","......##########################","......##########################","..P...##########################","####..##########################","####..##########################","#........L...........L..........","#...............................","#...............................","#...........................R...","####\u003c\u003c\u003c\u003c\u003c\u003c\u003c\u003c#^^\u003c\u003c\u003c\u003c\u003c\u003c\u003c\u003c\u003c\u003c#######","################################"],"exits":{"right":"P1-4","left":"P1-2"},"lines":[],"at":[2,0]},{"id":"P1-4","name":"下班","theme":"office","booze":0,"tiles":["#..........................L....","#...............................","#...............................","#...............................","#.....................##########","#.....................^^^^^^^^^#","#...............##.............#","#..............................#","#....................C.........#","#..............................#","#...............===............#","#..............................#","............CC.................#","...............................#","........##.....................#","..P............................#","######^^^^^^^^^^^^^^^^^^^^^^^^^#","################################"],"exits":{"right":null,"left":"P1-3"},"lines":[],"at":[3,0]}]}]}</script>
+<script type="application/json" id="chill-routes-data">{"stepHz":240,"rules":"chill-puzzle","rooms":{"day-1:P1-1":{"signature":"[\"chill-puzzle\",\"day-1\",1,[],{\"id\":\"P1-1\",\"name\":\"碎杯\",\"theme\":\"office\",\"booze\":0,\"tiles\":[\"...............................#\",\"...............................#\",\"...............................#\",\"...............................#\",\"...............................#\",\"...............................#\",\"...............................#\",\"...............................#\",\"...............................#\",\"...............................#\",\"......................*........#\",\"...............................#\",\"................................\",\"................................\",\".......................#........\",\".P.....................#........\",\"#####^^^###^^^^^##^^^^^#^^^^^###\",\"################################\"],\"exits\":{\"right\":\"P1-2\"},\"lines\":[],\"at\":[0,0]}]","steps":[{"frames":98,"input":{"right":true}},{"frames":1,"input":{"jumpPressed":true,"jump":true,"right":true}},{"frames":77,"input":{"jump":true,"right":true}},{"frames":10,"input":{"jump":true}},{"frames":30,"input":{"jump":true,"left":true}},{"frames":45,"input":{"jump":true}},{"frames":59,"input":{"right":true}},{"frames":1,"input":{"jumpPressed":true,"jump":true,"right":true}},{"frames":135,"input":{"jump":true,"right":true}},{"frames":10,"input":{"jump":true}},{"frames":17,"input":{"jump":true,"left":true}},{"frames":26,"input":{"right":true}},{"frames":1,"input":{"jumpPressed":true,"jump":true,"right":true}},{"frames":115,"input":{"jump":true,"right":true}},{"frames":11,"input":{"jump":true}},{"frames":4,"input":{"jump":true,"left":true}},{"frames":1,"input":{"jump":true,"jumpPressed":true,"left":true}},{"frames":23,"input":{"jump":true,"left":true}},{"frames":139,"input":{"jump":true}},{"frames":18,"input":{"right":true}},{"frames":1,"input":{"jumpPressed":true,"jump":true,"right":true}},{"frames":144,"input":{"jump":true,"right":true}},{"frames":10,"input":{"jump":true}},{"frames":29,"input":{"jump":true,"left":true}},{"frames":51,"input":{"right":true}}]},"day-1:P1-2":{"signature":"[\"chill-puzzle\",\"day-1\",1,[],{\"id\":\"P1-2\",\"name\":\"紙箱\",\"theme\":\"office\",\"booze\":0,\"tiles\":[\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#..............................#\",\"#...............................\",\"#...............................\",\"#...............................\",\"#...............................\",\"#...*.........CC...C...C...#####\",\"#..........................#####\",\"..........CC...............#####\",\"...........................#####\",\"......CC...................#####\",\"..P........................#####\",\"####^^^^^^^^^^^^^^^^^^^^^^^#####\",\"################################\"],\"exits\":{\"right\":\"P1-3\",\"left\":\"P1-1\"},\"lines\":[],\"at\":[1,0]}]","steps":[{"frames":46,"input":{"right":true}},{"frames":1,"input":{"jumpPressed":true,"jump":true,"right":true}},{"frames":51,"input":{"jump":true,"right":true}},{"frames":10,"input":{"jump":true}},{"frames":29,"input":{"jump":true,"left":true}},{"frames":2,"input":{"jump":true}},{"frames":1,"input":{"jump":true,"left":true}},{"frames":37,"input":{"jump":true}},{"frames":1,"input":{"jump":true,"jumpPressed":true,"left":true}},{"frames":106,"input":{"jump":true,"left":true}},{"frames":11,"input":{"jump":true}},{"frames":30,"input":{"jump":true,"right":true}},{"frames":36,"input":{"jump":true}},{"frames":524,"input":{}},{"frames":47,"input":{"right":true}},{"frames":1,"input":{"jumpPressed":true,"jump":true,"right":true}},{"frames":51,"input":{"jump":true,"right":true}},{"frames":10,"input":{"jump":true}},{"frames":30,"input":{"jump":true,"left":true}},{"frames":1,"input":{"jump":true}},{"frames":1,"input":{"jump":true,"left":true}},{"frames":37,"input":{"jump":true}},{"frames":26,"input":{"right":true}},{"frames":1,"input":{"jumpPressed":true,"jump":true,"right":true}},{"frames":58,"input":{"jump":true,"right":true}},{"frames":10,"input":{"jump":true}},{"frames":30,"input":{"jump":true,"left":true}},{"frames":2,"input":{"jump":true}},{"frames":1,"input":{"jump":true,"left":true}},{"frames":29,"input":{"jump":true}},{"frames":26,"input":{"right":true}},{"frames":1,"input":{"jumpPressed":true,"jump":true,"right":true}},{"frames":57,"input":{"jump":true,"right":true}},{"frames":10,"input":{"jump":true}},{"frames":29,"input":{"jump":true,"left":true}},{"frames":1,"input":{"jump":true}},{"frames":1,"input":{"jump":true,"left":true}},{"frames":32,"input":{"jump":true}},{"frames":25,"input":{"right":true}},{"frames":1,"input":{"jumpPressed":true,"jump":true,"right":true}},{"frames":35,"input":{"jump":true,"right":true}},{"frames":35,"input":{"jump":false,"right":true}},{"frames":11,"input":{"jump":false}},{"frames":29,"input":{"jump":false,"left":true}},{"frames":1,"input":{"jump":false}},{"frames":18,"input":{"right":true}},{"frames":1,"input":{"jumpPressed":true,"jump":true,"right":true}},{"frames":35,"input":{"jump":true,"right":true}},{"frames":29,"input":{"jump":false,"right":true}},{"frames":10,"input":{"jump":false}},{"frames":29,"input":{"jump":false,"left":true}},{"frames":1,"input":{"jump":false}},{"frames":1,"input":{"jump":false,"left":true}},{"frames":6,"input":{"jump":false}},{"frames":17,"input":{"right":true}},{"frames":1,"input":{"jumpPressed":true,"jump":true,"right":true}},{"frames":77,"input":{"jump":true,"right":true}},{"frames":11,"input":{"jump":true}},{"frames":29,"input":{"jump":true,"left":true}},{"frames":1,"input":{"jump":true}},{"frames":1,"input":{"jump":true,"left":true}},{"frames":43,"input":{"jump":true}},{"frames":117,"input":{"right":true}}]},"day-1:P1-3":{"signature":"[\"chill-puzzle\",\"day-1\",1,[],{\"id\":\"P1-3\",\"name\":\"走廊\",\"theme\":\"office\",\"booze\":0,\"tiles\":[\"################################\",\"################################\",\"################################\",\"################################\",\"################################\",\"################################\",\"......##########################\",\"......##########################\",\"......##########################\",\"..P...##########################\",\"####..##########################\",\"####..##########################\",\"#........L...........L..........\",\"#...............................\",\"#...............................\",\"#...........................R...\",\"####\u003c\u003c\u003c\u003c\u003c\u003c\u003c\u003c#^^\u003c\u003c\u003c\u003c\u003c\u003c\u003c\u003c\u003c\u003c#######\",\"################################\"],\"exits\":{\"right\":\"P1-4\",\"left\":\"P1-2\"},\"lines\":[],\"at\":[2,0]}]","steps":[{"frames":284,"input":{"right":true}},{"frames":127,"input":{}},{"frames":338,"input":{"right":true}},{"frames":1215,"input":{}},{"frames":24,"input":{"right":true}},{"frames":1,"input":{"jumpPressed":true,"jump":true,"right":true}},{"frames":64,"input":{"jump":true,"right":true}},{"frames":10,"input":{"jump":true}},{"frames":28,"input":{"jump":true,"left":true}},{"frames":1,"input":{"jump":true}},{"frames":1,"input":{"jump":true,"left":true}},{"frames":4,"input":{"jump":true}},{"frames":161,"input":{"right":true}},{"frames":127,"input":{}},{"frames":398,"input":{"right":true}},{"frames":1,"input":{"right":true,"jump":true,"jumpPressed":true}},{"frames":108,"input":{"right":true,"jump":true}},{"frames":51,"input":{"right":true}}]},"day-1:P1-4":{"signature":"[\"chill-puzzle\",\"day-1\",1,[],{\"id\":\"P1-4\",\"name\":\"下班\",\"theme\":\"office\",\"booze\":0,\"tiles\":[\"#..........................L....\",\"#...............................\",\"#...............................\",\"#...............................\",\"#.....................##########\",\"#.....................^^^^^^^^^#\",\"#...............##.............#\",\"#..............................#\",\"#....................C.........#\",\"#..............................#\",\"#...............===............#\",\"#..............................#\",\"............CC.................#\",\"...............................#\",\"........##.....................#\",\"..P............................#\",\"######^^^^^^^^^^^^^^^^^^^^^^^^^#\",\"################################\"],\"exits\":{\"right\":null,\"left\":\"P1-3\"},\"lines\":[],\"at\":[3,0]}]","steps":[{"frames":98,"input":{"right":true}},{"frames":1,"input":{"jumpPressed":true,"jump":true,"right":true}},{"frames":51,"input":{"jump":true,"right":true}},{"frames":10,"input":{"jump":true}},{"frames":29,"input":{"jump":true,"left":true}},{"frames":1,"input":{"jump":true}},{"frames":1,"input":{"jump":true,"left":true}},{"frames":38,"input":{"jump":true}},{"frames":18,"input":{"right":true}},{"frames":1,"input":{"jumpPressed":true,"jump":true,"right":true}},{"frames":66,"input":{"jump":true,"right":true}},{"frames":11,"input":{"jump":true}},{"frames":29,"input":{"jump":true,"left":true}},{"frames":1,"input":{"jump":true}},{"frames":1,"input":{"jump":true,"left":true}},{"frames":22,"input":{"jump":true}},{"frames":17,"input":{"right":true}},{"frames":1,"input":{"jumpPressed":true,"jump":true,"right":true}},{"frames":72,"input":{"jump":true,"right":true}},{"frames":10,"input":{"jump":true}},{"frames":30,"input":{"jump":true,"left":true}},{"frames":1,"input":{"jump":true}},{"frames":1,"input":{"jump":true,"left":true}},{"frames":16,"input":{"jump":true}},{"frames":24,"input":{"right":true}},{"frames":1,"input":{"jumpPressed":true,"jump":true,"right":true}},{"frames":54,"input":{"jump":true,"right":true}},{"frames":10,"input":{"jump":true}},{"frames":29,"input":{"jump":true,"left":true}},{"frames":4,"input":{"jump":true}},{"frames":1,"input":{"jump":true,"left":true}},{"frames":32,"input":{"jump":true}},{"frames":1,"input":{"jumpPressed":true,"jump":true,"left":true}},{"frames":91,"input":{"jump":true,"left":true}},{"frames":10,"input":{"jump":true}},{"frames":29,"input":{"jump":true,"right":true}},{"frames":21,"input":{"right":true}},{"frames":1,"input":{"jumpPressed":true,"jump":true,"right":true}},{"frames":116,"input":{"jump":true,"right":true}},{"frames":10,"input":{"jump":true}},{"frames":4,"input":{"jump":true,"left":true}},{"frames":253,"input":{"right":true}}]}}}</script>
+<script>
+// 醉隱 game engine: pure rules, no DOM. Units are pixels; a room is 32 x 18 tiles of 40 px.
+(function (root) {
+  'use strict';
+
+  const T = 40, COLS = 32, ROWS = 18, W = COLS * T, H = ROWS * T;
+  const BODY_W = 44, BODY_H = 72;
+
+  // px and seconds. Throw speeds start from the BeaverKit skill lab (throwVX 980 shrunk to fit a 32-tile room).
+  // Every value here can be changed live in the tuning panel (backquote key).
+  const TUNING = {
+    run: 370, accelGround: 3200, accelAir: 1900,
+    jump: 660, gravity: 2000, apexHang: 0.5, releaseGravity: 2.4, fallGravity: 1.5, maxFall: 950,
+    // airDrag: share of accelAir that bleeds speed with no input; overDecel: how fast extra speed (a charge jump-out) fades
+    airDrag: 0.35, overDecel: 500,
+    coyote: 0.1, jumpBuffer: 0.12,
+    cardInterval: 0.32, drink: 0.8,
+    // the wrestler's arc is picked by what is held when he lets go: W steep, nothing the regular arc, S low and fast
+    liftTime: 0.22, liftRise: 0.12, liftHeight: 84, throwVX: 640, throwVY: 960, recover: 0.1,
+    throwUpVX: 240, throwUpVY: 1150, throwLowVX: 900, throwLowVY: 520, throwSteer: 900,
+    chargeSpeed: 700, chargeTime: 1.0, chargeTurn: 9, chargeJumpOut: 0.85,
+    carryOffset: 80, releaseVY: 260,
+    patrolSpeed: 110, belt: 180, crumbleDelay: 0.45, crumbleRespawn: 2.5, fallTrigger: 60, fallWarn: 0.3,
+    slowmo: 0.2, airDraws: 1, airCharge: 0.5, hitStop: 0.06, holdTime: 5,
+    deathDelay: 0.45, transition: 0.5,
+    // rooms placed on a map ("at"): walking off an edge slides the camera over for pan seconds and Jim keeps going;
+    // leaving through the top adds panBoost px/s upward so he clears the floor he comes up through
+    pan: 0.35, panBoost: 660,
+    // 1: each skill has its own key and fires at once; 0: the K card draw
+    directMode: 1,
+    // drunk mode (a map with "cells"): K farts a small share of a cell, J spends a whole cell on the drunk shadow's move
+    fartCost: 1 / 6, fartCooldown: 0.14, fartUp: 300, fartDash: 560, fartDashLift: 60,
+    ascendVY: 1200, ascendBreak: 0.45, stageWarn: 0.9,
+    // single-skill 升天: a squat before the rise; S in the air after it slams straight down through crates
+    ascendWindup: 0.25, poundHang: 0.12, poundVY: 1300,
+    // bottles: "carry" — how many bottles Jim can hold; E drinks one
+    carry: 1,
+    // bottles: "drink" — a bottle drunk on touch comes back after bottleRespawn; K lowers a grade with a small hop
+    bottleRespawn: 3, fartHop: 560,
+    // zui: "corpse": the body left behind is a plank corpseW wide and corpseH thick; the jump to the bottle shows for warpTime
+    corpseW: 84, corpseH: 22, warpTime: 0.35,
+    // sofa: landing bounces at least sofa px/s, or the landing speed times sofaKeep (a drop from a throw goes higher), at most sofaMax
+    sofa: 900, sofaKeep: 1.2, sofaMax: 1150, cartSpeed: 120,
+    // booze comes back by itself (cells per second), after a pause once J has spent it; a chain runs on its own
+    regen: 0.4, regenDelay: 0.8, chainAscend: 0.45, chainCharge: 0.7,
+  };
+
+  const ABILITIES = {
+    wrestler: { name: '摔角手', bottle: 0, tint: '#e0605a', ink: '#b8433c', key: 'J' },
+    bodyguard: { name: '保鑣', bottle: 1, tint: '#5aa7d6', ink: '#2f6f9c', key: 'L' },
+  };
+
+  // . empty  # ground  ^ shards  = plank  B crate (charge breaks)  C crumbling boxes  < > conveyor
+  // R patrol (office chair / night guard)  L falling light (tube / sign)  * bottle cap  P spawn  D a bottle of booze (bottles rules)
+  // S sofa (bounces Jim up)  M cart (a moving platform that rolls until something solid turns it)
+  // H sensor (works the room's doors while Jim, a body or a chair is in it)  G door (open while sensed)  g bridge (solid while sensed)
+  // V beam fixture (a beam runs straight down from it to the first solid or body, and kills)
+  const TILE_CHARS = '.#^=BCP<>RL*ONDSMHGgV';
+  // stage overlays: '.' keeps the tile below, '_' clears it, anything else replaces it
+  const STAGE_CHARS = '.#^=BC<>S_';
+  // the drunk shadow's moves, one per cell: the last cell left is always the throw
+  const ZUI = { 1: { name: '丟', tint: '#e0605a' }, 2: { name: '衝', tint: '#5aa7d6' }, 3: { name: '升天', tint: '#b5c25a' } };
+  // how drunk Jim is, by grade: his glow, the gauge, and the fart that lets it out all wear this colour
+  const STAGE_TINT = { 1: '#f2b84f', 2: '#ef6a4f', 3: '#d65cc8' };
+  function validateDialogue(d) {
+    if (!d || typeof d.name !== 'string' || !d.nodes || Array.isArray(d.nodes) || typeof d.nodes !== 'object' || typeof d.start !== 'string' || !Object.hasOwn(d.nodes, d.start)) throw Error('Dialogue needs name, start and nodes');
+    const link = id => id === null || (typeof id === 'string' && Object.hasOwn(d.nodes, id));
+    for (const node of Object.values(d.nodes)) {
+      if (!node || typeof node.text !== 'string' || node.text.length > 500) throw Error('Dialogue text must be at most 500 characters');
+      if (node.next !== undefined && !link(node.next)) throw Error('Unknown dialogue next node');
+      if (node.choices !== undefined && (!Array.isArray(node.choices) || !node.choices.length || node.choices.length > 9 || node.choices.some(c => !c || typeof c.text !== 'string' || c.text.length > 100 || !link(c.next)))) throw Error('Dialogue choices need text and next (node id or null), at most 9');
+    }
+    return d;
+  }
+  // Death quips by cause; Jim is already dead, so they are complaints rather than screams.
+  const DEATH_LINES = {
+    glass: ['這玻璃誰要賠？', '我的腳……'],
+    pit: ['這坑比我的年終還深', '我只是想回家……'],
+    guard: ['我有識別證！', '我就住這附近！'],
+    sign: ['招牌也太不牢了', '這是工傷嗎？'],
+    crush: ['牆長在我身上了', '幻覺把我卡住了'],
+    other: ['再一杯……', '嗝。', '這不算！', '加班加到眼花了'],
+  };
+  const GUARD_LINES = ['下班了還想去哪？', '這裡不能過。', '你是不是喝酒了？'];
+  const SOLID = '#BC<>SGV';
+  const SIDES = ['left', 'right', 'top', 'bottom'];
+  const THEMES = ['office', 'pantry', 'elevator', 'lobby', 'street'];
+
+  function validateCampaign(data) {
+    const errors = [];
+    if (!data || data.format !== 'drunken-rooms') errors.push('format 必須是 "drunken-rooms"');
+    if (data && data.version !== 2) errors.push('version 必須是 2');
+    if (!data || !Array.isArray(data.maps) || !data.maps.length) { errors.push('maps 至少要有一張地圖'); return errors; }
+    data.maps.forEach((map, mi) => {
+      const at = `maps[${mi}]`;
+      if (data.rules === 'chill-puzzle' && ![1, 2, 3].includes(map.cells)) errors.push(`${at}.cells 解謎模式需要 1、2 或 3 階`);
+      if (map.cells !== undefined && ![1, 2, 3].includes(map.cells)) errors.push(`${at}.cells 必須是 1、2 或 3`);
+      if (map.cells === undefined && (!Array.isArray(map.abilities) || !map.abilities.length)) errors.push(`${at}.abilities 不可為空`);
+      else (map.abilities || []).forEach(a => { if (!ABILITIES[a]) errors.push(`${at} 未知能力 "${a}"`); });
+      if (!Array.isArray(map.rooms) || !map.rooms.length) { errors.push(`${at}.rooms 不可為空`); return; }
+      const ids = new Set(map.rooms.map(r => r.id));
+      if (ids.size !== map.rooms.length) errors.push(`${at} 有重複的房間 id`);
+      map.rooms.forEach((room, ri) => {
+        const rat = `${at}.rooms[${ri}] (${room.id})`;
+        if (!Array.isArray(room.tiles) || room.tiles.length !== ROWS) { errors.push(`${rat} tiles 必須是 ${ROWS} 列`); return; }
+        let spawns = 0;
+        room.tiles.forEach((row, y) => {
+          if (typeof row !== 'string' || row.length !== COLS) errors.push(`${rat} 第 ${y} 列必須是 ${COLS} 字元`);
+          else for (const ch of row) { if (!TILE_CHARS.includes(ch)) errors.push(`${rat} 第 ${y} 列有未知格子 "${ch}"`); if (ch === 'P') spawns++; }
+        });
+        if (spawns !== 1) errors.push(`${rat} 必須剛好有一個出生點 P`);
+        if (room.booze !== undefined && !(typeof room.booze === 'number' && room.booze >= 0 && room.booze <= 3)) errors.push(`${rat} booze 必須是 0～3`);
+        if (room.stages !== undefined) {
+          if (!room.stages || typeof room.stages !== 'object' || Array.isArray(room.stages)) errors.push(`${rat} stages 必須是物件`);
+          else for (const [k, rows] of Object.entries(room.stages)) {
+            if (!['1', '2', '3'].includes(k)) errors.push(`${rat} stages 只能有 1、2、3`);
+            else if (!Array.isArray(rows) || rows.length !== ROWS || rows.some(r => typeof r !== 'string' || r.length !== COLS || [...r].some(ch => !STAGE_CHARS.includes(ch)))) errors.push(`${rat} stages.${k} 必須是 ${ROWS} 列 ${COLS} 字元，只能用 ${STAGE_CHARS}`);
+          }
+        }
+        if (room.theme !== undefined && !THEMES.includes(room.theme)) errors.push(`${rat} 未知場景 "${room.theme}"`);
+        const exits = room.exits || {};
+        if (room.npcs !== undefined) {
+          if (!room.npcs || typeof room.npcs !== 'object' || Array.isArray(room.npcs)) errors.push(`${rat} npcs must be an object`);
+          else for (const [key, npc] of Object.entries(room.npcs)) {
+            const [x, y] = key.split(',').map(Number);
+            if (key !== `${x},${y}` || room.tiles[y]?.[x] !== 'N') errors.push(`${rat} invalid NPC position ${key}`);
+            try { validateDialogue(npc); } catch (e) { errors.push(`${rat} NPC ${key}: ${e.message}`); }
+          }
+        }
+        if (room.portalTargets !== undefined) {
+          if (!room.portalTargets || typeof room.portalTargets !== 'object' || Array.isArray(room.portalTargets)) errors.push(`${rat} portalTargets 必須是物件`);
+          else for (const [key, target] of Object.entries(room.portalTargets)) {
+            const [x, y] = key.split(',').map(Number);
+            if (!/^\d+,\d+$/.test(key) || key !== `${x},${y}` || room.tiles[y]?.[x] !== 'O') errors.push(`${rat} 傳送門位置 ${key} 無效`);
+            if (target !== null && !ids.has(target)) errors.push(`${rat} 傳送門 ${key} 指向不存在的房間 "${target}"`);
+          }
+        }
+        if (room.portalTarget !== undefined && room.portalTarget !== null && !ids.has(room.portalTarget)) errors.push(`${rat} 傳送門指向不存在的房間 "${room.portalTarget}"`);
+        const keys = Object.keys(exits);
+        if (!keys.length && !room.tiles.join('').includes('O')) errors.push(`${rat} 至少要有一個出口`);
+        keys.forEach(side => {
+          if (!SIDES.includes(side)) errors.push(`${rat} 出口方向 "${side}" 無效`);
+          else if (exits[side] !== null && !ids.has(exits[side])) errors.push(`${rat} 出口指向不存在的房間 "${exits[side]}"`);
+        });
+      });
+    });
+    return errors;
+  }
+
+  function parseCampaign(text) {
+    let data;
+    try { data = JSON.parse(text); } catch (e) { throw new Error('不是有效的 JSON'); }
+    const errors = validateCampaign(data);
+    if (errors.length) throw new Error(errors.join('\n'));
+    return data;
+  }
+
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const overlap = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+
+  class Game {
+    constructor(campaign) {
+      this.campaign = campaign;
+      this.deaths = 0;
+      this.time = 0;
+      this.mapTime = 0;
+      this.particles = [];
+      this.shake = 0;
+      this.events = [];
+      this.bubbles = [];
+      this.capsGot = new Set();
+      this.seen = new Set();
+      this.startMap(0);
+    }
+
+    get map() { return this.campaign.maps[this.mapIndex]; }
+
+    startMap(index) {
+      this.mapIndex = index;
+      this.reached = Math.max(this.reached ?? 0, index);   // the room picker lists only days already reached
+      this.mapDeaths = 0;
+      this.mapTime = 0;
+      this.phase = this.map.intro ? 'intro' : 'play';
+      this.card = this.map.intro ? { title: this.map.name, text: this.map.intro } : null;
+      this.timer = 0;
+      this.carryBooze = this.map.booze || 0;
+      this.enterRoom(this.map.rooms[0].id);
+    }
+
+    enterRoom(id) {
+      this.room = this.map.rooms.find(r => r.id === id);
+      this.dialogue = null;
+      this.tiles = this.room.tiles.map(row => row.split(''));
+      this.tilesVersion = (this.tilesVersion || 0) + 1;
+      this.exits = this.room.exits || {};
+      this.entities = [];
+      this.crumbles = new Map();
+      this.sensors = []; this.doors = []; this.beams = []; this.sensed = false;
+      // street rooms have guards and signs, indoor ones chairs and tubes; a room may ask for guards ("patrol": "guard")
+      const street = (this.room.theme || 'street') === 'street', guards = street || this.room.patrol === 'guard';
+      for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+        const t = this.tiles[y][x];
+        if (t === 'P') this.spawn = { x: x * T + T / 2, y: (y + 1) * T };
+        if (t === 'H') this.sensors.push({ x: x * T, y: y * T, w: T, h: T });
+        if (t === 'G' || t === 'g') { this.doors.push({ x, y, bridge: t === 'g' }); this.tiles[y][x] = t === 'G' ? 'G' : '.'; }
+        if (t === 'V') this.beams.push({ x, y });
+        if (t === 'R') { this.entities.push({ kind: 'patrol', x: x * T + T / 2, y: (y + 1) * T, dir: -1, alive: true, w: guards ? 44 : 40, h: guards ? 110 : 34, skin: guards ? 'guard' : 'chair', t: 0 }); this.tiles[y][x] = '.'; }
+        if (t === 'L') { this.entities.push({ kind: 'faller', x: x * T + T / 2, y: y * T, vy: 0, phase: 'idle', t: 0, w: 72, h: street ? 30 : 14, skin: street ? 'sign' : 'tube' }); this.tiles[y][x] = '.'; }
+        if (t === 'D') { this.entities.push({ kind: 'bottle', x: x * T + T / 2, y: y * T + T / 2, got: false }); this.tiles[y][x] = '.'; }
+        // a cart is two tiles wide with its deck on the top of its tile, rolling right first; a room may set its speed
+        if (t === 'M') { this.entities.push({ kind: 'cart', x: x * T + T / 2, y: y * T, w: 80, h: 16, dir: 1, t: 0, speed: this.room.cartSpeed ?? TUNING.cartSpeed }); this.tiles[y][x] = '.'; }
+        if (t === '*') {
+          const key = `${this.map.id}:${this.room.id}:${x},${y}`;
+          if (!this.capsGot.has(key)) this.entities.push({ kind: 'cap', key, x: x * T + T / 2, y: y * T + T / 2, got: false, t: 0 });
+          this.tiles[y][x] = '.';
+        }
+      }
+      this.roomCaps = [];
+      this.held = this.room.held || 0;
+      this.activeSkill = null;
+      this.airDraws = 0;
+      this.drinkT = 0;
+      this.ready = null;
+      this.hitStop = 0;
+      this.bubbles = [];
+      if (!this.seen.has(this.map.id + ':' + id)) {
+        this.seen.add(this.map.id + ':' + id);
+        // a room's cutscene: a dark card the first time in, shown like a day's intro
+        if (this.room.cutscene && id !== this.map.rooms[0].id) { this.phase = 'intro'; this.timer = 0; this.card = { title: this.room.name, text: this.room.cutscene }; }
+        if (!this.chill) (this.room.lines || []).forEach((text, i) => this.bubbles.push({ who: 'body', text, delay: 0.2 + i * 0.8, t: 2.2 }));
+      }
+      this.body = { x: this.spawn.x, y: this.spawn.y, vx: 0, vy: 0, face: 1, grounded: true, anim: 'idle', animTime: 0 };
+      this.state = 'free';
+      this.timer = 0;
+      this.coyote = 0;
+      this.jumpBuf = 0;
+      this.slot = null;
+      this.flash = null;
+      this.pending = null;
+      this.stand = null;
+      this.aim = 1;
+      this.roomTitle = 2.4;
+      // drunk mode: a room starts from its own booze, or what was carried in; a death returns to that amount
+      // a room may hold the day's grades lower ("cells" on the room), so the body it teaches is the only move there
+      this.cells = this.room.cells ?? (this.map.cells || 0);
+      this.booze = Math.min(this.cells, this.room.booze ?? this.carryBooze ?? 0);
+      if (this.chill) this.booze = clamp(Math.round(this.booze), 0, this.cells);
+      this.stage = 0; this.stageWarn = null; this.stageQueue = []; this.hallu = new Set(); this.stageDeferred = [];
+      this.chillAirUsed = false;
+      this.fartCd = 0; this.ascendT = 0; this.chain = []; this.chainT = 0; this.regenWait = 0;
+      this.windupT = 0; this.pound = null; this.ascended = false; this.downHeld = false;
+      this.anchor = null; this.warp = null;
+      if (this.cells) this.applyStage(this.targetStage(), true);
+    }
+
+    // ---------- drunk mode ----------
+    get drunk() { return !!this.map.cells; }
+    get chill() { return this.campaign.rules === 'chill-puzzle'; }
+    // skills: "single" — each grade is one move of its own (1 丟, 2 衝, 3 升天) instead of a chain
+    get single() { return this.chill && this.campaign.skills === 'single'; }
+    // bottles: "carry" — E only drinks a bottle picked up in the room (D); K stays free
+    get bottled() { return this.chill && this.campaign.bottles === 'carry'; }
+    // bottles: "drink" — the drink-use-sober loop: touching a bottle drinks it (it comes back later), J spends a grade,
+    // K spends one with a hop, and the world is the body three seconds ago (changes queue instead of blocking)
+    get looped() { return this.chill && this.campaign.bottles === 'drink'; }
+    get hasShadow() { return !Array.isArray(this.map.abilities) || this.map.abilities.includes('wrestler'); }
+    // zui: "corpse" — one grade leaves Jim's body behind as a floating plank and sends him back to the last bottle he drank;
+    // two grades are the throw
+    get corpses() { return this.looped && this.map.zui === 'corpse'; }
+    targetStage() { return Math.min(this.cells, Math.floor(this.booze + 1e-9)); }
+    // The static tile of a cell at a drunk stage: the room, then every overlay up to that stage.
+    stageChar(x, y, k) {
+      let t = this.room.tiles[y][x];
+      if (!STAGE_CHARS.includes(t)) return t;
+      for (let s = 1; s <= k; s++) { const o = this.room.stages?.[s]?.[y][x]; if (o && o !== '.') t = o === '_' ? '.' : o; }
+      return t;
+    }
+    stageDiff(from, to) {
+      const out = [];
+      if (this.room.stages) for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) { const c = this.stageChar(x, y, to); if (this.stageChar(x, y, from) !== c) out.push([x, y, c]); }
+      return out;
+    }
+    // Swaps in the stage's tiles; refuses (returns false) while a new solid would land on Jim or his shadow.
+    applyStage(k, force = false) {
+      const diff = this.stageDiff(this.stage, k);
+      if (!force) {
+        const boxes = [this.box(this.body)].concat(this.stand && !this.stand.leaving ? [this.box(this.stand)] : []);
+        if (diff.some(([x, y, c]) => SOLID.includes(c) && boxes.some(bx => overlap(bx, { x: x * T, y: y * T, w: T, h: T })))) return false;
+      }
+      for (const [x, y, c] of diff) { this.tiles[y][x] = c; this.crumbles.delete(x + ',' + y); }
+      if (diff.length) this.tilesVersion++;
+      if (!force && k !== this.stage) { this.events.push(k > this.stage ? 'stageUp' : 'stageDown'); this.shake = Math.max(this.shake, 0.25); }
+      this.stage = k; this.stageWarn = null;
+      this.hallu = new Set();
+      if (this.room.stages) for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (this.stageChar(x, y, k) !== this.stageChar(x, y, 0)) this.hallu.add(x + ',' + y);
+      return true;
+    }
+    // The map follows the full cells: a change is announced first (fart it away in time to cancel it) and lands with Jim.
+    updateStage(dt) {
+      if (this.chill) { this.updateChillStage(dt); return; }
+      const k = this.targetStage();
+      if (k === this.stage) { this.stageWarn = null; return; }
+      if (!this.stageWarn || this.stageWarn.to !== k) { this.stageWarn = { to: k, t: TUNING.stageWarn, cells: this.stageDiff(this.stage, k) }; this.events.push('warn'); }
+      this.stageWarn.t -= dt;
+      const settled = (this.state === 'free' || this.state === 'recover') && this.body.grounded;
+      if (this.stageWarn.t <= 0 && settled) this.applyStage(k);
+    }
+
+    // Puzzle rules keep the player's grade stable (0 sober to 3). The world follows exactly three seconds later.
+    changeGrade(delta) {
+      if (!this.chill || this.phase !== 'play' || (!this.looped && (this.stageWarn || this.stageDeferred.length)) || this.chain.length || this.windupT > 0 || this.pound || !['free', 'thrown', 'recover'].includes(this.state)) return false;
+      const from = this.targetStage(), next = clamp(from + delta, 0, this.cells);
+      if (next === from) return false;
+      if (delta > 0 && this.bottled) {
+        if (!this.held) {
+          this.bubbles = this.bubbles.filter(bub => !bub.deny);
+          this.bubbles.push({ who: 'body', text: '沒酒了……', delay: 0, t: 0.8, deny: true });
+          this.events.push('deny');
+          return false;
+        }
+        this.held--;
+      }
+      if (this.looped) this.shiftGrade(next);
+      else {
+        this.booze = next;
+        this.stageWarn = { to: next, t: 3, duration: 3, cells: this.stageDiff(this.stage, next) };
+        this.events.push('warn');
+      }
+      this.events.push(delta > 0 ? 'ready' : 'fart');
+      // the fart carries the grade's colour away: a cloud below Jim in the colour he is losing
+      if (delta < 0) for (let i = 0; i < 12 && this.particles.length < 300; i++) this.particles.push({ x: this.body.x + (Math.random() - 0.5) * 20, y: this.body.y - 14, vx: (Math.random() - 0.5) * 200, vy: 120 + Math.random() * 180, life: 0.45 + Math.random() * 0.3, max: 0.75, size: 7 + Math.random() * 9, color: STAGE_TINT[from] });
+      return true;
+    }
+
+    // Loop rules: the body takes the new grade now and the world queues it, landing three seconds later in order.
+    shiftGrade(next) {
+      this.booze = next;
+      const entry = { to: next, t: 3, duration: 3 };
+      if (this.stageWarn) this.stageQueue.push(entry);
+      else { entry.cells = this.stageDiff(this.stage, next); this.stageWarn = entry; }
+      this.events.push('warn');
+    }
+
+    updateChillStage(dt) {
+      const boxes = [this.box(this.body)].concat(this.stand && !this.stand.leaving ? [this.box(this.stand)] : [],
+        this.entities.filter(e => e.kind === 'patrol' && e.alive).map(e => ({ x: e.x - e.w / 2, y: e.y - e.h, w: e.w, h: e.h })));
+      const blocked = (x, y, c) => SOLID.includes(c) && boxes.some(b => overlap(b, { x: x * T, y: y * T, w: T, h: T }));
+      // loop rules: a solid that lands on Jim does not wait for him; he is stuck in the wall, and that is a death
+      const jim = this.box(this.body), crushes = (x, y, c) => this.looped && this.state !== 'dead' && SOLID.includes(c) && overlap(jim, { x: x * T, y: y * T, w: T, h: T });
+      const write = ([x, y, c]) => { this.tiles[y][x] = c; this.crumbles.delete(x + ',' + y); this.tilesVersion++; };
+      this.stageDeferred = this.stageDeferred.filter(cell => { if (blocked(...cell)) return true; write(cell); return false; });
+      if (!this.stageWarn) return;
+      for (const q of this.stageQueue) q.t = Math.max(0, q.t - dt);
+      this.stageWarn.t = Math.max(0, this.stageWarn.t - dt);
+      if (this.stageWarn.t > 1e-9) return;
+      const { to, cells } = this.stageWarn;
+      // a newer change of the same cell replaces one still waiting for Jim or a guard to step out
+      this.stageDeferred = this.stageDeferred.filter(([dx, dy]) => !cells.some(([x, y]) => x === dx && y === dy));
+      for (const cell of cells) {
+        if (crushes(...cell)) { write(cell); this.die('crush'); }
+        else if (blocked(...cell)) this.stageDeferred.push(cell); else write(cell);
+      }
+      if (to !== this.stage) this.events.push(to > this.stage ? 'stageUp' : 'stageDown');
+      this.stage = to; this.stageWarn = null; this.hallu = new Set();
+      const next = this.stageQueue.shift();
+      if (next) { next.cells = this.stageDiff(to, next.to); this.stageWarn = next; }
+      for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (this.stageChar(x, y, to) !== this.stageChar(x, y, 0)) this.hallu.add(x + ',' + y);
+    }
+
+    // K in drunk mode: a short fart. Forward is a burst of speed, nothing or W lifts Jim like a flap.
+    fart(input, dir) {
+      if (this.chill) {
+        if (this.changeGrade(-1) && this.looped) {
+          const b = this.body;
+          b.vy = Math.min(b.vy, -TUNING.fartHop); b.grounded = false; b.puff = true; this.coyote = 0; this.jumpBuf = 0;
+          if (this.state === 'recover') this.state = 'free';
+        } else if (this.looped && this.map.hud !== false && !this.targetStage() && this.fartCd <= 0 && this.phase === 'play' && this.state !== 'dead') {
+          // sober: a dry little puff and nothing else, so K tells you it wants a drink
+          this.fartCd = 0.3; this.events.push('deny');
+          this.emit(this.body.x, this.body.y - 10, '#8a809f', 4, 80, 30);
+        }
+        return;
+      }
+      if (this.fartCd > 0 || !['free', 'thrown', 'recover'].includes(this.state)) return;
+      const b = this.body;
+      if (this.booze < TUNING.fartCost - 1e-9) {
+        this.fartCd = 0.3; this.events.push('deny');
+        this.bubbles = this.bubbles.filter(bub => !bub.deny);
+        this.bubbles.push({ who: 'body', text: '……擠不出來', delay: 0, t: 0.7, deny: true });
+        return;
+      }
+      this.booze = Math.max(0, this.booze - TUNING.fartCost);
+      this.fartCd = TUNING.fartCooldown;
+      if (this.state === 'recover') this.state = 'free';
+      const dash = dir && !input.jump;
+      if (dash) { b.vx = dir * Math.max(dir * b.vx, TUNING.fartDash); b.vy = Math.min(b.vy, -TUNING.fartDashLift); b.face = dir; }
+      else b.vy = -TUNING.fartUp;
+      b.grounded = false; b.puff = true; this.coyote = 0; this.jumpBuf = 0;
+      this.events.push('fart');
+      const back = dash ? -dir : 0;
+      for (let i = 0; i < 6 && this.particles.length < 300; i++) this.particles.push({ x: b.x + back * 22, y: b.y - 18, vx: back * (120 + Math.random() * 160) + (Math.random() - 0.5) * 90, vy: back ? (Math.random() - 0.5) * 80 : 140 + Math.random() * 160, life: 0.35 + Math.random() * 0.25, max: 0.6, size: 6 + Math.random() * 8, color: i % 2 ? '#b5c25a' : '#8e9a4a' });
+    }
+
+    // J in drunk mode: every full cell goes at once and the shadow plays the whole chain by itself:
+    // 3 cells 升天 → 衝 → 丟, 2 cells 衝 → 丟, 1 cell 丟. A/D and W/S still steer each part as it starts.
+    pressZui() {
+      // a day that lists its abilities without the wrestler has no shadow yet: J does nothing
+      if (this.chill && !this.hasShadow) return;
+      if (this.state === 'dead' || this.chain.length || this.state === 'lift' || this.state === 'charge') return;
+      if (this.chill && this.chillAirUsed) return;
+      const n = Math.min(this.cells, Math.floor(this.booze + 1e-9));
+      if (n < 1 && this.corpses && this.callBack()) return;
+      if (n < 1) {
+        this.bubbles = this.bubbles.filter(bub => !bub.deny);
+        this.bubbles.push({ who: 'body', text: '還不夠醉……', delay: 0, t: 0.8, deny: true });
+        this.events.push('deny');
+        return;
+      }
+      if (this.corpses) {
+        if (n === 1 && !this.anchor) { this.events.push('deny'); return; }
+      } else if (n === 2 && this.hitsSolid(this.box({ x: this.body.x, h: BODY_H + TUNING.carryOffset }, this.body.y))) { this.events.push('deny'); return; }
+      if (this.chill) { this.chillAirUsed = true; this.chillFace = this.body.face; }
+      else this.booze = 0;
+      this.regenWait = TUNING.regenDelay;
+      this.flash = { color: ZUI[n].tint, t: 0.25 };
+      this.events.push('drink');
+      if (this.corpses) { if (n === 1) this.leaveCorpse(); else this.startLift(); }
+      else if (this.single) { if (n === 3) this.windup(); else if (n === 2) this.startCharge(); else this.startLift(); }
+      else if (n === 3) { this.chain = ['charge', 'throw']; this.chainT = TUNING.chainAscend; this.ascend(); }
+      else if (n === 2) { this.chain = ['throw']; this.startCharge(); this.timer = TUNING.chainCharge; }
+      else this.startLift();
+      // loop rules: the shadow eats a grade as the move starts (a refused charge eats nothing)
+      if (this.looped && (n !== 2 || this.state === 'charge')) this.shiftGrade(n - 1);
+    }
+
+    // Jim's body stays where he is, lying in the air as a plank, and he wakes up on the spot of the last bottle he drank.
+    // That bottle stays empty for as long as the body is there; walking back into it takes the body away again.
+    leaveCorpse() {
+      const b = this.body, to = this.anchor;
+      const corpse = { kind: 'corpse', x: b.x, y: b.y - TUNING.corpseH, w: TUNING.corpseW, face: b.face, t: 0 };
+      this.entities.push(corpse);
+      Object.assign(to, { got: true, corpse, armed: false });
+      this.anchor = null;
+      this.warp = { x0: b.x, y0: b.y - BODY_H / 2, x1: to.x, y1: to.y, t: TUNING.warpTime };
+      this.emit(b.x, b.y - BODY_H / 2, '#c9d3e6', 14, 260, 160);
+      Object.assign(b, { x: to.x, y: to.y + T / 2, vx: 0, vy: 0, grounded: false });
+      this.state = 'free'; this.chillAirUsed = false; this.coyote = 0; this.jumpBuf = 0;
+      this.events.push('warp');
+      this.emit(to.x, to.y, '#c9d3e6', 14, 260, 160);
+    }
+
+    // Nothing left to spend: J calls the last body back and Jim wakes at its bottle, wherever he got stuck.
+    // A body in the wrong place never costs a death.
+    callBack() {
+      const body = this.entities.filter(e => e.kind === 'corpse').at(-1), to = body && this.entities.find(e => e.kind === 'bottle' && e.corpse === body);
+      if (!to) return false;
+      const b = this.body;
+      this.entities = this.entities.filter(e => e !== body);
+      this.emit(body.x, body.y, '#c9d3e6', 12, 220, 120);
+      this.warp = { x0: b.x, y0: b.y - BODY_H / 2, x1: to.x, y1: to.y, t: TUNING.warpTime };
+      Object.assign(to, { corpse: null, got: false, back: 0 });
+      Object.assign(b, { x: to.x, y: to.y + T / 2, vx: 0, vy: 0, grounded: false });
+      this.state = 'free'; this.coyote = 0; this.jumpBuf = 0;
+      this.events.push('recall', 'warp');
+      return true;
+    }
+
+    // A sensor holds while Jim, a body or a chair is in it: doors open and bridges appear. Nothing solid comes down on Jim:
+    // a door waits until he is clear of it.
+    updateDoors() {
+      if (!this.sensors.length) return;
+      const hit = box => this.sensors.some(s => overlap(box, s));
+      const sensed = hit(this.box(this.body)) || this.entities.some(e => e.kind === 'corpse' ? hit({ x: e.x - e.w / 2, y: e.y, w: e.w, h: TUNING.corpseH })
+        : e.kind === 'patrol' && e.alive && hit({ x: e.x - e.w / 2, y: e.y - e.h, w: e.w, h: e.h }));
+      if (sensed === this.sensed) return;
+      const solid = d => sensed === d.bridge, jim = this.box(this.body);
+      if (this.doors.some(d => solid(d) && overlap(jim, { x: d.x * T, y: d.y * T, w: T, h: T }))) return;
+      for (const d of this.doors) this.tiles[d.y][d.x] = solid(d) ? 'G' : '.';
+      this.tilesVersion++;
+      this.sensed = sensed;
+      this.events.push(sensed ? 'stageUp' : 'stageDown');
+    }
+
+    // Where a beam stops: the first solid under its fixture, or a body lying across it.
+    beamEnd(v) {
+      const cx = v.x * T + T / 2, top = (v.y + 1) * T;
+      let cy = v.y + 1;
+      while (cy < ROWS && !this.solid(v.x, cy)) cy++;
+      let end = cy * T;
+      for (const e of this.entities) if (e.kind === 'corpse' && Math.abs(e.x - cx) <= e.w / 2 && e.y >= top && e.y < end) end = e.y;
+      return end;
+    }
+
+    updateBeams() {
+      const bb = this.box(this.body), hurt = { x: bb.x + 10, y: bb.y + 6, w: bb.w - 20, h: bb.h - 6 };
+      for (const v of this.beams) {
+        const top = (v.y + 1) * T;
+        if (overlap(hurt, { x: v.x * T + T / 2 - 2, y: top, w: 4, h: this.beamEnd(v) - top })) { this.die('beam'); return; }
+      }
+    }
+
+    // A body across a walker's way turns him back like a wall; it reaches the floor under it, arms hanging.
+    bodyAhead(e, nx) {
+      const box = { x: nx - e.w / 2, y: e.y - e.h, w: e.w, h: e.h };
+      return this.entities.some(c => c.kind === 'corpse' && e.dir * (c.x - e.x) > 0 && overlap(box, { x: c.x - c.w / 2, y: c.y, w: c.w, h: TUNING.corpseH + 40 }));
+    }
+
+    // Single-skill 升天 squats first: Jim holds still (in the air too) and the fart goes off when the timer runs out.
+    windup() {
+      const b = this.body;
+      this.windupT = TUNING.ascendWindup;
+      b.vx = b.vy = 0;
+      this.setAnim('idle');
+      this.emit(b.x, b.y, '#b5c25a', 8, 160, 40);
+    }
+
+    // The third cell: Jim's own enormous fart. Straight up, high, and through crates overhead.
+    ascend() {
+      const b = this.body;
+      if (this.stand) this.stand.leaving = true;
+      this.state = 'free';
+      b.vy = -TUNING.ascendVY; b.vx *= 0.4; b.grounded = false; b.puff = true;
+      this.ascendT = TUNING.ascendBreak; this.coyote = 0; this.ascended = this.single;
+      this.hitStop = 0.07; this.shake = 0.4;
+      this.events.push('bigfart');
+      this.shout('body', ['噗————！！', '對不起大家！', '升天啦——']);
+      for (let i = 0; i < 34 && this.particles.length < 300; i++) this.particles.push({ x: b.x + (Math.random() - 0.5) * 50, y: b.y - 6, vx: (Math.random() - 0.5) * 520, vy: 60 + Math.random() * 260, life: 0.5 + Math.random() * 0.4, max: 0.9, size: 8 + Math.random() * 14, color: i % 3 ? '#b5c25a' : '#e8e2a0' });
+    }
+
+    tileAt(cx, cy) {
+      if (cx < 0) return this.exits.left !== undefined ? '.' : '#';
+      if (cx >= COLS) return this.exits.right !== undefined ? '.' : '#';
+      if (cy < 0) return this.exits.top !== undefined ? '.' : '#';
+      if (cy >= ROWS) return '.';
+      return this.tiles[cy][cx];
+    }
+
+    solid(cx, cy) { return SOLID.includes(this.tileAt(cx, cy)); }
+
+    box(b, y = b.y) { const h = b.h || BODY_H; return { x: b.x - BODY_W / 2, y: y - h, w: BODY_W, h }; }
+
+    hitsSolid(box) {
+      const x0 = Math.floor(box.x / T), x1 = Math.floor((box.x + box.w - 1e-6) / T);
+      const y0 = Math.floor(box.y / T), y1 = Math.floor((box.y + box.h - 1e-6) / T);
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (this.solid(x, y)) return true;
+      return false;
+    }
+
+    moveX(b, dx) {
+      b.x += dx;
+      const box = this.box(b);
+      const x0 = Math.floor(box.x / T), x1 = Math.floor((box.x + box.w - 1e-6) / T);
+      const y0 = Math.floor(box.y / T), y1 = Math.floor((box.y + box.h - 1e-6) / T);
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+        if (!this.solid(x, y)) continue;
+        // Jim is wider than a tile: a wall brushing his trailing side must not pull him through it
+        if (dx > 0 ? (x + 1) * T <= b.x : dx < 0 && x * T >= b.x) continue;
+        b.x = dx > 0 ? x * T - BODY_W / 2 : (x + 1) * T + BODY_W / 2;
+        b.vx = 0;
+        return true;
+      }
+      return false;
+    }
+
+    moveY(b, dy) {
+      const prevBottom = b.y, fall = b.vy;
+      b.y += dy;
+      b.grounded = false;
+      if (b === this.body) b.cart = -1;
+      const box = this.box(b);
+      const x0 = Math.floor(box.x / T), x1 = Math.floor((box.x + box.w - 1e-6) / T);
+      const y0 = Math.floor(box.y / T), y1 = Math.floor((box.y + box.h - 1e-6) / T);
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+        const t = this.tileAt(x, y);
+        const floorOnly = (t === '=' || (t === '^' && b.glassFloor)) && dy > 0 && prevBottom <= y * T + 0.01;
+        if (!(SOLID.includes(t) || floorOnly)) continue;
+        if (dy > 0) { b.y = y * T; b.grounded = true; } else b.y = (y + 1) * T + (b.h || BODY_H);
+        b.vy = 0;
+        // any sofa under his feet throws him, whichever side the other floor is on
+        if (dy > 0 && b === this.body) for (let sx = x0; sx <= x1; sx++) if (this.tileAt(sx, y) === 'S') { this.bounce(fall); break; }
+        return true;
+      }
+      // Jim lands on a cart's deck, or a body he left behind, from above, like a plank; beltUnder makes a cart carry him
+      if (dy > 0 && b === this.body) {
+        const box = this.box(b);
+        const i = this.entities.findIndex(e => (e.kind === 'cart' || e.kind === 'corpse') && box.x < e.x + e.w / 2 && box.x + box.w > e.x - e.w / 2 && prevBottom <= e.y + 0.01 && b.y >= e.y);
+        if (i >= 0) { b.y = this.entities[i].y; b.grounded = true; b.vy = 0; b.cart = this.entities[i].kind === 'cart' ? i : -1; return true; }
+      }
+      return false;
+    }
+
+    // A sofa throws Jim back up: harder the faster he lands. It counts as touching down, so J is back.
+    bounce(fall) {
+      const b = this.body;
+      b.vy = -clamp(Math.max(TUNING.sofa, fall * TUNING.sofaKeep), 0, TUNING.sofaMax);
+      b.vx = clamp(b.vx, -TUNING.run, TUNING.run);   // a throw's sideways speed is spent on the cushion
+      b.grounded = false; b.puff = true; b.carry = 0; this.coyote = 0; this.jumpBuf = 0;
+      this.pound = null; this.ascendT = 0;   // a ground pound ends on the cushion
+      if (this.chill) this.chillAirUsed = false;
+      if (this.state === 'thrown' || this.state === 'recover') this.state = 'free';
+      this.events.push('bounce');
+      this.emit(b.x, b.y, '#c58ad6', 10, 260, 120);
+    }
+
+    physics(dt) {
+      const b = this.body;
+      b.vy = Math.min(TUNING.maxFall, b.vy + TUNING.gravity * dt);
+      this.moveX(b, b.vx * dt);
+      this.moveY(b, b.vy * dt);
+    }
+
+    emit(x, y, color, count, spread = 220, lift = 180) {
+      for (let i = 0; i < count && this.particles.length < 300; i++) {
+        this.particles.push({ x, y, vx: (Math.random() - 0.5) * spread, vy: -Math.random() * lift, life: 0.5 + Math.random() * 0.35, max: 0.85, size: 3 + Math.random() * 4, color });
+      }
+    }
+
+    // K opens the slot. The skill behind the current action is left out of the pool, and once off the
+    // ground only TUNING.airDraws draws are allowed until the body touches down again.
+    pressK() {
+      if (this.state === 'dead' || this.slot || this.drinkT > 0) return;
+      // a drunk card is held for TUNING.holdTime seconds; K spends it whenever the moment is right
+      if (this.ready) { const id = this.ready.id; this.ready = null; this.fire(id); return; }
+      const pool = this.map.abilities.filter(a => a !== this.activeSkill);
+      const airborne = !this.body.grounded || ['lift', 'thrown', 'charge'].includes(this.state);
+      if (!pool.length || (airborne && this.airDraws >= TUNING.airDraws)) {
+        this.bubbles = this.bubbles.filter(bub => !bub.deny);
+        this.bubbles.push({ who: 'body', text: '現在抽不了', delay: 0, t: 0.8, deny: true });
+        this.events.push('deny');
+        return;
+      }
+      if (airborne) this.airDraws++;
+      this.slot = { pool, mode: 'spin', index: 0, t: 0, age: 0, flip: 0, ticks: 0, braked: 0, brakeSteps: 0 };
+      this.events.push('slotOpen');
+    }
+
+    // Direct mode: the skill's own key fires it at once, under the same day-pool and air rules as the draw.
+    pressSkill(id) {
+      if (this.drunk) { if (id === 'wrestler') this.pressZui(); return; }
+      if (this.state === 'dead') return;
+      const airborne = !this.body.grounded || ['lift', 'thrown', 'charge'].includes(this.state);
+      const why = !this.map.abilities.includes(id) ? '今天沒有這招'
+        : id === this.activeSkill ? '正在用'
+        : airborne && this.airDraws >= TUNING.airDraws ? '現在用不了' : null;
+      if (why) {
+        this.bubbles = this.bubbles.filter(bub => !bub.deny);
+        this.bubbles.push({ who: 'body', text: why, delay: 0, t: 0.8, deny: true });
+        this.events.push('deny');
+        return;
+      }
+      // a charge spends the air use even from the ground, so chaining off it takes a smash or a knock
+      if (airborne || id === 'bodyguard') this.airDraws++;
+      this.flash = { color: ABILITIES[id].tint, t: 0.2 };
+      this.events.push('drink');
+      this.fire(id);
+    }
+
+    // A helper's shout rides on the helper itself, so it follows a charge across the room.
+    shout(who, lines) { this.bubbles.push({ who, text: lines[Math.floor(Math.random() * lines.length)], delay: 0, t: 0.9 }); }
+
+    // Velocity of the wrestler's throw for the arc chosen while lifted.
+    throwVel(kind = this.throwKind) {
+      const [vx, vy] = kind === 'up' ? [TUNING.throwUpVX, TUNING.throwUpVY] : kind === 'low' ? [TUNING.throwLowVX, TUNING.throwLowVY] : [TUNING.throwVX, TUNING.throwVY];
+      return { vx: this.aim * vx, vy: -vy };
+    }
+
+    // A crate smashed or a guard knocked mid-charge earns the air use back, so chains can continue.
+    refreshAir() {
+      if (this.drunk) return;
+      if (this.airDraws || this.activeSkill) { this.events.push('ready'); this.flash = { color: '#f2c24f', t: 0.15 }; if (this.stand) this.shout(this.stand, ['下一位！', '再來！']); }
+      this.airDraws = 0; this.activeSkill = null;
+    }
+
+    // Pick a Card: the cards cycle in real time while the world crawls at TUNING.slowmo;
+    // pressing K again locks the card on show at once, then Jim takes a sip and the skill fires.
+    lockSlot() {
+      const sl = this.slot;
+      sl.mode = 'reveal';
+      sl.t = 0;
+      sl.chosen = sl.index;
+      this.pending = sl.pool[sl.index];
+      this.flash = { color: ABILITIES[this.pending].tint, t: 0.45 };
+      this.shake = 0.18;
+      this.drinkT = TUNING.drink;
+      this.events.push('reveal', 'drink');
+    }
+
+    updateSlot(dt, kPressed) {
+      const sl = this.slot, n = sl.pool.length;
+      sl.t += dt; sl.age += dt;
+      sl.flip = Math.min(1, sl.flip + dt / 0.09);
+      if (sl.mode === 'spin') {
+        if (kPressed && sl.age > 0.12) { this.lockSlot(); return; }
+        if (sl.t >= TUNING.cardInterval) {
+          sl.t = 0; sl.index = (sl.index + 1) % n; sl.flip = 0; sl.ticks++;
+          this.events.push('tick');
+          if (sl.ticks >= 12) this.lockSlot();
+        }
+      } else if (sl.t >= 0.35) this.slot = null;
+    }
+
+    fire(id) {
+      this.pending = null;
+      if (id === 'wrestler') this.startLift();
+      if (id === 'bodyguard') this.startCharge();
+    }
+
+    // Bodyguard: the stand shoulders the body and charges at a constant speed through crates; glass cannot hurt the stand.
+    startCharge() {
+      const b = this.body;
+      if (this.chill) b.face = this.chillFace;
+      const airborne = !b.grounded || this.state !== 'free';
+      const s = { x: b.x, y: b.y, vx: 0, vy: 0, h: BODY_H + TUNING.carryOffset, glassFloor: true, face: b.face, ability: 'bodyguard', alpha: 1, leaving: false };
+      if (this.hitsSolid(this.box(s))) { this.emit(b.x, b.y - 40, ABILITIES.bodyguard.tint, 10); this.events.push('deny'); return; }
+      this.activeSkill = 'bodyguard';
+      this.airCharge = airborne ? TUNING.airCharge : 0;
+      this.events.push('charge');
+      this.state = 'charge';
+      this.timer = TUNING.chargeTime;
+      this.chargeDir = b.face;
+      this.speed = TUNING.chargeSpeed;
+      this.turnTime = 0;
+      this.stand = s;
+      b.vx = b.vy = 0;
+      this.carry();
+      this.setAnim('fall');
+      this.emit(b.x, s.y, ABILITIES.bodyguard.tint, 14);
+      this.shout(s, ['讓開讓開！', '老闆借過！', '衝啊——']);
+    }
+
+    carry() {
+      const s = this.stand, b = this.body;
+      b.x = s.x - this.chargeDir * 8;
+      b.y = s.y - TUNING.carryOffset;
+      b.face = this.chargeDir;
+    }
+
+    // Moves the stand horizontally, smashing crates; returns true when a wall stops the charge.
+    chargeMove(st, dx) {
+      st.x += dx;
+      const box = this.box(st);
+      const x0 = Math.floor(box.x / T), x1 = Math.floor((box.x + box.w - 1e-6) / T);
+      const y0 = Math.floor(box.y / T), y1 = Math.floor((box.y + box.h - 1e-6) / T);
+      let wall = false;
+      const crates = [];
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+        const t = this.tileAt(x, y);
+        if (t === 'B' || t === 'C') crates.push([x, y]); else if (SOLID.includes(t)) wall = true;
+      }
+      if (crates.length) {
+        for (const [x, y] of crates) this.breakFrom(x, y);
+        this.shake = 0.35;
+        this.hitStop = TUNING.hitStop;
+        this.events.push('break');
+        this.refreshAir();
+      }
+      if (!wall) return false;
+      const col = dx > 0 ? x1 : x0;
+      st.x = dx > 0 ? col * T - BODY_W / 2 : (col + 1) * T + BODY_W / 2;
+      return true;
+    }
+
+    breakFrom(x, y) {
+      const kind = this.tiles[y][x], stack = [[x, y]];
+      if (kind !== 'B' && kind !== 'C') return;
+      let n = 0;
+      while (stack.length) {
+        const [cx, cy] = stack.pop();
+        if (cx < 0 || cy < 0 || cx >= COLS || cy >= ROWS || this.tiles[cy][cx] !== kind) continue;
+        this.tiles[cy][cx] = '.';
+        this.crumbles.delete(cx + ',' + cy);
+        n++;
+        this.emit(cx * T + T / 2, cy * T + T / 2, n % 2 ? '#c98a5a' : '#f0c08a', 3, 380, 260);
+        stack.push([cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]);
+      }
+      if (n) this.tilesVersion++;
+    }
+
+    // Running out of time tosses Jim forward; slamming into a wall bounces him back with a thud.
+    finishCharge(hitWall) {
+      const st = this.stand, b = this.body;
+      this.state = 'thrown';
+      this.events.push(hitWall ? 'knock' : 'throw');
+      b.x = st.x;
+      b.y = st.y - TUNING.carryOffset;
+      if (hitWall) {
+        b.vx = -this.chargeDir * 260; b.vy = -420;
+        this.shake = 0.35; this.hitStop = 0.08;
+        this.shout(st, ['老闆，牆比較硬', '痛痛痛……']);
+        this.emit(b.x + this.chargeDir * 30, b.y - 20, '#f2c24f', 14, 420, 300);
+      } else {
+        b.vx = this.chargeDir * Math.max(360, this.speed * 0.55);
+        b.vy = -TUNING.releaseVY;
+      }
+      st.leaving = true;
+      this.setAnim('jump');
+    }
+
+    // Jump mid-charge: Jim leaps off the bodyguard's shoulders and keeps most of the speed.
+    jumpOut() {
+      const b = this.body;
+      this.chain = [];
+      this.state = 'free';
+      this.stand.leaving = true;
+      this.shout(this.stand, ['欸！你去哪？', '不用送了？']);
+      b.vx = this.chargeDir * TUNING.chargeSpeed * TUNING.chargeJumpOut;
+      b.vy = -TUNING.jump;
+      b.grounded = false;
+      this.jumpBuf = this.coyote = 0;
+      this.events.push('jump');
+      this.emit(b.x, b.y, ABILITIES.bodyguard.tint, 10, 260, 120);
+      this.setAnim('jump');
+    }
+
+    startLift() {
+      const b = this.body;
+      this.activeSkill = 'wrestler';
+      this.events.push('lift');
+      this.state = 'lift';
+      this.timer = TUNING.liftTime;
+      this.aim = b.face;
+      this.throwKind = 'mid';
+      this.stand = { x: b.x, y: b.y, h: 150, face: b.face, ability: 'wrestler', alpha: 1, leaving: false };
+      this.shout(this.stand, ['喝！', '飛吧社畜！', '下班囉——']);
+      b.vx = b.vy = 0;
+      let h = 0;
+      while (h < TUNING.liftHeight && !this.hitsSolid(this.box(b, b.y - h - 4))) h += 4;
+      this.liftFrom = b.y;
+      this.liftTo = b.y - h;
+      this.liftT = 0;
+      this.setAnim('jump');
+      this.emit(b.x, b.y, ABILITIES.wrestler.tint, 14);
+    }
+
+    setAnim(name) { if (this.body.anim !== name) { this.body.anim = name; this.body.animTime = 0; } }
+
+    // Conveyor speed under a grounded actor's centre.
+    beltUnder(a) {
+      if (!a.grounded) return 0;
+      // a cart's deck pushes like a belt running at the cart's speed, so a jump off it keeps that speed
+      const cart = a === this.body && a.cart >= 0 && this.entities[a.cart];
+      if (cart) return cart.dir * cart.speed;
+      const t = this.tileAt(Math.floor(a.x / T), Math.round(a.y / T));
+      return t === '>' ? TUNING.belt : t === '<' ? -TUNING.belt : 0;
+    }
+
+    // Standing on a box stack starts the whole connected stack shaking.
+    touchCrumble(a) {
+      if (!a.grounded) return;
+      const row = Math.round(a.y / T), box = this.box(a);
+      for (let x = Math.floor(box.x / T); x <= Math.floor((box.x + box.w - 1e-6) / T); x++) {
+        if (this.tileAt(x, row) !== 'C' || this.crumbles.has(x + ',' + row)) continue;
+        const stack = [[x, row]];
+        while (stack.length) {
+          const [cx, cy] = stack.pop(), key = cx + ',' + cy;
+          if (cx < 0 || cy < 0 || cx >= COLS || cy >= ROWS || this.tiles[cy][cx] !== 'C' || this.crumbles.has(key)) continue;
+          this.crumbles.set(key, { x: cx, y: cy, phase: 'shake', t: TUNING.crumbleDelay });
+          stack.push([cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]);
+        }
+      }
+    }
+
+    updateCrumbles(dt) {
+      const body = this.box(this.body);
+      for (const [key, c] of this.crumbles) {
+        c.t -= dt;
+        if (c.phase === 'shake') {
+          if (Math.random() < dt * 8) this.emit(c.x * T + Math.random() * T, c.y * T + T, '#d9b98a', 1, 60, 20);
+          if (c.t <= 0) { this.events.push('crumble'); this.tiles[c.y][c.x] = '.'; c.phase = 'gone'; c.t = TUNING.crumbleRespawn; this.emit(c.x * T + T / 2, c.y * T + T / 2, '#c89a64', 4, 260, 160); }
+        } else if (c.t <= 0 && !overlap(body, { x: c.x * T, y: c.y * T, w: T, h: T })) {
+          this.tiles[c.y][c.x] = 'C';
+          this.crumbles.delete(key);
+        }
+      }
+    }
+
+    updateEntities(dt) {
+      const b = this.body, bb = this.box(b), hurt = { x: bb.x + 6, y: bb.y + 6, w: bb.w - 12, h: bb.h - 6 };
+      for (const e of this.entities) {
+        e.t += dt;
+        if (e.kind === 'patrol') {
+          if (!e.alive) { e.x += e.vx * dt; e.y += e.vy * dt; e.vy += 2000 * dt; continue; }
+          // puzzle rules: a guard whose floor fades three seconds late falls; glass or the pit ends his shift
+          if (this.chill && this.patrolFall(e, dt)) continue;
+          const nx = e.x + e.dir * TUNING.patrolSpeed * dt, front = Math.floor((nx + e.dir * e.w / 2) / T);
+          if (this.solid(front, Math.floor((e.y - 10) / T)) || !this.solid(front, Math.floor(e.y / T)) || nx < e.w / 2 || nx > W - e.w / 2 || this.bodyAhead(e, nx)) e.dir = -e.dir;
+          else e.x = nx;
+          const box = { x: e.x - e.w / 2, y: e.y - e.h, w: e.w, h: e.h };
+          if (this.state === 'charge' && overlap(this.box(this.stand), box)) {
+            e.alive = false; e.vx = this.chargeDir * 520; e.vy = -620; this.shake = 0.3;
+            this.hitStop = TUNING.hitStop * 1.5; this.events.push('knock');
+            this.refreshAir();
+            this.shout(e, ['我只是約聘的——', '哇啊——', '我要申訴——']);
+            this.emit(e.x, e.y - e.h / 2, '#f3e9d2', 12, 380, 260);
+            continue;
+          }
+          if (this.state !== 'dead' && overlap(hurt, box)) this.die('guard');
+          if (e.skin === 'guard' && Math.abs(e.x - b.x) < 320 && (e.said || -9) < e.t - 4) {
+            e.said = e.t;
+            this.bubbles.push({ who: e, text: GUARD_LINES[Math.floor(Math.random() * GUARD_LINES.length)], delay: 0, t: 1.8 });
+          }
+        } else if (e.kind === 'bottle' && this.looped) {
+          // drunk on touch below the day's top grade; it comes back once Jim has stepped off its spot
+          const spot = { x: e.x - 12, y: e.y - 18, w: 24, h: 36 };
+          // its own countdown: e.t is every entity's age and goes up each step
+          // a bottle holding a body stays empty; stepping off its spot and back in takes the body away and the bottle returns
+          if (e.corpse) {
+            const inside = overlap(bb, spot);
+            if (!inside) e.armed = true;
+            else if (e.armed && this.state !== 'dead') {
+              this.entities = this.entities.filter(c => c !== e.corpse);
+              this.emit(e.corpse.x, e.corpse.y, '#c9d3e6', 12, 220, 120);
+              e.corpse = null; e.got = false; e.back = 0;
+              this.events.push('recall');
+            }
+          } else if (e.got) { if ((e.back -= dt) <= 0 && !overlap(bb, spot)) e.got = false; }
+          else if (this.state !== 'dead' && this.targetStage() < this.cells && overlap(bb, spot)) {
+            e.got = true; e.back = TUNING.bottleRespawn;
+            if (this.corpses) this.anchor = e;
+            this.shiftGrade(this.targetStage() + 1); this.events.push('ready');
+            this.emit(e.x, e.y, '#8fd18a', 10, 220, 160);
+          }
+        } else if (e.kind === 'bottle') {
+          if (!e.got && this.held < TUNING.carry && overlap(bb, { x: e.x - 12, y: e.y - 18, w: 24, h: 36 })) {
+            e.got = true; this.held++; this.events.push('cap');
+            this.emit(e.x, e.y, '#8fd18a', 10, 220, 160);
+          }
+        } else if (e.kind === 'cap' && this.looped) {
+          // loop rules: a cocktail (Celeste's strawberry) follows Jim and counts only once he stands on solid ground; a death loses it
+          if (!e.got && !this.berry && this.state !== 'dead' && overlap(bb, { x: e.x - 14, y: e.y - 14, w: 28, h: 28 })) {
+            e.got = true; this.berry = { key: e.key, x: e.x, y: e.y };
+            this.events.push('ready'); this.emit(e.x, e.y, '#e0484d', 10, 220, 160);
+          }
+        } else if (e.kind === 'cap') {
+          if (!e.got && overlap(bb, { x: e.x - 14, y: e.y - 14, w: 28, h: 28 })) {
+            e.got = true; this.roomCaps.push(e.key); this.events.push('cap');
+            if (this.chill) this.capsGot.add(e.key);
+            this.emit(e.x, e.y, '#f2c24f', 14, 300, 220);
+          }
+        } else if (e.kind === 'cart') {
+          const step = e.dir * e.speed * dt, ahead = e.x + step + e.dir * e.w / 2;
+          const col = Math.floor((e.dir > 0 ? ahead - 1e-6 : ahead) / T);
+          if (ahead < 0 || ahead > W || this.solid(col, Math.floor(e.y / T)) || this.solid(col, Math.floor((e.y + e.h - 1) / T))) e.dir = -e.dir;
+          else e.x += step;
+        } else if (e.kind === 'faller') {
+          if (e.phase === 'idle') {
+            if (Math.abs(b.x - e.x) < TUNING.fallTrigger && b.y > e.y) { e.phase = 'warn'; e.t = 0; this.events.push('warn'); }
+          } else if (e.phase === 'warn') {
+            if (e.t >= TUNING.fallWarn) { e.phase = 'fall'; e.vy = 300; }
+          } else if (e.phase === 'fall') {
+            e.vy += 3000 * dt; e.y += e.vy * dt;
+            const box = { x: e.x - e.w / 2, y: e.y, w: e.w, h: e.h };
+            if (this.state !== 'dead' && overlap(hurt, box)) this.die('sign');
+            const row = Math.floor((e.y + e.h) / T);
+            let land = e.y > H;
+            for (let c = Math.floor(box.x / T); c <= Math.floor((box.x + box.w - 1e-6) / T); c++) if (this.solid(c, row)) land = true;
+            if (land) { e.phase = 'gone'; this.shake = Math.max(this.shake, 0.15); this.events.push('crash'); this.emit(e.x, e.y + e.h, e.skin === 'tube' ? '#e8f3ee' : '#ff8a7a', 16, 420, 220); }
+          }
+        }
+      }
+    }
+
+    // Returns true while the patrol is off its feet (falling, or just knocked out by the landing).
+    patrolFall(e, dt) {
+      const cols = [Math.floor((e.x - e.w / 2 + 2) / T), Math.floor((e.x + e.w / 2 - 2) / T)];
+      const footing = row => cols.some(c => this.solid(c, row) || this.tileAt(c, row) === '=');
+      if (!e.vy && footing(Math.round(e.y / T))) return false;
+      const before = e.y;
+      e.vy = Math.min((e.vy || 0) + 2000 * dt, 1400); e.y += e.vy * dt;
+      const row = Math.floor(e.y / T);
+      if (row > Math.floor((before - 1e-6) / T) && footing(row)) { e.y = row * T; e.vy = 0; }
+      const glass = cols.some(c => this.tileAt(c, Math.floor((e.y - 1) / T)) === '^' || this.tileAt(c, Math.floor(e.y / T)) === '^');
+      if (glass || e.y > H + e.h) {
+        e.alive = false; e.vx = 0; e.vy = -300; this.events.push('knock');
+        if (e.y <= H) this.emit(e.x, e.y - e.h / 2, '#f3e9d2', 12, 380, 260);
+        return true;
+      }
+      if (e.vy) {
+        const b = this.body, bb = this.box(b), box = { x: e.x - e.w / 2, y: e.y - e.h, w: e.w, h: e.h };
+        if (this.state !== 'dead' && overlap({ x: bb.x + 6, y: bb.y + 6, w: bb.w - 12, h: bb.h - 6 }, box)) this.die('guard');
+      }
+      return !!e.vy;
+    }
+
+    // The cocktail Jim carries trails behind him, across rooms too, until he lands: then it is his for good.
+    updateBerry(dt) {
+      const bz = this.berry, b = this.body;
+      if (!bz) return;
+      const k = Math.min(1, dt * 8);
+      bz.x += (b.x - b.face * 34 - bz.x) * k; bz.y += (b.y - 96 - bz.y) * k;
+      if (b.grounded && (this.state === 'free' || this.state === 'recover')) {
+        this.capsGot.add(bz.key); this.berry = null;
+        this.events.push('cap'); this.emit(bz.x, bz.y, '#e0484d', 16, 300, 220);
+      }
+    }
+
+    die(cause) {
+      if (this.state === 'dead') return;
+      this.berry = null;
+      const b = this.body;
+      this.state = 'dead';
+      this.timer = TUNING.deathDelay;
+      this.deaths++;
+      this.mapDeaths++;
+      this.shake = 0.45;
+      this.stand = null;
+      this.slot = null;
+      this.drinkT = 0;
+      this.ready = null;
+      this.events.push('die');
+      // Jim is already dead, so a death is a punchline: his ghost floats up and complains
+      this.ghost = { x: b.x, y: b.y, face: b.face, t: 0 };
+      this.shout('body', this.deaths % 5 === 0 ? [`第 ${this.deaths} 次下班`] : DEATH_LINES[cause] || DEATH_LINES.other);
+      this.emit(b.x, b.y - BODY_H / 2, '#f3e9d2', 26, 520, 420);
+      this.emit(b.x, b.y - BODY_H / 2, '#e0605a', 10, 400, 300);
+    }
+
+    leave(side, target = this.exits[side]) {
+      this.carryBooze = this.booze;
+      for (const k of this.roomCaps) this.capsGot.add(k);
+      this.roomCaps = [];
+      if (target === null) { this.phase = 'mapEnd'; this.timer = 0; return; }
+      const from = this.room, to = this.map.rooms.find(r => r.id === target);
+      if (side && from.at && to?.at) { this.panTo(side, to); return; }
+      this.phase = 'transition';
+      this.transT = TUNING.transition;
+      this.nextRoom = target;
+    }
+
+    // Rooms on a map are one world: Jim goes on from the matching spot on the next room's edge with his speed,
+    // and the camera slides over. A death there sends him back to that room's own spawn.
+    panTo(side, to) {
+      const b = this.body, keep = { x: b.x, y: b.y, vx: b.vx, vy: b.vy, face: b.face, thrown: this.state === 'thrown', airUsed: this.chillAirUsed };
+      const [dx, dy] = { right: [-W, 0], left: [W, 0], top: [0, H], bottom: [0, -H] }[side];
+      const from = this.room.id;
+      this.enterRoom(to.id);
+      if (this.phase === 'intro') return;   // a room's cutscene card plays first, from its spawn
+      const nb = this.body;
+      Object.assign(nb, { x: keep.x + dx, y: keep.y + dy, vx: keep.vx, vy: side === 'top' ? Math.min(keep.vy, -TUNING.panBoost) : keep.vy, face: keep.face, grounded: false });
+      if (this.hitsSolid(this.box(nb))) Object.assign(nb, { x: this.spawn.x, y: this.spawn.y, vx: 0, vy: 0 });
+      else { if (keep.thrown) this.state = 'thrown'; this.chillAirUsed = keep.airUsed; }
+      this.pan = { side, from };
+      this.phase = 'transition';
+      this.transT = TUNING.pan;
+      this.nextRoom = null;
+    }
+
+    // A hard landing near an NPC half-wakes them.
+    wakeNpcs() {
+      for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+        if (this.tiles[y][x] !== 'N' || Math.hypot(this.body.x - (x + .5) * T, this.body.y - (y + 1) * T) > 200) continue;
+        this.shout({ x: (x + .5) * T, y: (y + 1) * T, h: 90 }, ['……誰？……算了，再五分鐘。', '……地震？', '……下班了？']);
+      }
+    }
+
+    nearbyNpc() {
+      let nearest = null, distance = T * 2;
+      for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (this.tiles[y][x] === 'N') {
+        const d = Math.hypot(this.body.x - (x + .5) * T, this.body.y - (y + 1) * T);
+        if (d < distance) { distance = d; nearest = { x, y, data: this.room.npcs?.[`${x},${y}`] }; }
+      }
+      return nearest;
+    }
+    // input also accepts talkPressed and choice (1-9).
+    step(dt, input = {}) {
+      this.time += dt;
+      this.shake = Math.max(0, this.shake - dt * 2.5);
+      for (const p of this.particles) { p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 900 * dt; }
+      this.particles = this.particles.filter(p => p.life > 0);
+      for (const bub of this.bubbles) { if (bub.delay > 0) bub.delay -= dt; else bub.t -= dt; }
+      this.bubbles = this.bubbles.filter(bub => bub.t > 0);
+
+      if (this.phase === 'intro') {
+        this.timer += dt;
+        // a longer card stays up longer before it moves on by itself
+        if ((this.timer > 0.5 && (input.confirmPressed || input.kPressed || input.jumpPressed)) || this.timer > Math.max(4, (this.card?.text.split('\n').length ?? 0) * 1.5)) this.phase = 'play';
+        return;
+      }
+
+      if (this.phase === 'transition') {
+        const before = this.transT;
+        this.transT -= dt;
+        if (this.nextRoom && before > TUNING.transition / 2 && this.transT <= TUNING.transition / 2) this.enterRoom(this.nextRoom);
+        if (this.transT <= 0) { this.phase = 'play'; this.pan = null; }
+        return;
+      }
+      if (this.phase === 'mapEnd') {
+        this.timer += dt;
+        // loop rules have no end card: the screen goes dark and the next day starts
+        if ((input.confirmPressed || (this.looped && this.timer > 0.8)) && this.timer > 0.6) this.startMap(this.mapIndex + 1 < this.campaign.maps.length ? this.mapIndex + 1 : 0);
+        return;
+      }
+
+      if (this.flash) { this.flash.t -= dt; if (this.flash.t <= 0) this.flash = null; }
+      if (this.warp && (this.warp.t -= dt) <= 0) this.warp = null;
+      this.mapTime += dt;
+      this.roomTitle = Math.max(0, this.roomTitle - dt);
+      const b = this.body;
+
+      if (this.state === 'dead') {
+        this.timer -= dt;
+        this.ghost.t += dt;
+        if (this.timer <= 0) {
+          const said = this.bubbles.filter(bub => bub.who === 'body');
+          this.enterRoom(this.room.id);
+          this.bubbles.push(...said);
+          this.body.landT = 0.15;
+        }
+        return;
+      }
+      if (this.dialogue) {
+        const { data, node } = this.dialogue, current = data.nodes[node];
+        let next;
+        if (current.choices?.length && input.choice) next = current.choices[input.choice - 1]?.next;
+        else if (!current.choices?.length && (input.talkPressed || input.confirmPressed)) next = current.next ?? null;
+        if (next !== undefined) this.dialogue = next === null ? null : { data, node: next };
+        return;
+      }
+      if (input.talkPressed && this.state === 'free') {
+        const npc = this.nearbyNpc();
+        if (npc?.data) { this.dialogue = { data: npc.data, node: npc.data.start }; return; }
+      }
+      if (this.chill) {
+        this.updateChillStage(dt);
+        if (!this.looped && (input.gradeUpPressed || input.talkPressed)) this.changeGrade(1);
+        if (input.skill && !!input.right !== !!input.left) b.face = input.right ? 1 : -1;
+      }
+
+      // the card overlay and the sip run in real time; the world keeps moving, slowly
+      let kTaken = false;
+      if (this.slot) { this.updateSlot(dt, input.kPressed); kTaken = true; }
+      if (this.drinkT > 0) { kTaken = true; this.drinkT -= dt; if (this.drinkT <= 0) { this.drinkT = 0; this.ready = { id: this.pending, t: TUNING.holdTime }; this.pending = null; this.events.push('ready'); } }
+      if (this.ready && (this.ready.t -= dt) <= 0) { this.ready = null; this.events.push('deny'); this.bubbles.push({ who: 'body', text: '酒退了……', delay: 0, t: 1 }); }
+      this.fartCd = Math.max(0, (this.fartCd || 0) - dt);
+      if (this.drunk) {
+        if (this.chill && input.kPressed) this.fart(input, 0);
+        if (input.skill) this.pressSkill(input.skill);
+        if (!this.chill && input.kPressed) this.fart(input, (input.right ? 1 : 0) - (input.left ? 1 : 0));
+      }
+      else if (TUNING.directMode) { if (input.skill) this.pressSkill(input.skill); }
+      else if (!kTaken && input.kPressed) this.pressK();
+      if (this.hitStop > 0) { this.hitStop -= dt; return; }
+      const slowed = !!this.slot || this.drinkT > 0;
+      if (slowed) { input = { ...input, jumpPressed: false }; dt *= TUNING.slowmo; }   // A/D still steer, at the slowed pace
+
+      b.animTime += dt;
+      b.landT = Math.max(0, (b.landT || 0) - dt);
+      if (this.stand && this.stand.leaving) { this.stand.alpha -= dt * 3; if (this.stand.alpha <= 0) this.stand = null; }
+
+      const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0);
+      this.jumpBuf = input.jumpPressed ? TUNING.jumpBuffer : Math.max(0, this.jumpBuf - dt);
+
+      const downPressed = !!input.down && !this.downHeld;
+      this.downHeld = !!input.down;
+      if (this.state === 'free' && this.windupT > 0) {
+        b.vx = b.vy = 0;
+        if ((this.windupT -= dt) <= 0) { this.windupT = 0; this.ascend(); }
+      } else if (this.state === 'free' && this.pound) {
+        // ground pound: a short hang, then straight down; crates under the feet break instead of catching him
+        b.vx = 0;
+        if (this.pound.hang > 0) { this.pound.hang -= dt; b.vy = 0; }
+        else {
+          b.vy = TUNING.poundVY;
+          const box = this.box(b), hit = [];
+          for (let y = Math.floor(b.y / T); y <= Math.floor((b.y + b.vy * dt + 1) / T); y++) for (let x = Math.floor(box.x / T); x <= Math.floor((box.x + box.w - 1e-6) / T); x++) if ('BC'.includes(this.tileAt(x, y))) hit.push([x, y]);
+          if (hit.length) { for (const [x, y] of hit) this.breakFrom(x, y); this.shake = 0.35; this.hitStop = TUNING.hitStop; this.events.push('break'); }
+          this.moveY(b, b.vy * dt);
+          if (b.grounded) {
+            this.pound = null; b.landT = 0.12;
+            this.shake = Math.max(this.shake, 0.4); this.events.push('land'); this.wakeNpcs();
+            this.emit(b.x, b.y, '#b9aee0', 24, 420, 120);
+          }
+        }
+        this.setAnim('fall');
+      } else if (this.state === 'free') {
+        if (dir) b.face = dir;
+        if (this.ascended && !b.grounded && downPressed) { this.pound = { hang: TUNING.poundHang }; this.ascendT = 0; b.puff = false; this.shout('body', ['看我的——', '屁股降落！']); }
+        // conveyors push while grounded and keep pushing through the jump (like Celeste's lift boost)
+        if (b.grounded) b.carry = this.beltUnder(b);
+        const push = b.carry || 0;
+        // in the air, speed above a run (a charge jump-out) fades slowly while held; letting go only drifts to a stop.
+        // a belt or cart push carried into the jump counts as part of the run, so holding its way keeps it
+        const top = TUNING.run + (Math.sign(push) === dir ? Math.abs(push) : 0);
+        if (!b.grounded && dir && Math.sign(b.vx) === dir && Math.abs(b.vx) > top) b.vx -= dir * Math.min(Math.abs(b.vx) - top, TUNING.overDecel * dt);
+        else {
+          const acc = (b.grounded ? TUNING.accelGround : TUNING.accelAir * (dir || push ? 1 : TUNING.airDrag)) * dt;
+          b.vx += clamp(dir * TUNING.run + push - b.vx, -acc, acc);
+        }
+        if (b.grounded && !dir && !push) b.vx *= Math.pow(0.001, dt);
+        this.coyote = b.grounded ? TUNING.coyote : Math.max(0, this.coyote - dt);
+        if (this.jumpBuf > 0 && this.coyote > 0) {
+          b.vy = -TUNING.jump;
+          this.jumpBuf = this.coyote = 0;
+          b.grounded = false;
+          this.events.push('jump');
+          this.emit(b.x, b.y, '#b9aee0', 5, 160, 60);
+        }
+        // Celeste-style: lighter gravity near the apex while jump is held, heavier when released early.
+        // a fart's rise is not a jump: letting go of W does not cut it short
+        if (b.vy >= 0) b.puff = false;
+        if (input.jump && Math.abs(b.vy) < 110) b.vy -= TUNING.gravity * (1 - TUNING.apexHang) * dt;
+        else if (!input.jump && b.vy < 0 && !b.puff) b.vy += TUNING.gravity * (TUNING.releaseGravity - 1) * dt;
+        if (this.chain[0] === 'charge' && (this.chainT -= dt) <= 0) {
+          this.chain.shift();
+          this.startCharge();
+          if (this.state === 'charge') this.timer = TUNING.chainCharge; else this.chain = [];
+        }
+        if (this.ascendT > 0) {
+          this.ascendT -= dt;
+          const head = this.box(b, b.y + Math.min(0, b.vy * dt) - 2), hit = [];
+          for (let y = Math.floor(head.y / T); y <= Math.floor((head.y + 8) / T); y++) for (let x = Math.floor(head.x / T); x <= Math.floor((head.x + head.w - 1e-6) / T); x++) if ('BC'.includes(this.tileAt(x, y))) hit.push([x, y]);
+          if (hit.length) { for (const [x, y] of hit) this.breakFrom(x, y); this.shake = 0.35; this.hitStop = TUNING.hitStop; this.events.push('break'); }
+        }
+        if (b.vy > 0) b.vy += TUNING.gravity * (TUNING.fallGravity - 1) * dt;
+        const wasGrounded = b.grounded;
+        this.physics(dt);
+        if (b.grounded && !wasGrounded) { this.emit(b.x, b.y, '#b9aee0', 4, 140, 40); this.events.push('land'); b.landT = 0.08; }
+        this.setAnim(b.grounded ? (Math.abs(b.vx) > 25 ? 'run' : 'idle') : (b.vy < 0 ? 'jump' : 'fall'));
+      } else if (this.state === 'lift') {
+        this.timer -= dt;
+        this.liftT = Math.min(1, this.liftT + dt / TUNING.liftRise);
+        const e = 1 - Math.pow(1 - this.liftT, 3);
+        b.y = this.liftFrom + (this.liftTo - this.liftFrom) * e;
+        if (!this.chill && dir) { this.aim = dir; b.face = dir; this.stand.face = dir; }
+        this.throwKind = this.chill ? 'mid' : input.jump ? 'up' : input.down ? 'low' : 'mid';
+        if (this.timer <= 0) {
+          this.state = 'thrown';
+          b.y = this.liftTo;
+          ({ vx: b.vx, vy: b.vy } = this.throwVel());
+          this.stand.leaving = true;
+          this.setAnim('jump');
+          this.events.push('throw');
+          this.hitStop = 0.04; this.shake = Math.max(this.shake, 0.15);
+          if (this.throwKind !== 'mid') this.shout(this.stand, this.throwKind === 'up' ? ['上去——！'] : ['滾地球！']);
+          this.emit(b.x, b.y, ABILITIES.wrestler.tint, 16, 300, 200);
+        }
+      } else if (this.state === 'thrown') {
+        // A/D steer the flight: pull toward the held side, never slower than the throw already is
+        if (dir) { const a = TUNING.throwSteer * dt; b.vx += clamp(dir * Math.max(TUNING.throwVX, Math.abs(b.vx)) - b.vx, -a, a); b.face = dir; }
+        const impact = b.vy;
+        this.physics(dt);
+        if (b.vy > 0) this.setAnim('fall');
+        if (b.grounded) {
+          this.state = 'recover';
+          this.activeSkill = null;
+          this.events.push('land');
+          this.timer = TUNING.recover;
+          b.vx *= 0.3;
+          b.landT = 0.12;
+          this.shake = Math.max(this.shake, Math.min(0.4, impact / 2500));
+          if (impact > 750) this.wakeNpcs();
+          this.setAnim('idle');
+          this.emit(b.x, b.y, '#b9aee0', 20, 320, 100);
+        }
+      } else if (this.state === 'recover') {
+        this.timer -= dt;
+        const belt = this.beltUnder(b);
+        b.vx = belt + (b.vx - belt) * Math.pow(0.0005, dt);
+        this.physics(dt);
+        if (this.timer <= 0) this.state = 'free';
+      } else if (this.state === 'charge' && input.jumpPressed && this.stand.grounded && !this.chill) this.jumpOut();
+      else if (this.state === 'charge') {
+        this.timer -= dt;
+        const st = this.stand;
+        if (!this.chill && dir && dir !== this.chargeDir) {
+          this.turnTime += dt;
+          if (this.turnTime > TUNING.chargeTurn) { this.chargeDir = dir; this.turnTime = 0; }
+        } else this.turnTime = 0;
+        this.speed = TUNING.chargeSpeed;
+        st.face = this.chargeDir;
+        // an airborne charge flies flat for a moment before gravity takes over
+        if (this.airCharge > 0) { this.airCharge -= dt; st.vy = 0; } else st.vy = Math.min(TUNING.maxFall, st.vy + TUNING.gravity * dt);
+        const stopped = this.chargeMove(st, this.chargeDir * this.speed * dt);
+        this.moveY(st, st.vy * dt);
+        this.carry();
+        if ((stopped || this.timer <= 0) && this.chain[0] === 'throw') { this.chain.shift(); this.stand.leaving = true; this.state = 'free'; this.startLift(); }
+        else if (stopped || this.timer <= 0) this.finishCharge(stopped);
+      }
+
+      if (this.state === 'free' || this.state === 'recover') {
+        if (b.grounded) this.airDraws = 0;
+        if (this.chill && b.grounded && !this.chain.length && this.ascendT <= 0 && !this.windupT && !this.pound) { this.chillAirUsed = false; this.ascended = false; }
+        if (this.state === 'free') this.activeSkill = null;
+      }
+      if (this.state !== 'dead') {
+        this.touchCrumble(b);
+        if (this.state === 'charge') this.touchCrumble(this.stand);
+        this.updateCrumbles(dt);
+        this.updateEntities(dt);
+        this.updateDoors();
+        if (this.state !== 'dead') this.updateBeams();
+        this.updateBerry(dt);
+      }
+      if (this.state !== 'dead' && this.drunk) {
+        const busy = this.chain.length || this.state === 'lift' || this.state === 'charge';
+        if (!this.chill) {
+          if (!busy && (this.regenWait -= dt) <= 0) this.booze = Math.min(this.cells, this.booze + TUNING.regen * dt);
+          this.updateStage(dt);
+        }
+      }
+      if (this.state !== 'dead') this.checkHazards();
+      if (this.state !== 'dead') this.checkExits();
+    }
+
+    checkHazards() {
+      const b = this.body, box = this.box(b);
+      const inner = { x: box.x + 6, y: box.y + 6, w: box.w - 12, h: box.h - 6 };
+      const x0 = Math.floor(inner.x / T), x1 = Math.floor((inner.x + inner.w) / T);
+      const y0 = Math.floor(inner.y / T), y1 = Math.floor((inner.y + inner.h) / T);
+      for (let y = Math.max(0, y0); y <= Math.min(ROWS - 1, y1); y++) for (let x = Math.max(0, x0); x <= Math.min(COLS - 1, x1); x++) {
+        if (this.tiles[y][x] === '^' && overlap(inner, { x: x * T + 6, y: y * T + 16, w: T - 12, h: T - 16 })) { this.die('glass'); return; }
+      }
+      if (b.y - BODY_H > H + 10 && this.exits.bottom === undefined) this.die('pit');
+    }
+
+    checkExits() {
+      const b = this.body, box = this.box(b);
+      for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+        if (this.tiles[y][x] === 'O' && overlap(box, { x: x * T + 4, y: y * T + 2, w: T - 8, h: T - 4 })) {
+          const next = this.map.rooms[this.map.rooms.indexOf(this.room) + 1];
+          const target = this.room.portalTargets?.[`${x},${y}`];
+          this.leave(null, target !== undefined ? target : this.room.portalTarget !== undefined ? this.room.portalTarget : next ? next.id : null);
+          return;
+        }
+      }
+      if (this.exits.right !== undefined && b.x > W) this.leave('right');
+      else if (this.exits.left !== undefined && b.x < 0) this.leave('left');
+      else if (this.exits.top !== undefined && b.y < 0) this.leave('top');
+      else if (this.exits.bottom !== undefined && b.y - BODY_H > H) this.leave('bottom');
+    }
+  }
+
+  root.Drunk = { T, COLS, ROWS, W, H, BODY_W, BODY_H, TUNING, ABILITIES, ZUI, STAGE_TINT, THEMES, Game, validateCampaign, parseCampaign, validateDialogue };
+})(typeof window !== 'undefined' ? window : globalThis);
+// Default campaign. Same shape the editor exports (drunken-rooms v2). The previous day 1-2 rooms are kept in legacy-days.json.
+(function (root) {
+  'use strict';
+  root.DEFAULT_CAMPAIGN = {
+    "format": "drunken-rooms",
+    "version": 2,
+    "maps": [
+      {
+        "id": "day-1",
+        "name": "第一天",
+        "intro": "尾牙喝到最後一個。醉了以後，好像有人在幫我。",
+        "outro": "至少走出公司了。",
+        "cells": 1,
+        "abilities": [
+          "wrestler"
+        ],
+        "rooms": [
+          {
+            "id": "1-1",
+            "name": "工位",
+            "theme": "office",
+            "booze": 1,
+            "tiles": [
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "...............*................",
+              "..............###...............",
+              "..............###...............",
+              "..............###...............",
+              "..............###...............",
+              "...P..........###...............",
+              "################################",
+              "################################"
+            ],
+            "exits": {
+              "right": "1-2"
+            },
+            "lines": [
+              "K 放屁：往上噴。要一直點。",
+              "醉意會自己回來。"
+            ]
+          },
+          {
+            "id": "1-2",
+            "name": "影印機走道",
+            "theme": "office",
+            "booze": 1,
+            "tiles": [
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "........################........",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "...P.......................*....",
+              "##########............##########",
+              "##########............##########"
+            ],
+            "exits": {
+              "right": "1-3"
+            },
+            "lines": [
+              "按住 D 再點 K：往前噴。"
+            ]
+          },
+          {
+            "id": "1-3",
+            "name": "茶水間",
+            "theme": "pantry",
+            "booze": 0,
+            "tiles": [
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "..................*.............",
+              ".................###............",
+              ".................###............",
+              ".................###............",
+              ".................###............",
+              ".................###............",
+              ".................###............",
+              ".................###............",
+              ".................###............",
+              "...P.............###............",
+              "################################",
+              "################################"
+            ],
+            "exits": {
+              "right": "1-4"
+            },
+            "lines": [
+              "滿一格按 J：醉影把我丟過去。",
+              "先放屁，就不夠滿了。"
+            ]
+          },
+          {
+            "id": "1-4",
+            "name": "儲藏室",
+            "theme": "office",
+            "booze": 0.4,
+            "tiles": [
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "..................*.............",
+              "................................",
+              "................................",
+              "..P.............................",
+              "####............................",
+              "####............................",
+              "####............................",
+              "#############..........#########",
+              "#############..........#########"
+            ],
+            "stages": {
+              "1": [
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "..............========..........",
+                "................................",
+                "....^^^^^^^^^...................",
+                "................................",
+                "................................"
+              ]
+            },
+            "exits": {
+              "right": "1-5"
+            },
+            "lines": [
+              "……地上怎麼都是碎杯子？",
+              "醉的時候看到的東西，是真的。"
+            ]
+          },
+          {
+            "id": "1-5",
+            "name": "大廳",
+            "theme": "lobby",
+            "booze": 0,
+            "tiles": [
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              ".......................*........",
+              "....................############",
+              "....................############",
+              "....................############",
+              "....................############",
+              "....................############",
+              "....................############",
+              "....................############",
+              "..........####......############",
+              "..........####......############",
+              "..........####......############",
+              "..P.......####......############",
+              "################################",
+              "################################"
+            ],
+            "stages": {
+              "1": [
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "..............^^^^^^............",
+                "................................",
+                "................................"
+              ]
+            },
+            "exits": {
+              "right": null
+            },
+            "lines": [
+              "大門在上面。",
+              "先上矮櫃，滿一格 J，按住 W 高拋。"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "day-2",
+        "name": "第二天",
+        "intro": "醒來在公園長椅上。今天的醉影，好像更壯了。",
+        "outro": "便利商店的店員看了我很久。",
+        "cells": 2,
+        "abilities": [
+          "wrestler"
+        ],
+        "rooms": [
+          {
+            "id": "2-1",
+            "name": "後巷",
+            "theme": "street",
+            "booze": 2,
+            "tiles": [
+              ".........BB.....................",
+              ".........BB.....................",
+              ".........BB.....................",
+              ".........BB.....................",
+              ".........BB.....................",
+              ".........BB..............*......",
+              ".........BB.....................",
+              ".........BB.....................",
+              ".........BB.....................",
+              ".........BB.....................",
+              ".........BB.....................",
+              ".........BB.....................",
+              ".........BB.....................",
+              ".........BB.....................",
+              ".........BB.....................",
+              "...P.....BB....R................",
+              "######################......####",
+              "######################......####"
+            ],
+            "exits": {
+              "right": "2-2"
+            },
+            "lines": [
+              "兩格滿的時候按 J：衝過去，再丟出去。"
+            ]
+          },
+          {
+            "id": "2-2",
+            "name": "鷹架人行道",
+            "theme": "street",
+            "booze": 0,
+            "tiles": [
+              "............BB..................",
+              "............BB..................",
+              "............BB..................",
+              "............BB..................",
+              "............BB..................",
+              "............BB..................",
+              "............BB..................",
+              "............BB..................",
+              "............BB..................",
+              "............BB..................",
+              "............BB..................",
+              "............BB..................",
+              "..P.........BB..................",
+              ".####.......BB..................",
+              ".####.......BB..................",
+              ".####.......BB................*.",
+              "###################.......######",
+              "###################.......######"
+            ],
+            "stages": {
+              "1": [
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                ".....^^^^^^^....................",
+                "................................",
+                "................................"
+              ],
+              "2": [
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                ".<<<<...........................",
+                "................................",
+                "..............^^^^^.............",
+                "................................",
+                "................................"
+              ]
+            },
+            "exits": {
+              "right": "2-3"
+            },
+            "lines": [
+              "越醉越壯，也越危險。",
+              "等兩格滿再 J。"
+            ]
+          },
+          {
+            "id": "2-3",
+            "name": "保全亭",
+            "theme": "street",
+            "booze": 0,
+            "tiles": [
+              "################################",
+              "################################",
+              "################################",
+              ".........BB.....................",
+              ".........BB.....................",
+              ".........BB.....................",
+              ".........BB.....................",
+              ".........BB................*....",
+              ".........BB...........##########",
+              ".........BB...........##########",
+              ".........BB...........##########",
+              ".........BB...........##########",
+              ".........BB...........##########",
+              ".........BB...........##########",
+              ".........BB...........##########",
+              "...P.....BB.R.........##########",
+              "################################",
+              "################################"
+            ],
+            "stages": {
+              "2": [
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "......^^^^^.....................",
+                "................................",
+                "................................"
+              ]
+            },
+            "exits": {
+              "right": "2-4"
+            },
+            "lines": [
+              "一格是丟，兩格是衝。",
+              "這裡要的是哪一個？"
+            ]
+          },
+          {
+            "id": "2-4",
+            "name": "停車場",
+            "theme": "street",
+            "booze": 0.5,
+            "tiles": [
+              ".......BB.......................",
+              ".......BB.......................",
+              ".......BB.......................",
+              ".......BB.......................",
+              ".......BB.......................",
+              ".......BB.......................",
+              ".......BB.......................",
+              ".......BB...................*...",
+              ".......BB.......................",
+              ".......BB.......................",
+              ".......BB.......................",
+              ".......BB.......................",
+              ".......BB.......................",
+              ".......BB.......................",
+              ".......BB.......................",
+              "..P....BB.......................",
+              "##############.............#####",
+              "##############.............#####"
+            ],
+            "stages": {
+              "1": [
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................===.............",
+                "................................",
+                "................................",
+                "................................"
+              ],
+              "2": [
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................___.............",
+                ".........^^^^^..................",
+                "................................",
+                "................................"
+              ]
+            },
+            "exits": {
+              "right": null
+            },
+            "lines": [
+              "最後一段。",
+              "醉意上來之前，先想好。"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "day-3",
+        "name": "第三天",
+        "intro": "第三天。今天，醉影會飛。",
+        "outro": "到家了。……鑰匙呢？",
+        "cells": 3,
+        "abilities": [
+          "wrestler"
+        ],
+        "rooms": [
+          {
+            "id": "3-1",
+            "name": "工地",
+            "theme": "street",
+            "booze": 3,
+            "tiles": [
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              ".................*..............",
+              "................................",
+              "................................",
+              ".........#......................",
+              ".........#......................",
+              ".........#^^^^^^^^^^^...........",
+              "BBBBBBBBB############...........",
+              ".........############...........",
+              ".........############...........",
+              "...P.....############...........",
+              "################################",
+              "################################"
+            ],
+            "exits": {
+              "right": "3-2"
+            },
+            "lines": [
+              "三格滿按 J：升天、衝、丟，一口氣。"
+            ]
+          },
+          {
+            "id": "3-2",
+            "name": "夜市",
+            "theme": "street",
+            "booze": 1,
+            "tiles": [
+              "................................",
+              "................................",
+              "................................",
+              "........................*.......",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "...........##...................",
+              "...........##...................",
+              "...........##...................",
+              "...........##...................",
+              "BBBBBBBBBBB##..........#########",
+              "...........##..........#########",
+              "...........##..........#########",
+              "..P........##..........#########",
+              "################################",
+              "################################"
+            ],
+            "stages": {
+              "1": [
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "..............^^^^^^^^^.........",
+                "................................",
+                "................................"
+              ],
+              "2": [
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "......^^^^^.....................",
+                "................................",
+                "................................"
+              ],
+              "3": [
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                ">>>>>...........................",
+                "................................"
+              ]
+            },
+            "exits": {
+              "right": "3-3"
+            },
+            "lines": [
+              "要飛，就要醉到最後一格。",
+              "紙箱頂棚要從下面衝破。"
+            ]
+          },
+          {
+            "id": "3-3",
+            "name": "回家的路",
+            "theme": "street",
+            "booze": 0.5,
+            "tiles": [
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "................................",
+              "...........................*....",
+              "........##......................",
+              "........##................######",
+              "........##................######",
+              "BBBBBBBB##................######",
+              "........##................######",
+              "........##................######",
+              "..P.....##................######",
+              "##########................######",
+              "##########................######"
+            ],
+            "stages": {
+              "1": [
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                ".............===................",
+                "................................",
+                "................................",
+                "................................",
+                "................................"
+              ],
+              "2": [
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "....^^^^........................",
+                "................................",
+                "................................"
+              ],
+              "3": [
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "................................",
+                "...................===..........",
+                ".............___................",
+                "................................",
+                "................................",
+                "................................",
+                "................................"
+              ]
+            },
+            "exits": {
+              "right": null
+            },
+            "lines": [
+              "家就在前面。",
+              "最後一次，全部用上。"
+            ]
+          }
+        ]
+      }
+    ]
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+// Auto-clear (P): one solver-found route per default room that also takes the room's cap.
+// A route is 0.1 s steps; each step presses `first` on its first frame and holds `hold`, replayed at a fixed 240 Hz from the spawn.
+(function (root) {
+  'use strict';
+  const STEPS = {
+    N: [{}, {}], R: [{}, { right: true }], L: [{}, { left: true }],
+    RJ: [{ jumpPressed: true }, { right: true, jump: true }], LJ: [{ jumpPressed: true }, { left: true, jump: true }], NJ: [{ jumpPressed: true }, { jump: true }],
+    RH: [{}, { right: true, jump: true }], LH: [{}, { left: true, jump: true }], NH: [{}, { jump: true }],
+    RD: [{}, { right: true, down: true }], ND: [{}, { down: true }],
+    NF: [{ kPressed: true }, {}], RF: [{ kPressed: true }, { right: true }], LF: [{ kPressed: true }, { left: true }],
+    RUF: [{ kPressed: true }, { right: true, jump: true }], LUF: [{ kPressed: true }, { left: true, jump: true }],
+    S: [{ skill: 'wrestler' }, {}], RS: [{ skill: 'wrestler' }, { right: true }], LS: [{ skill: 'wrestler' }, { left: true }],
+    US: [{ skill: 'wrestler' }, { jump: true }], RUS: [{ skill: 'wrestler' }, { right: true, jump: true }], RDS: [{ skill: 'wrestler' }, { right: true, down: true }],
+  };
+  const ROUTES = {
+    "day-1:1-1": "RJ RUF RH RUF RH RUF RH RUF RH RUF RH RUF RH Rx40",
+    "day-1:1-2": "RJ RUF RH RUF RH RUF RH RUF RH RUF RH RUF RH RUF RH RUF RH RUF RH RUF RH Rx40",
+    "day-1:1-3": "Nx5 Rx20 RS RHx40",
+    "day-1:1-4": "Nx10 Rx6 RS Rx40",
+    "day-1:1-5": "Rx20 RJ RHx4 RUS RHx24",
+    "day-2:2-1": "RS Rx21",
+    "day-2:2-2": "Nx65 RS Rx40",
+    "day-2:2-3": "Nx30 Rx20 RS Rx40",
+    "day-2:2-4": "Nx10 Rx20 RJ RHx8 RS Rx18",
+    "day-3:3-1": "S N Rx2 Nx8 L N R RD Nx4 L N",
+    "day-3:3-2": "Nx50 RS Rx40",
+    "day-3:3-3": "Nx65 RS Rx40"
+  };
+  const expand = route => route.split(' ').flatMap(s => { const [k, n] = s.split('x'); return Array(+(n || 1)).fill(k); });
+  root.Drunk.AUTO = {
+    STEP_DT: 1 / 240,
+    puzzleSignature(game) { return JSON.stringify([game.campaign.rules, game.map.id, game.map.cells, game.map.abilities, game.room]); },
+    puzzleRoute(game, data) {
+      if (!game.chill || data?.stepHz !== 240 || data.rules !== 'chill-puzzle') return null;
+      const route = data.rooms?.[game.map.id + ':' + game.room.id];
+      if (!route || route.signature !== this.puzzleSignature(game) || !Array.isArray(route.steps) || !route.steps.length) return null;
+      let end = 0;
+      const result = [], keys = ['left', 'right', 'jump', 'jumpPressed', 'down', 'kPressed', 'gradeUpPressed'];
+      for (const step of route.steps) {
+        if (!Number.isInteger(step.frames) || step.frames < 1 || !step.input || typeof step.input !== 'object' || Array.isArray(step.input)) return null;
+        if (Object.entries(step.input).some(([key, value]) => key === 'skill' ? value !== 'wrestler' : !keys.includes(key) || typeof value !== 'boolean')) return null;
+        end += step.frames;
+        if (end > 240 * 120) return null;
+        result.push({ end, input: step.input });
+      }
+      return result;
+    },
+    puzzleInput(steps, frame) { return steps.find(step => frame < step.end)?.input || {}; },
+    // Only rooms identical to the shipped ones have a route; edited or imported rooms return null.
+    route(game) {
+      const key = game.map.id + ':' + game.room.id, route = ROUTES[key];
+      const map = root.DEFAULT_CAMPAIGN.maps.find(m => m.id === game.map.id);
+      const ship = map?.rooms.find(r => r.id === game.room.id);
+      const rules = r => JSON.stringify([r.tiles, r.exits, r.booze, r.stages, r.portalTargets, r.portalTarget, r.npcs]);
+      return route && ship && map.cells === game.map.cells && JSON.stringify(map.abilities) === JSON.stringify(game.map.abilities) && rules(ship) === rules(game.room) ? expand(route) : null;
+    },
+    // Past the end the last step repeats, so a route that lands a frame late still walks out.
+    input(steps, frame) {
+      const i = Math.floor(frame / 24), [first, hold] = STEPS[steps[Math.min(i, steps.length - 1)]];
+      return frame % 24 === 0 ? { ...hold, ...first } : hold;
+    },
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>
+(function () {
+  'use strict';
+  const { T, COLS, ROWS, W, H, BODY_W, TUNING, ABILITIES, ZUI, STAGE_TINT, Game, parseCampaign, AUTO } = window.Drunk;
+  const canvas = document.getElementById('game'), ctx = canvas.getContext('2d');
+  const menu = document.getElementById('menu'), fileInput = document.getElementById('file'), menuMsg = document.getElementById('menuMsg');
+  const FONT = '"Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif';
+
+  const BASE = 'https://assets.beaverkit.io/8b8492c8-d4c0-4051-abac-cb6fe421fa89/';
+  const SRC = {
+    idle0: 'ab1e4d1fb3c46b852221ef67aaeb4bf478a331758bc3d8c2811d0fbabaf93f11',
+    idle1: '6eaf667c216dbaa2c6f22e3d7cc456b29c3e717e49a6086fc67f9954f7e0be42',
+    idle2: '3bbfacc9ecc3faea6af10d15668fcb9e2b4387bed96d53e128da8e52df0985a7',
+    run: '1fe3bbafb2e8be0d7ddcde38ae3cb781800fecd762a6dbc6c22537c36c9feb23',
+    jump: '903ff7ef91ff168e51697b548eeb265ab8201adcda54d5fe5dd55043b0ba40e2',
+    fall: '543fdd316570d6540fcbe9a80063ddf8a0e793ef79d08fbd1298236c3e5e7b4f',
+    drink0: '28d17556cd669a4e64bf055cd724fb9f0e946501c704bd322ea8ae57a242e3a7',
+    drink1: 'd60cefadd7733c4fe1d958bb2c923ee3976ea39822b49484dfac7198e43ae0ae',
+    drink2: 'b4a62494853667a761fdb87ed7768f3485512b393c047019e624db0dc608830d',
+    drink3: '9e54b68ca80b183b1c479f0c54b9a7de9874c5ef801e7d30b9c3e0beaf31f352',
+    drink4: '791b2064090cc3e4c2608e8bf7928b883719352e44f2726d819960d3cba917fa',
+    drink5: 'bc379db99497f107b09c7bf1d6ecf78f90cab9e38dd707dc976bbdeb41814c09',
+    drink6: '0e5f8f1815627ed325caa8ed53e62d22c6d4884919f8d1f560927cbdbb6be066',
+    bottle0: '7ca33d6327d22db4e0acce5cc3d325c0f7a971214c6af419c200ef36b186fd7c',
+    bottle1: '0f7e470035c0d67662a514ccb4cd2f358044926220962462e9ea5c1568932984',
+  };
+  const img = {}, bottles = [];
+  let loaded = 0;
+  for (const [k, hash] of Object.entries(SRC)) {
+    const i = new Image();
+    i.onload = i.onerror = () => {
+      loaded++;
+      if (k.startsWith('bottle') && i.naturalWidth) { const c = document.createElement('canvas'); c.width = c.height = 300; c.getContext('2d').drawImage(i, 0, 0, 300, 300); bottles[+k.slice(6)] = c; }
+    };
+    i.src = BASE + hash + '.png';
+    img[k] = i;
+  }
+  const ok = i => i && i.complete && i.naturalWidth;
+  // Painted rooms: a room with a "background" picture (a path next to the page) is drawn from it instead of the
+  // greybox, and its things use the painted sprites below. Rooms without one stay greybox.
+  // A single-file build says where each picture lives ("art-data": path -> address); otherwise it loads from the path.
+  let artData = null;
+  const ART = {}, artOf = path => {
+    if (!ART[path]) {
+      artData ??= JSON.parse(document.getElementById('art-data')?.textContent || '{}');
+      ART[path] = new Image(); ART[path].src = artData[path] || path;
+    }
+    return ART[path];
+  };
+  const SPRITE = Object.fromEntries(['bottle', 'bottle-empty', 'cart', 'guard', 'chair', 'body', 'boxes', 'hallu'].map(k => [k, `art/day3/${k}.webp`]));
+  const painted = () => game.room.background && ok(artOf(game.room.background));
+  const spriteOf = k => { const i = artOf(SPRITE[k]); return ok(i) ? i : null; };
+  // a sprite scaled to `w` wide, centred on x, with its bottom on `bottom`; flipped when face < 0
+  function drawSprite(k, x, bottom, w, face = 1, alpha = 1) {
+    const i = spriteOf(k);
+    if (!i) return false;
+    const h = w * i.naturalHeight / i.naturalWidth;
+    ctx.save(); ctx.globalAlpha = alpha; ctx.translate(x, bottom); ctx.scale(face < 0 ? -1 : 1, 1);
+    ctx.drawImage(i, -w / 2, -h, w, h); ctx.restore();
+    return true;
+  }
+
+  let game = new Game(window.DEFAULT_CAMPAIGN);
+
+  // ---------- room layer ----------
+  const rnd = (x, y, k = 0) => { const n = Math.sin(x * 127.1 + y * 311.7 + k * 74.7) * 43758.5453; return n - Math.floor(n); };
+  const layer = document.createElement('canvas'); layer.width = W; layer.height = H;
+  // the room being left, kept for the camera slide into the next one
+  const prevLayer = document.createElement('canvas'); prevLayer.width = W; prevLayer.height = H;
+  let roomKey = '', panFrom = '';
+  const PAN_DIR = { right: [1, 0], left: [-1, 0], top: [0, -1], bottom: [0, 1] };
+  // Greybox: everything but Jim is a flat, readable block at its true collision size, over a tile grid
+  // (fine line every tile, heavy line every five, numbered along the top and left edges).
+  const GREY = { bg: '#2a2d36', grid: 'rgba(255,255,255,.05)', grid5: 'rgba(255,255,255,.13)', label: 'rgba(255,255,255,.35)',
+    solid: '#70747f', solidEdge: '#4b4f59', glass: '#e0484d', plank: '#a3a9b5', crate: '#d9893b', crateInk: '#7a4518',
+    belt: '#4d515c', exit: '#f3f1ea', patrol: '#d8504a', faller: '#e8c34a', bottle: '#5fbf6a', cap: '#f2c24f', shadow: '#9b7be0',
+    sensor: '#4fd1c5', beam: '#ff4d6d', sofa: '#b06ab3', sofaInk: '#5e2f61', cart: '#5fa8d3', cartInk: '#24506b', corpse: '#c9d3e6', corpseInk: '#6b7487' };
+  function buildLayer() {
+    const c = layer.getContext('2d'), tiles = game.tiles;
+    c.clearRect(0, 0, W, H);
+    if (painted()) {
+      // the painting holds only what never changes; a cell the drunk or sober world changes is left out of it and
+      // drawn here while it is solid, as a hallucination block
+      c.drawImage(artOf(game.room.background), 0, 0, W, H);
+      const block = spriteOf('hallu'), stages = Object.values(game.room.stages || {});
+      for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+        if (tiles[y][x] !== '#' || !stages.some(rows => rows[y][x] !== '.')) continue;
+        if (block) c.drawImage(block, x * T, y * T, T, T); else { c.fillStyle = '#8a5ad6'; c.fillRect(x * T, y * T, T, T); }
+      }
+      return;
+    }
+    c.fillStyle = GREY.bg; c.fillRect(0, 0, W, H);
+    for (let x = 0; x <= COLS; x++) { c.fillStyle = x % 5 ? GREY.grid : GREY.grid5; c.fillRect(x * T, 0, 1, H); }
+    for (let y = 0; y <= ROWS; y++) { c.fillStyle = y % 5 ? GREY.grid : GREY.grid5; c.fillRect(0, y * T, W, 1); }
+    c.font = `11px ${FONT}`; c.fillStyle = GREY.label; c.textAlign = 'left';
+    for (let x = 0; x < COLS; x += 5) c.fillText(String(x), x * T + 3, 12);
+    for (let y = 5; y < ROWS; y += 5) c.fillText(String(y), 3, y * T + 12);
+    // signs: [col, row, text, size] painted on the back wall, such as the credits in the office prologue
+    for (const [x, y, str, size = 22] of game.room.signs || []) {
+      c.font = `${size}px ${FONT}`; c.fillStyle = 'rgba(243,233,210,.55)'; c.fillText(str, x * T, y * T + size);
+    }
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+      const t = tiles[y][x], tx = x * T, ty = y * T;
+      if (t === '#') {
+        c.fillStyle = GREY.solid; c.fillRect(tx, ty, T, T);
+        c.strokeStyle = GREY.solidEdge; c.lineWidth = 1; c.strokeRect(tx + 0.5, ty + 0.5, T - 1, T - 1);
+      } else if (t === '^') {
+        c.fillStyle = GREY.glass;
+        for (let i = 0; i < 4; i++) { c.beginPath(); c.moveTo(tx + i * 10, ty + T); c.lineTo(tx + i * 10 + 5, ty + T - 16); c.lineTo(tx + i * 10 + 10, ty + T); c.closePath(); c.fill(); }
+      } else if (t === '=') {
+        c.fillStyle = GREY.plank; c.fillRect(tx, ty, T, 8);
+      } else if (t === 'S') {
+        // sofa: a cushion over a spring
+        c.fillStyle = GREY.sofa; c.fillRect(tx + 1, ty + 4, T - 2, 14);
+        c.strokeStyle = GREY.sofaInk; c.lineWidth = 2; c.beginPath(); c.moveTo(tx + 4, ty + 20);
+        for (let i = 0; i < 4; i++) { c.lineTo(tx + 8 + i * 9, ty + 32); c.lineTo(tx + 12 + i * 9, ty + 20); }
+        c.stroke(); c.fillStyle = GREY.sofaInk; c.fillRect(tx + 1, ty + T - 6, T - 2, 6);
+      } else if (t === 'B') {
+        c.fillStyle = GREY.crate; c.fillRect(tx + 1, ty + 1, T - 2, T - 2);
+        c.strokeStyle = GREY.crateInk; c.lineWidth = 2; c.strokeRect(tx + 1, ty + 1, T - 2, T - 2);
+        c.beginPath(); c.moveTo(tx + 6, ty + 6); c.lineTo(tx + T - 6, ty + T - 6); c.moveTo(tx + T - 6, ty + 6); c.lineTo(tx + 6, ty + T - 6); c.stroke();
+      }
+    }
+  }
+
+  // ---------- sprites ----------
+  const tint = document.createElement('canvas'); tint.width = tint.height = 512; const tctx = tint.getContext('2d');
+  function frameOf(anim, t) {
+    if (anim === 'idle') return Math.floor(t / 0.14) % 3;
+    if (anim === 'drink') return Math.min(6, Math.floor(t / 0.11));
+    if (anim === 'run') return Math.floor(t / 0.067) % 8;
+    return Math.min(7, Math.floor(t / 0.055));
+  }
+  function sprite(anim, f) {
+    if (anim === 'idle') return [img['idle' + f], 0];
+    if (anim === 'drink') return [img['drink' + f], 0];
+    return [img[anim], f * 512];
+  }
+
+  // Jim's pose from what he is doing right now. The jump strip is a whole hop (crouch, rise, apex, land) and the
+  // fall strip is trip-and-pass-out, so frames are chosen by state and velocity rather than played by time.
+  function bodyPose(g) {
+    const b = g.body;
+    if (g.drinkT > 0) return ['drink', Math.min(6, Math.floor((TUNING.drink - g.drinkT) / 0.11))];
+    if (g.state === 'lift') return ['fall', 3];
+    if (g.state === 'charge') return ['fall', 4];
+    if (g.state === 'thrown') return ['fall', 0];
+    if (g.state === 'recover' || (b.grounded && b.landT > 0)) return ['jump', 7];
+    if (!b.grounded) return ['jump', b.vy < -260 ? 1 + (Math.floor(b.animTime / 0.09) % 2) : b.vy < 220 ? 3 : 5];
+    if (Math.abs(b.vx) > 25) return ['run', Math.floor(b.animTime / 0.067) % 8];
+    return ['idle', Math.floor(b.animTime / 0.14) % 3];
+  }
+
+  // squash > 1 stretches tall and thin, < 1 flattens; scaled about the feet
+  function drawFrame(anim, f, x, y, face, size, color, alpha, squash = 1) {
+    const [im, sx] = sprite(anim, f);
+    ctx.save(); ctx.translate(x, y); ctx.scale((face < 0 ? -1 : 1) / squash, squash);
+    if (!ok(im)) { ctx.globalAlpha = alpha; ctx.fillStyle = color || '#f3e9d2'; ctx.fillRect(-16, -64, 32, 64); ctx.restore(); return; }
+    if (color) {
+      tctx.globalCompositeOperation = 'source-over'; tctx.globalAlpha = 1; tctx.clearRect(0, 0, 512, 512);
+      tctx.drawImage(im, sx, 0, 512, 512, 0, 0, 512, 512);
+      tctx.globalCompositeOperation = 'source-atop'; tctx.globalAlpha = 0.8; tctx.fillStyle = color; tctx.fillRect(0, 0, 512, 512);
+      ctx.globalAlpha = alpha; ctx.drawImage(tint, -size / 2, -size * 0.91, size, size);
+    } else ctx.drawImage(im, sx, 0, 512, 512, -size / 2, -size * 0.91, size, size);
+    ctx.restore();
+  }
+
+  // The slot card rides above Jim's head, like Twisted Fate's Pick a Card; a light vignette marks the slow motion.
+  function drawSlot() {
+    const g = game, sl = g.slot;
+    if (!sl) return;
+    const id = sl.pool[sl.index], ab = ABILITIES[id], b = g.body;
+    const v = ctx.createRadialGradient(W / 2, H / 2, 240, W / 2, H / 2, 760);
+    v.addColorStop(0, 'rgba(14,11,28,0)'); v.addColorStop(1, 'rgba(8,6,18,.45)');
+    ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+    const reveal = sl.mode === 'reveal', pop = reveal ? 1 + 0.25 * Math.max(0, 1 - sl.t / 0.2) : 1;
+    const cw = 66, ch = 88;
+    const x = Math.max(cw, Math.min(W - cw, b.x)), y = Math.max(ch / 2 + 14, b.y - 182);
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(Math.sin(g.time * 3) * 0.04);
+    ctx.scale(pop * (reveal ? 1 : 0.15 + 0.85 * sl.flip), pop);
+    if (reveal) {
+      // hand-drawn burst around the chosen card
+      ctx.strokeStyle = ab.tint; ctx.lineWidth = 3; ctx.lineCap = 'round';
+      for (let i = 0; i < 12; i++) {
+        const a = i / 12 * Math.PI * 2 + 0.2, r0 = 56 + rnd(i, 1, 4) * 6, r1 = r0 + 12 + rnd(i, 2, 4) * 12;
+        ctx.beginPath(); ctx.moveTo(Math.cos(a) * r0 * 0.8, Math.sin(a) * r0); ctx.lineTo(Math.cos(a) * r1 * 0.8, Math.sin(a) * r1); ctx.stroke();
+      }
+    }
+    ctx.fillStyle = '#f1e6cf'; ctx.strokeStyle = reveal ? ab.tint : '#2a2244'; ctx.lineWidth = reveal ? 4 : 2.5;
+    ctx.beginPath(); ctx.moveTo(-cw / 2 + 3, -ch / 2); ctx.lineTo(cw / 2, -ch / 2 + 2); ctx.lineTo(cw / 2 - 2, ch / 2); ctx.lineTo(-cw / 2, ch / 2 - 1); ctx.closePath(); ctx.fill(); ctx.stroke();
+    const bob = reveal ? 0 : Math.sin(g.time * (sl.mode === 'spin' ? 22 : 9)) * 2;
+    const bt = bottles[ab.bottle]; if (bt) ctx.drawImage(bt, -28, -40 + bob, 56, 56);
+    ctx.textAlign = 'center'; ctx.font = `16px ${FONT}`; ctx.fillStyle = ab.ink; ctx.fillText(ab.name, 0, 34);
+    ctx.restore();
+    if (sl.mode === 'spin') text('K', x, y + ch / 2 + 22, 16, 'center', 0.5 + 0.3 * Math.sin(g.time * 8));
+  }
+
+  // The drunk card waits above Jim's head with a draining bar; it blinks in the last 1.5 s.
+  function drawReady() {
+    const g = game, r = g.ready;
+    if (!r || g.slot) return;
+    const ab = ABILITIES[r.id], b = g.body, cw = 66, ch = 88;
+    const x = Math.max(cw, Math.min(W - cw, b.x)), y = Math.max(ch / 2 + 14, b.y - 182);
+    const blink = r.t < 1.5 ? 0.35 + 0.65 * Math.abs(Math.sin(g.time * 10)) : 1;
+    ctx.save(); ctx.globalAlpha = blink; ctx.translate(x, y); ctx.rotate(Math.sin(g.time * 3) * 0.04);
+    ctx.fillStyle = '#f1e6cf'; ctx.strokeStyle = ab.tint; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(-cw / 2 + 3, -ch / 2); ctx.lineTo(cw / 2, -ch / 2 + 2); ctx.lineTo(cw / 2 - 2, ch / 2); ctx.lineTo(-cw / 2, ch / 2 - 1); ctx.closePath(); ctx.fill(); ctx.stroke();
+    const bt = bottles[ab.bottle]; if (bt) ctx.drawImage(bt, -28, -40, 56, 56);
+    ctx.textAlign = 'center'; ctx.font = `16px ${FONT}`; ctx.fillStyle = ab.ink; ctx.fillText(ab.name, 0, 34);
+    ctx.fillStyle = 'rgba(28,22,54,.5)'; ctx.fillRect(-cw / 2, ch / 2 + 6, cw, 6);
+    ctx.fillStyle = ab.tint; ctx.fillRect(-cw / 2, ch / 2 + 6, cw * (r.t / TUNING.holdTime), 6);
+    ctx.restore();
+    text('K 發動', x, y - ch / 2 - 10, 15, 'center', 0.55 + 0.3 * Math.sin(g.time * 6));
+  }
+
+  // Day two leaves the office: sodium street lamps over a magenta night.
+  function drawDynamicTiles() {
+    const g = game;
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+      const t = g.tiles[y][x], tx = x * T, ty = y * T;
+      if (t === 'H') {
+        // a sensor glows while something is in it
+        ctx.save(); ctx.fillStyle = GREY.sensor; ctx.globalAlpha = g.sensed ? 0.4 : 0.14; ctx.fillRect(tx, ty, T, T);
+        ctx.globalAlpha = 0.7; ctx.strokeStyle = GREY.sensor; ctx.lineWidth = 1; ctx.setLineDash([4, 4]); ctx.strokeRect(tx + 1, ty + 1, T - 2, T - 2); ctx.restore();
+      } else if (t === 'G') {
+        ctx.fillStyle = GREY.sensor; ctx.fillRect(tx + 1, ty + 1, T - 2, T - 2);
+        ctx.fillStyle = 'rgba(10,50,48,.55)'; for (let i = 0; i < 3; i++) ctx.fillRect(tx + 1, ty + 6 + i * 12, T - 2, 4);
+      } else if (t === 'V') {
+        ctx.fillStyle = '#2b2d36'; ctx.fillRect(tx, ty, T, T);
+        ctx.fillStyle = GREY.beam; ctx.fillRect(tx + T / 2 - 7, ty + T - 10, 14, 10);
+      } else if (t === 'N') {
+        ctx.fillStyle = '#b9a0d8'; ctx.fillRect(tx + T / 2 - 16, ty + T - 72, 32, 72);
+        text(g.room.npcs?.[`${x},${y}`]?.name || 'NPC', tx + T / 2, ty - T, 16, 'center');
+      } else if (t === 'O') {
+        // the exit: a door outline two tiles tall standing on the tile's floor
+        ctx.strokeStyle = GREY.exit; ctx.lineWidth = 3; ctx.globalAlpha = 0.7 + 0.3 * Math.sin(g.time * 4);
+        ctx.strokeRect(tx + 6, ty - T + 6, T - 12, T * 2 - 6);
+        ctx.globalAlpha = 1; ctx.font = `bold 11px ${FONT}`; ctx.textAlign = 'center'; ctx.fillStyle = GREY.exit;
+        ctx.fillText('EXIT', tx + T / 2, ty - T - 4);
+      } else if (t === 'C' && painted() && spriteOf('boxes')) {
+        const c = g.crumbles.get(x + ',' + y), jx = c ? (Math.random() - 0.5) * 4 : 0;
+        ctx.drawImage(spriteOf('boxes'), tx + jx - 2, ty - 4, T + 4, T + 4);
+      } else if (t === 'C') {
+        // crumbling boxes: a dashed crate, shaking once stood on
+        const c = g.crumbles.get(x + ',' + y), jx = c ? (Math.random() - 0.5) * 4 : 0;
+        ctx.fillStyle = 'rgba(217,137,59,.45)'; ctx.fillRect(tx + 2 + jx, ty + 2, T - 4, T - 4);
+        ctx.setLineDash([5, 4]); ctx.strokeStyle = GREY.crate; ctx.lineWidth = 2; ctx.strokeRect(tx + 2 + jx, ty + 2, T - 4, T - 4); ctx.setLineDash([]);
+      } else if ((t === '<' || t === '>') && !painted()) {
+        const d = t === '>' ? 1 : -1, off = ((g.time * TUNING.belt * d) % 20 + 20) % 20;
+        ctx.fillStyle = GREY.belt; ctx.fillRect(tx, ty, T, T);
+        ctx.save(); ctx.beginPath(); ctx.rect(tx, ty, T, 12); ctx.clip();
+        ctx.strokeStyle = '#c8ccd6'; ctx.lineWidth = 2;
+        for (let k = -20; k < T + 20; k += 20) { const cx = tx + k + off; ctx.beginPath(); ctx.moveTo(cx - 4 * d, ty + 2); ctx.lineTo(cx + 3 * d, ty + 6); ctx.lineTo(cx - 4 * d, ty + 10); ctx.stroke(); }
+        ctx.restore();
+      }
+    }
+  }
+
+  // Doors that are open show as a dashed outline; beams run down from their fixtures.
+  function drawMachines() {
+    const g = game;
+    ctx.save(); ctx.strokeStyle = GREY.sensor; ctx.globalAlpha = 0.4; ctx.lineWidth = 2; ctx.setLineDash([5, 5]);
+    for (const d of g.doors) if (g.tiles[d.y][d.x] !== 'G') ctx.strokeRect(d.x * T + 2, d.y * T + 2, T - 4, T - 4);
+    ctx.restore();
+    for (const v of g.beams) {
+      const top = (v.y + 1) * T, end = g.beamEnd(v), cx = v.x * T + T / 2;
+      ctx.fillStyle = GREY.beam; ctx.globalAlpha = 0.25 + 0.1 * Math.sin(g.time * 20); ctx.fillRect(cx - 5, top, 10, end - top);
+      ctx.globalAlpha = 1; ctx.fillRect(cx - 1.5, top, 3, end - top);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Entities as their hit boxes: a guard or chair is the box that kills, with an arrow for where it walks.
+  function drawEntities() {
+    const g = game, art = painted();
+    for (const e of g.entities) {
+      // painted rooms: the same things at the same collision sizes, drawn from the sprite sheet
+      if (art && e.kind === 'patrol' && drawSprite(e.skin === 'chair' ? 'chair' : 'guard', e.x, e.y + 4, e.skin === 'chair' ? 58 : 120, e.dir, e.alive ? 1 : 0.6)) continue;
+      if (art && e.kind === 'cart' && drawSprite('cart', e.x, e.y + e.h + 12, 104, e.dir)) continue;
+      if (art && e.kind === 'corpse' && drawSprite('body', e.x, e.y + TUNING.corpseH + 6, 112, e.face, 0.92)) continue;
+      if (art && e.kind === 'bottle' && (!e.got || g.looped) && drawSprite(e.got ? 'bottle-empty' : 'bottle', e.x, e.y + 20, e.got ? 18 : 26, 1, e.got ? 0.45 : 1)) {
+        if (e.corpse) {
+          ctx.save(); ctx.strokeStyle = GREY.corpse; ctx.globalAlpha = 0.35; ctx.lineWidth = 2; ctx.setLineDash([6, 6]);
+          ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.lineTo(e.corpse.x, e.corpse.y + TUNING.corpseH / 2); ctx.stroke(); ctx.restore();
+        } else if (e === g.anchor && g.targetStage() === 1) {
+          ctx.save(); ctx.strokeStyle = GREY.corpse; ctx.globalAlpha = 0.35 + 0.25 * Math.sin(g.mapTime * 6); ctx.lineWidth = 2;
+          ctx.setLineDash([4, 5]); ctx.beginPath(); ctx.arc(e.x, e.y, 24, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+        }
+        continue;
+      }
+      if (e.kind === 'patrol') {
+        ctx.save(); ctx.translate(e.x, e.y - e.h / 2);
+        if (!e.alive) ctx.rotate(e.t * 9 * Math.sign(e.vx || 1));
+        ctx.globalAlpha = e.alive ? 1 : 0.6;
+        ctx.fillStyle = GREY.patrol; ctx.fillRect(-e.w / 2, -e.h / 2, e.w, e.h);
+        ctx.strokeStyle = '#5a1a18'; ctx.lineWidth = 2; ctx.strokeRect(-e.w / 2, -e.h / 2, e.w, e.h);
+        ctx.fillStyle = '#fff3ec'; ctx.beginPath();
+        ctx.moveTo(e.dir * (e.w / 2 + 12), 0); ctx.lineTo(e.dir * (e.w / 2 + 2), -7); ctx.lineTo(e.dir * (e.w / 2 + 2), 7); ctx.closePath(); ctx.fill();
+        ctx.restore();
+      } else if (e.kind === 'cap' && !e.got) {
+        drawCap(e);
+      } else if (e.kind === 'bottle' && (!e.got || g.looped)) {
+        // under loop rules a drunk bottle shows as an outline until it comes back
+        drawBottle(e.x, e.y, 1, e.got ? 0.25 : 1);
+        // a bottle holding a body: a thread to the body and a ring round the outline, both in the body's colour
+        if (e.corpse) {
+          ctx.save(); ctx.strokeStyle = GREY.corpse; ctx.globalAlpha = 0.35; ctx.lineWidth = 2; ctx.setLineDash([6, 6]);
+          ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.lineTo(e.corpse.x, e.corpse.y + TUNING.corpseH / 2); ctx.stroke(); ctx.setLineDash([]);
+          ctx.globalAlpha = 0.8; ctx.beginPath(); ctx.arc(e.x, e.y, 22, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+        } else if (e === g.anchor && g.targetStage() === 1) {
+          // where J sends Jim now: the ring breathes until he uses it
+          ctx.save(); ctx.strokeStyle = GREY.corpse; ctx.globalAlpha = 0.35 + 0.25 * Math.sin(g.mapTime * 6); ctx.lineWidth = 2;
+          ctx.setLineDash([4, 5]); ctx.beginPath(); ctx.arc(e.x, e.y, 22, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+        }
+      } else if (e.kind === 'corpse') {
+        // Jim lying flat, head toward where he faced: the top edge is the plank
+        const h = TUNING.corpseH, x0 = e.x - e.w / 2;
+        ctx.fillStyle = GREY.corpse; ctx.fillRect(x0, e.y, e.w, h);
+        ctx.strokeStyle = GREY.corpseInk; ctx.lineWidth = 2; ctx.strokeRect(x0, e.y, e.w, h);
+        ctx.fillStyle = GREY.corpseInk; ctx.beginPath(); ctx.arc(e.x + e.face * (e.w / 2 - 12), e.y + h / 2, 6, 0, Math.PI * 2); ctx.fill();
+      } else if (e.kind === 'cart') {
+        ctx.fillStyle = GREY.cart; ctx.fillRect(e.x - e.w / 2, e.y, e.w, e.h);
+        ctx.fillStyle = GREY.cartInk; ctx.beginPath(); ctx.arc(e.x - e.w / 4, e.y + e.h + 5, 6, 0, Math.PI * 2); ctx.arc(e.x + e.w / 4, e.y + e.h + 5, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#eaf6fd'; ctx.beginPath();
+        ctx.moveTo(e.x + e.dir * 14, e.y + e.h / 2); ctx.lineTo(e.x - e.dir * 4, e.y + 3); ctx.lineTo(e.x - e.dir * 4, e.y + e.h - 3); ctx.closePath(); ctx.fill();
+      } else if (e.kind === 'faller' && e.phase !== 'gone') {
+        if (e.phase !== 'fall') { ctx.strokeStyle = 'rgba(232,195,74,.5)'; ctx.lineWidth = 1; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(e.x, 0); ctx.lineTo(e.x, e.y); ctx.stroke(); ctx.setLineDash([]); }
+        const wob = e.phase === 'warn' ? Math.sin(e.t * 60) * 3 : 0;
+        ctx.fillStyle = GREY.faller; ctx.fillRect(e.x - e.w / 2 + wob, e.y, e.w, e.h);
+        ctx.fillStyle = '#3a2e08'; ctx.font = `bold ${Math.min(24, e.h)}px ${FONT}`; ctx.textAlign = 'center'; ctx.fillText('!', e.x + wob, e.y + e.h - 3);
+      }
+    }
+    // the jump from the body to the bottle: a streak that fades
+    if (g.warp) {
+      const w = g.warp;
+      ctx.save(); ctx.strokeStyle = GREY.corpse; ctx.globalAlpha = w.t / TUNING.warpTime; ctx.lineWidth = 6; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(w.x0, w.y0); ctx.lineTo(w.x1, w.y1); ctx.stroke(); ctx.restore();
+    }
+  }
+
+  // Name tags for the special objects, so anyone looking at the greybox knows what each block is:
+  // one tag per connected run of a tile, and one per entity, just above it.
+  const TILE_NAMES = { '^': '碎玻璃', '=': '單向平台', B: '木箱', C: '紙箱', '<': '輸送帶', '>': '輸送帶', S: '沙發', H: '感應區', G: '感應門', V: '雷射' };
+  let tagKey = '', tileTags = [];
+  function tileTagsNow(g) {
+    // crumbled boxes do not bump tilesVersion, so the boxes that are gone are part of the key
+    const key = g.room.id + ':' + g.tilesVersion + ':' + [...g.crumbles].filter(([, c]) => c.phase === 'gone').map(([k]) => k).join(';');
+    if (key === tagKey) return tileTags;
+    const seen = new Set(), tags = [];
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+      const name = TILE_NAMES[g.tiles[y][x]];
+      if (!name || seen.has(x + ',' + y)) continue;
+      const stack = [[x, y]], cells = [];
+      while (stack.length) {
+        const [cx, cy] = stack.pop();
+        if (cx < 0 || cy < 0 || cx >= COLS || cy >= ROWS || seen.has(cx + ',' + cy) || TILE_NAMES[g.tiles[cy][cx]] !== name) continue;
+        seen.add(cx + ',' + cy); cells.push([cx, cy]);
+        stack.push([cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]);
+      }
+      const top = Math.min(...cells.map(c => c[1])), row = cells.filter(c => c[1] === top).map(c => c[0]);
+      tags.push([name, (Math.min(...row) + Math.max(...row) + 1) / 2 * T, top * T - 4]);
+    }
+    tagKey = key; tileTags = tags;
+    return tags;
+  }
+  function drawTags() {
+    if (painted()) return;
+    const g = game, tags = tileTagsNow(g).slice();
+    for (const e of g.entities) {
+      if (e.kind === 'patrol' && e.alive) tags.push([e.skin === 'chair' ? '轉椅' : '警衛', e.x, e.y - e.h - 6]);
+      else if (e.kind === 'faller' && e.phase !== 'gone') tags.push([e.skin === 'tube' ? '燈管' : '招牌', e.x, e.y + e.h + 14]);
+      else if (e.kind === 'bottle' && (!e.got || g.looped)) tags.push(['酒', e.x, e.y - 22]);
+      else if (e.kind === 'cap' && !e.got && g.looped) tags.push([flavorOf(e.key).name, e.x, e.y - 18]);
+      else if (e.kind === 'cart') tags.push(['台車', e.x, e.y - 4]);
+      else if (e.kind === 'corpse') tags.push(['屍體', e.x, e.y - 4]);
+    }
+    ctx.font = `12px ${FONT}`; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(20,22,28,.85)'; ctx.fillStyle = 'rgba(255,255,255,.85)';
+    for (const [name, x, y] of tags) { ctx.strokeText(name, x, y); ctx.fillText(name, x, y); }
+  }
+
+  const SHOT = new URLSearchParams(location.search).get('shot') === '1';
+  // the day comes from the map's id ("day-3"), so a build holding one day still numbers its rooms 3-1, 3-2...
+  const roomNumber = g => `${g.map.id.match(/\d+$/)?.[0] ?? g.mapIndex + 1}-${g.map.rooms.indexOf(g.room) + 1}`;
+
+  function drawBubbles() {
+    const g = game;
+    if (g.looped) return;   // loop rules are wordless for now: the story is added later
+    const placed = [];
+    for (const bub of g.bubbles) {
+      if (bub.delay > 0) continue;
+      const tx = bub.who === 'body' ? g.body.x : bub.who.x;
+      let ty = bub.who === 'body' ? g.body.y - 128 : bub.who.y - bub.who.h - 34;
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, bub.t / 0.25);
+      ctx.font = `20px ${FONT}`;
+      const w = ctx.measureText(bub.text).width + 28, x = Math.max(8, Math.min(W - w - 8, tx - w / 2));
+      // bubbles from different speakers stack upward instead of covering each other
+      const base = ty;
+      while (placed.some(p => x < p.x + p.w && x + w > p.x && Math.abs(ty - p.ty) < 46)) ty -= 46;
+      if (ty !== base && ty - 44 < 8) continue;   // a stacked bubble with no room above is dropped rather than piled at the top edge
+      placed.push({ x, w, ty });
+      const y = Math.max(8, ty - 44);
+      ctx.fillStyle = '#f6efdd'; ctx.strokeStyle = '#1c1636'; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(x + 3, y); ctx.lineTo(x + w, y + 2); ctx.lineTo(x + w - 2, y + 38); ctx.lineTo(tx + 8, y + 37); ctx.lineTo(tx - 2, y + 50); ctx.lineTo(tx - 6, y + 38); ctx.lineTo(x, y + 37); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#2a2244'; ctx.textAlign = 'left'; ctx.fillText(bub.text, x + 14, y + 26);
+      ctx.restore();
+    }
+  }
+
+  // Hallucinated tiles glow; tiles about to change blink before the stage swaps.
+  function drawHallucination() {
+    const g = game;
+    if (!g.drunk) return;
+    const pulse = 0.5 + 0.5 * Math.sin(g.time * 5);
+    ctx.save();
+    for (const key of g.hallu) {
+      const [x, y] = key.split(',').map(Number), t = g.tiles[y][x], tx = x * T, ty = y * T;
+      if (t === '.') { ctx.setLineDash([5, 6]); ctx.strokeStyle = 'rgba(190,150,255,.28)'; ctx.lineWidth = 2; ctx.strokeRect(tx + 3, ty + 3, T - 6, T - 6); ctx.setLineDash([]); continue; }
+      ctx.fillStyle = `rgba(170,120,255,${0.16 + pulse * 0.1})`; ctx.fillRect(tx, ty, T, T);
+      ctx.strokeStyle = `rgba(220,190,255,${0.5 + pulse * 0.3})`; ctx.lineWidth = 2; ctx.strokeRect(tx + 1, ty + 1, T - 2, T - 2);
+    }
+    if (g.stageWarn) {
+      const on = Math.sin(g.time * 22) > 0;
+      for (const [x, y, c] of g.stageWarn.cells) {
+        const tx = x * T, ty = y * T;
+        if (c === '.') { if (on) { ctx.fillStyle = 'rgba(20,10,40,.55)'; ctx.fillRect(tx, ty, T, T); } }
+        else { ctx.setLineDash([6, 5]); ctx.strokeStyle = on ? 'rgba(255,220,120,.95)' : 'rgba(190,150,255,.7)'; ctx.lineWidth = 3; ctx.strokeRect(tx + 2, ty + 2, T - 4, T - 4); ctx.setLineDash([]);
+          if (c === '^') { ctx.fillStyle = 'rgba(255,110,110,.35)'; ctx.fillRect(tx + 4, ty + 20, T - 8, T - 22); } }
+      }
+    }
+    if (g.chill) for (const [x, y] of g.stageDeferred) {
+      ctx.setLineDash([4, 5]); ctx.strokeStyle = '#f2c24f'; ctx.lineWidth = 2;
+      ctx.strokeRect(x * T + 3, y * T + 3, T - 6, T - 6); ctx.setLineDash([]);
+    }
+    ctx.restore();
+  }
+
+  // Drunk stage tint: the more cells full, the more the world swims.
+  function drawDrunkGrade() {
+    const g = game;
+    if (!g.drunk || (!g.stage && !g.stageWarn)) return;
+    const s = g.stage, warn = g.stageWarn ? 0.5 + 0.5 * Math.sin(g.time * 14) : 0;
+    const v = ctx.createRadialGradient(W / 2, H / 2, 260 - s * 40, W / 2, H / 2, 780);
+    v.addColorStop(0, 'rgba(120,60,200,0)'); v.addColorStop(1, `rgba(120,60,200,${0.12 * s + 0.18 * warn})`);
+    ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+    if (s >= 2) { ctx.fillStyle = `rgba(255,120,200,${0.03 * (s - 1) * (0.5 + 0.5 * Math.sin(g.time * 2))})`; ctx.fillRect(0, 0, W, H); }
+  }
+
+  // 1 丟 an arc, 2 衝 a flat arrow, 3 升天 an up arrow, 0 a dash: thin lines in the move's colour
+  function moveIcon(grade, cx, cy, alpha) {
+    ctx.save(); ctx.globalAlpha = alpha; ctx.translate(cx, cy);
+    ctx.lineWidth = 3; ctx.lineCap = ctx.lineJoin = 'round'; ctx.strokeStyle = grade === 'body' ? GREY.corpse : grade ? ZUI[grade].tint : '#8a809f';
+    ctx.beginPath();
+    // day 3's first grade: the body lying flat, head and all
+    if (grade === 'body') { ctx.moveTo(-11, 4); ctx.lineTo(5, 4); ctx.moveTo(14, 4); ctx.arc(10, 4, 4, 0, Math.PI * 2); }
+    else if (grade === 1) { ctx.moveTo(-11, 8); ctx.quadraticCurveTo(-2, -16, 10, 6); ctx.moveTo(4, 5); ctx.lineTo(10, 6); ctx.lineTo(11, 0); }
+    else if (grade === 2) { ctx.moveTo(-11, 0); ctx.lineTo(11, 0); ctx.moveTo(5, -6); ctx.lineTo(11, 0); ctx.lineTo(5, 6); }
+    else if (grade === 3) { ctx.moveTo(0, 11); ctx.lineTo(0, -11); ctx.moveTo(-6, -5); ctx.lineTo(0, -11); ctx.lineTo(6, -5); }
+    else { ctx.moveTo(-8, 0); ctx.lineTo(8, 0); }
+    ctx.stroke(); ctx.restore();
+  }
+
+  // The puzzle panel, icons only. Top: three stage bars, lit up to Jim's grade (the ones the world is
+  // changing blink). Below: the move J plays now, and the bottles in hand. While the world lags, a bar runs down.
+  function drawChillGauge() {
+    const g = game, x = 22, y = 60, n = g.targetStage(), warn = g.stageWarn;
+    const moves = !n ? [0] : g.corpses ? [n === 1 ? 'body' : 1] : g.single ? [n] : Array.from({ length: n }, (_, i) => n - i);
+    ctx.fillStyle = 'rgba(18,14,35,.72)'; ctx.fillRect(x, y, 170, warn ? 84 : 74);
+    for (let i = 1; i <= g.cells; i++) {   // only the grades this day can reach: no hint of what comes later
+      const changing = warn && i > Math.min(g.stage, warn.to) && i <= Math.max(g.stage, warn.to);
+      ctx.globalAlpha = changing ? 0.5 + 0.5 * Math.sin(g.time * 14) : 1;
+      ctx.fillStyle = i <= n ? STAGE_TINT[i] : '#352c49'; ctx.fillRect(x + 14 + (i - 1) * 50, y + 14, 42, 8);
+    }
+    ctx.globalAlpha = 1;
+    if (g.hasShadow) moves.forEach((m, i) => moveIcon(m, x + 28 + i * 32, y + 48, n && !g.chillAirUsed ? 1 : 0.35));
+    if (g.bottled) for (let i = 0; i < TUNING.carry; i++) drawBottle(x + 150 - i * 22, y + 48, 0.6, i < g.held ? 1 : 0.25);
+    if (warn) { ctx.fillStyle = '#cbbde3'; ctx.fillRect(x, y + 80, 170 * warn.t / warn.duration, 4); }
+  }
+
+  function drawGauge() {
+    if (game.chill) { drawChillGauge(); return; }
+    const g = game, cw = 78, ch = 20, x0 = 22, y0 = H - 66, n = Math.floor(g.booze + 1e-9);
+    for (let i = 0; i < 3; i++) {
+      const x = x0 + i * (cw + 10), fill = Math.max(0, Math.min(1, g.booze - i)), z = ZUI[i + 1];
+      ctx.save();
+      if (i >= g.cells) {
+        ctx.globalAlpha = 0.35; ctx.fillStyle = '#1a1430'; ctx.fillRect(x, y0, cw, ch);
+        ctx.strokeStyle = '#5a5070'; ctx.lineWidth = 2; ctx.strokeRect(x, y0, cw, ch);
+        ctx.restore(); text('？', x + cw / 2, y0 + ch + 22, 16, 'center', 0.3); continue;
+      }
+      ctx.fillStyle = 'rgba(16,12,36,.7)'; ctx.fillRect(x, y0, cw, ch);
+      ctx.fillStyle = fill >= 1 ? z.tint : 'rgba(181,194,90,.55)'; ctx.fillRect(x, y0, cw * fill, ch);
+      const next = i < n;
+      ctx.strokeStyle = next ? '#f2c24f' : '#f3e9d2'; ctx.lineWidth = next ? 3 : 1.5; ctx.strokeRect(x, y0, cw, ch);
+      if (g.stageWarn && i === Math.max(g.stageWarn.to, g.stage) - 1 && Math.sin(g.time * 22) > 0) { ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(x, y0, cw, ch); }
+      ctx.restore();
+      text(z.name, x + cw / 2, y0 + ch + 22, 17, 'center', fill >= 1 ? 0.95 : 0.4, next ? '#f2c24f' : '#f3e9d2');
+    }
+    if (n) text('J ' + Array.from({ length: n }, (_, i) => ZUI[n - i].name).join('→'), x0, y0 - 36, 17, 'left', 0.95, '#f2c24f');
+    text('K 放屁', x0 + 3 * (cw + 10) + 6, y0 + 16, 17, 'left', g.booze >= TUNING.fartCost - 1e-9 ? 0.8 : 0.3, '#b5c25a');
+    text(['清醒', '微醺', '大醉', '爛醉'][g.stage] + (g.stageWarn ? (g.stageWarn.to > g.stage ? '　醉意上湧…' : '　酒醒中…') : ''), x0, y0 - 12, 17, 'left', 0.85, g.stageWarn ? '#f2c24f' : '#cdb8ff');
+  }
+
+  // A bottle: a green capsule 36 px tall at scale 1, centred on (x, y).
+  function drawBottle(x, y, s, alpha = 1) {
+    ctx.save(); ctx.globalAlpha = alpha; ctx.translate(x, y); ctx.scale(s, s);
+    ctx.fillStyle = GREY.bottle; ctx.strokeStyle = '#1d4a22'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.roundRect(-8, -12, 16, 30, 6); ctx.fill(); ctx.stroke();
+    ctx.fillRect(-3, -18, 6, 7);
+    ctx.restore();
+  }
+
+  // Under loop rules a collectible is a cocktail, one flavour per day (Celeste's strawberries, made drinks).
+  const FLAVORS = [{ name: '柯夢波丹', color: '#e86a9a' }, { name: '莫希托', color: '#7fd38a' }, { name: '藍色夏威夷', color: '#4fb3e8' }, { name: '瑪格麗特', color: '#f2d45c' }];
+  const flavorOf = key => FLAVORS[Math.max(0, game.campaign.maps.findIndex(m => key?.startsWith(m.id + ':'))) % FLAVORS.length];
+  function drawCap(e) {
+    if (game.looped) {
+      // a cocktail glass: the drink in the bowl, a stem, a foot
+      const c = flavorOf(e.key ?? '').color;
+      ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(e.x - 12, e.y - 10); ctx.lineTo(e.x + 12, e.y - 10); ctx.lineTo(e.x, e.y + 3); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#f3f1ea'; ctx.lineWidth = 2; ctx.beginPath();
+      ctx.moveTo(e.x - 14, e.y - 12); ctx.lineTo(e.x, e.y + 4); ctx.lineTo(e.x + 14, e.y - 12);
+      ctx.moveTo(e.x, e.y + 4); ctx.lineTo(e.x, e.y + 12); ctx.moveTo(e.x - 7, e.y + 13); ctx.lineTo(e.x + 7, e.y + 13); ctx.stroke();
+      ctx.fillStyle = '#f2d45c'; ctx.beginPath(); ctx.arc(e.x + 9, e.y - 13, 3, 0, Math.PI * 2); ctx.fill();
+      return;
+    }
+    ctx.fillStyle = GREY.cap; ctx.beginPath(); ctx.arc(e.x, e.y, 10, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#6b5212'; ctx.lineWidth = 2; ctx.stroke();
+  }
+
+  function drawAim() {
+    const g = game, b = g.body;
+    let x = b.x, y = b.y, { vx, vy } = g.throwVel();
+    ctx.fillStyle = '#f3e9d2';
+    for (let i = 0; i < 26; i++) {
+      for (let k = 0; k < 4; k++) { vy += TUNING.gravity / 120; x += vx / 120; y += vy / 120; }
+      if (y > H || g.hitsSolid(g.box({ x }, y))) break;
+      ctx.globalAlpha = 0.75 * (1 - i / 26);
+      ctx.beginPath(); ctx.arc(x, y - 36, 3.2, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  const fmt = s => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  function text(str, x, y, size, align = 'left', alpha = 1, color = '#f3e9d2') {
+    ctx.save(); ctx.globalAlpha = alpha; ctx.font = `${size}px ${FONT}`; ctx.textAlign = align;
+    ctx.fillStyle = 'rgba(16,12,36,.55)'; ctx.fillText(str, x + 2, y + 2);
+    ctx.fillStyle = color; ctx.fillText(str, x, y); ctx.restore();
+  }
+
+  function draw() {
+    const g = game, b = g.body;
+    const key = g.room.id + ':' + g.tilesVersion + ':' + g.mapIndex + ':' + !!painted() + !!spriteOf('hallu');
+    if (!g.pan) panFrom = '';
+    if (key !== roomKey) {
+      if (g.pan && g.pan.from !== panFrom) { const c = prevLayer.getContext('2d'); c.clearRect(0, 0, W, H); c.drawImage(layer, 0, 0); panFrom = g.pan.from; }
+      roomKey = key; buildLayer();
+    }
+    ctx.save();
+    if (g.pan) {
+      // the camera slides from the old room to the new one over a black void
+      const t = 1 - g.transT / TUNING.pan, p = t * t * (3 - 2 * t), [ux, uy] = PAN_DIR[g.pan.side];
+      ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+      ctx.drawImage(prevLayer, -ux * p * W, -uy * p * H);
+      ctx.translate(ux * (1 - p) * W, uy * (1 - p) * H);
+    }
+    if (g.shake) ctx.translate((Math.random() - 0.5) * g.shake * 18, (Math.random() - 0.5) * g.shake * 18);
+    ctx.drawImage(layer, 0, 0);
+    drawDynamicTiles();
+    drawMachines();
+    drawHallucination();
+    drawEntities();
+    if (g.berry) drawCap(g.berry);
+    drawTags();
+    if (g.stand) {
+      const st = g.stand, charging = g.state === 'charge';
+      if (charging) {
+        ctx.strokeStyle = 'rgba(243,233,210,.55)'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+        for (let i = 0; i < 4; i++) {
+          const yy = st.y - 30 - i * 34 + Math.sin(g.time * 30 + i) * 4, len = 40 + i * 8;
+          ctx.beginPath(); ctx.moveTo(st.x - g.chargeDir * (40 + i * 6), yy); ctx.lineTo(st.x - g.chargeDir * (40 + i * 6 + len), yy); ctx.stroke();
+        }
+      }
+      // the shadow is a translucent box the size of what it holds Jim up with
+      const sh = st.h || 150;
+      ctx.globalAlpha = 0.45 * st.alpha; ctx.fillStyle = g.drunk ? GREY.shadow : ABILITIES[st.ability].tint; ctx.fillRect(st.x - BODY_W / 2 - 6, st.y - sh, BODY_W + 12, sh);
+      ctx.globalAlpha = 0.9 * st.alpha; ctx.strokeStyle = ctx.fillStyle; ctx.lineWidth = 2; ctx.strokeRect(st.x - BODY_W / 2 - 6, st.y - sh, BODY_W + 12, sh);
+      ctx.globalAlpha = 1;
+    }
+    if (g.state === 'lift') drawAim();
+    if (g.state !== 'dead') {
+      const [anim, f] = bodyPose(g);
+      const squash = b.landT > 0 ? 0.85 : b.grounded ? 1 : 1 + Math.max(-0.2, Math.min(0.25, -b.vy / 3000));
+      // puzzle rules: Jim glows in his grade's colour, and the move J plays now floats over his head
+      const grade = g.chill && g.drunk ? g.targetStage() : 0;
+      if (grade) {
+        const glow = ctx.createRadialGradient(b.x, b.y - 40, 8, b.x, b.y - 40, 78);
+        glow.addColorStop(0, STAGE_TINT[grade] + '66'); glow.addColorStop(1, STAGE_TINT[grade] + '00');
+        ctx.fillStyle = glow; ctx.fillRect(b.x - 80, b.y - 120, 160, 160);
+      }
+      drawFrame(anim, f, b.x, b.y, b.face, 118, null, 1, squash);
+      if (grade && g.hasShadow) {
+        ctx.save(); ctx.fillStyle = 'rgba(18,14,35,.7)'; ctx.strokeStyle = STAGE_TINT[grade]; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(b.x, b.y - 132, 17, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.restore();
+        moveIcon(g.corpses ? (grade === 1 ? 'body' : 1) : grade, b.x, b.y - 132, g.chillAirUsed ? 0.35 : 1);
+      }
+    } else if (g.ghost) {
+      const gh = g.ghost;
+      drawFrame('fall', 0, gh.x + Math.sin(gh.t * 9) * 6, gh.y - gh.t * 120, gh.face, 118, '#cfe6f2', 0.5);
+    }
+    drawBubbles();
+    for (const p of g.particles) { ctx.globalAlpha = Math.max(0, p.life / p.max); ctx.fillStyle = p.color; ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size); }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+    if (SHOT) return;   // ?shot=1: the room alone, no HUD, for map sheets
+
+    if (g.drinkT > 0 && !g.slot) {
+      const v = ctx.createRadialGradient(W / 2, H / 2, 240, W / 2, H / 2, 760);
+      v.addColorStop(0, 'rgba(14,11,28,0)'); v.addColorStop(1, 'rgba(14,11,28,.45)');
+      ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+    }
+    drawDrunkGrade();
+    drawSlot();
+    drawReady();
+    if (g.flash) { ctx.globalAlpha = (g.flash.t / 0.45) * 0.4; ctx.fillStyle = g.flash.color; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
+    if (g.looped && g.capsGot.size) { drawCap({ x: 112, y: 30 }); text(String(g.capsGot.size), 128, 36, 20, 'left', 0.7); }
+    text(g.looped ? roomNumber(g) : `${g.map.name}　${g.chill ? `${g.map.rooms.indexOf(g.room) + 1} / ${g.map.rooms.length}` : g.room.id}`, 22, 36, 20, 'left', 0.7);
+    if (g.drunk) {
+      // hud: false hides the grade panel (the office prologue has no drink yet)
+      if (g.map.hud !== false) drawGauge();
+      const hint = g.chill ? null : (g.room.lines || []).filter(l => /[A-Z]/.test(l)).at(-1);
+      if (hint) text(hint, W / 2, H - 22, 18, 'center', 0.55);
+      const n = Math.floor(g.booze + 1e-9);
+      if (!g.chill && g.state === 'lift') text('W 高拋　S 低飛', W / 2, H - 52, 20, 'center', 0.95, '#f2c24f');
+      if (!g.chill && g.state === 'charge' && g.stand && g.stand.grounded) text('W 跳離', W / 2, H - 52, 20, 'center', 0.95, '#f2c24f');
+      if (g.autoplay || autoChain) text(autoChain ? '一路帶路中　P 停下' : g.chill ? (g.hasShadow ? '醉影帶路中　P 接手' : '自動帶路中　P 接手') : '自動通關中　P 取消', W / 2, g.chill ? H - 22 : H - 82, 20, 'center', 0.95, '#f2c24f');
+    } else if (TUNING.directMode) {
+      const air = !b.grounded || ['lift', 'thrown', 'charge'].includes(g.state);
+      g.map.abilities.forEach((id, i) => {
+        const usable = id !== g.activeSkill && !(air && g.airDraws >= TUNING.airDraws);
+        text(`${ABILITIES[id].key} ${ABILITIES[id].name}`, 22 + i * 130, H - 22, 18, 'left', usable ? 0.9 : 0.25, usable ? ABILITIES[id].tint : '#f3e9d2');
+      });
+      // 2: room lines that name a key stay on screen as the room's hint
+      const hint = (g.room.lines || []).filter(l => /[A-Z]/.test(l)).at(-1);
+      if (hint) text(hint, W / 2, H - 22, 18, 'center', 0.55);
+      // 3/4: the moves that only exist mid-action are named while they are possible
+      if (g.state === 'lift') text('W 高拋　S 低飛', W / 2, H - 52, 20, 'center', 0.95, '#f2c24f');
+      if (g.state === 'charge' && g.stand && g.stand.grounded) text('W 跳離', W / 2, H - 52, 20, 'center', 0.95, '#f2c24f');
+      if (g.autoplay) text('自動通關中　P 取消', W / 2, H - 82, 20, 'center', 0.95, '#f2c24f');
+    }
+    if (g.roomTitle > 0 && !g.looped) {
+      const a = Math.min(1, g.roomTitle / 0.6);
+      if (g.room === g.map.rooms[0]) text(g.map.name, W / 2, 52, 24, 'center', a * 0.8);
+      text(g.room.name, W / 2, 96, 40, 'center', a);
+    }
+    if (g.phase === 'transition' && !g.pan) {
+      const half = TUNING.transition / 2;
+      ctx.fillStyle = `rgba(14,11,28,${1 - Math.abs(g.transT - half) / half})`; ctx.fillRect(0, 0, W, H);
+    }
+    if (g.phase === 'mapEnd' && g.looped) { ctx.fillStyle = `rgba(14,11,28,${Math.min(1, g.timer * 1.5)})`; ctx.fillRect(0, 0, W, H); }
+    else if (g.phase === 'mapEnd') {
+      ctx.fillStyle = `rgba(14,11,28,${Math.min(0.75, g.timer * 1.5)})`; ctx.fillRect(0, 0, W, H);
+      const a = Math.min(1, g.timer * 1.5);
+      const total = g.map.rooms.reduce((n, r) => n + r.tiles.join('').split('*').length - 1, 0);
+      const got = [...g.capsGot].filter(k => k.startsWith(g.map.id + ':')).length;
+      text(`${g.map.name}　完`, W / 2, H / 2 - 60, 64, 'center', a);
+      if (g.map.outro) text(g.map.outro, W / 2, H / 2 - 4, 24, 'center', a * 0.85);
+      text(g.chill ? `慢慢走，也走到了。　瓶蓋 ${got} / ${total}` : `倒下 ${g.mapDeaths} 次（無加班費）　·　${fmt(g.mapTime)}${total ? `　·　瓶蓋 ${got} / ${total}（可兌換：無）` : ''}`, W / 2, H / 2 + 40, 20, 'center', a * 0.7);
+      const more = g.mapIndex + 1 < g.campaign.maps.length;
+      if (g.timer > 0.6) text(more ? 'Enter 繼續' : 'Enter 再走一次', W / 2, H / 2 + 92, 20, 'center', 0.6 + 0.3 * Math.sin(g.time * 3));
+    }
+    if (g.phase === 'intro') {
+      ctx.fillStyle = '#0e0b1c'; ctx.fillRect(0, 0, W, H);
+      const a = Math.min(1, g.timer * 2);
+      text(g.card.title, W / 2, H / 2 - 30, 60, 'center', a);
+      g.card.text.split('\n').forEach((line, i) => text(line, W / 2, H / 2 + 30 + i * 36, 24, 'center', Math.min(1, Math.max(0, g.timer * 2 - 0.6)) * 0.85));
+      if (g.timer > 0.5) text('K 繼續', W / 2, H - 60, 18, 'center', 0.45 + 0.25 * Math.sin(g.time * 3));
+    }
+    if (loaded < Object.keys(SRC).length) text('…', W - 40, 36, 24, 'right', 0.6);
+    if (!document.hasFocus()) text('點一下畫面就能玩', W / 2, H / 2, 26, 'center', 0.9);
+  }
+
+  // ---------- sound (WebAudio synth, nothing to download) ----------
+  const Sfx = (() => {
+    let ac = null, out = null, muted = false;
+    function ensure() {
+      if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); out = ac.createGain(); out.gain.value = 0.5; out.connect(ac.destination); } catch (e) { ac = null; } }
+      if (ac && ac.state === 'suspended') ac.resume().catch(() => {});
+    }
+    function tone(freq, dur, type = 'sine', vol = 0.2, to = null, delay = 0) {
+      const t0 = ac.currentTime + delay, o = ac.createOscillator(), gn = ac.createGain();
+      o.type = type; o.frequency.setValueAtTime(freq, t0); if (to) o.frequency.exponentialRampToValueAtTime(to, t0 + dur);
+      gn.gain.setValueAtTime(vol, t0); gn.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+      o.connect(gn); gn.connect(out); o.start(t0); o.stop(t0 + dur + 0.02);
+    }
+    function noise(dur, vol, freq, kind = 'lowpass') {
+      const t0 = ac.currentTime, len = Math.floor(ac.sampleRate * dur), buf = ac.createBuffer(1, len, ac.sampleRate), d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+      const src = ac.createBufferSource(), f = ac.createBiquadFilter(), gn = ac.createGain();
+      src.buffer = buf; f.type = kind; f.frequency.value = freq; gn.gain.value = vol;
+      src.connect(f); f.connect(gn); gn.connect(out); src.start(t0);
+    }
+    const bank = {
+      jump: () => tone(380, 0.1, 'square', 0.06, 640),
+      land: () => noise(0.06, 0.22, 500),
+      bounce: () => tone(160, 0.22, 'sine', 0.2, 520),
+      warp: () => { noise(0.12, 0.2, 900); tone(880, 0.18, 'triangle', 0.1, 330, 0.04); },
+      recall: () => tone(330, 0.16, 'triangle', 0.1, 880),
+      slotOpen: () => tone(300, 0.16, 'triangle', 0.12, 620),
+      tick: () => tone(1250, 0.025, 'square', 0.05),
+      stop: () => tone(620, 0.07, 'triangle', 0.14),
+      reveal: () => { tone(523, 0.3, 'triangle', 0.14); tone(659, 0.3, 'triangle', 0.11, null, 0.05); tone(784, 0.4, 'triangle', 0.1, null, 0.1); },
+      drink: () => { tone(200, 0.12, 'sine', 0.22, 120); tone(180, 0.12, 'sine', 0.18, 110, 0.16); tone(170, 0.14, 'sine', 0.16, 100, 0.34); },
+      lift: () => tone(180, 0.3, 'sawtooth', 0.05, 420),
+      throw: () => noise(0.28, 0.3, 1600, 'bandpass'),
+      charge: () => { noise(0.4, 0.25, 280); tone(80, 0.4, 'sawtooth', 0.08, 150); },
+      break: () => { noise(0.2, 0.5, 900); tone(110, 0.14, 'square', 0.12, 55); },
+      knock: () => { tone(320, 0.09, 'square', 0.16, 120); noise(0.12, 0.3, 1400); },
+      die: () => { tone(440, 0.45, 'triangle', 0.16, 90); noise(0.15, 0.2, 2200, 'highpass'); },
+      cap: () => { tone(880, 0.08, 'square', 0.08); tone(1320, 0.14, 'square', 0.08, null, 0.07); },
+      crumble: () => noise(0.32, 0.18, 450),
+      warn: () => tone(1500, 0.05, 'square', 0.04),
+      crash: () => noise(0.4, 0.38, 3200, 'highpass'),
+      deny: () => tone(150, 0.14, 'square', 0.08),
+      ready: () => tone(988, 0.12, 'triangle', 0.1),
+      fart: () => { noise(0.13, 0.32, 260); tone(95 + Math.random() * 30, 0.12, 'sawtooth', 0.07, 55); },
+      bigfart: () => { noise(0.7, 0.55, 220); tone(70, 0.7, 'sawtooth', 0.12, 38); tone(140, 0.35, 'square', 0.05, 60, 0.05); },
+      gulp: () => { tone(260, 0.08, 'sine', 0.2, 160); tone(240, 0.08, 'sine', 0.18, 150, 0.1); tone(300, 0.14, 'triangle', 0.08, 500, 0.22); },
+      stageUp: () => { tone(330, 0.5, 'triangle', 0.1, 520); tone(415, 0.5, 'triangle', 0.08, 660, 0.06); noise(0.3, 0.1, 800, 'bandpass'); },
+      stageDown: () => { tone(520, 0.45, 'triangle', 0.1, 300); },
+    };
+    return {
+      ensure,
+      play(name) { if (!muted && ac && bank[name]) try { bank[name](); } catch (e) { /* ignore */ } },
+      toggle() { muted = !muted; return muted; },
+    };
+  })();
+
+  // ---------- input & loop ----------
+  const held = { left: false, right: false, jump: false, down: false };
+  let pressed = {};
+  const bind = { KeyA: 'left', ArrowLeft: 'left', KeyD: 'right', ArrowRight: 'right', KeyW: 'jump', ArrowUp: 'jump', KeyS: 'down', ArrowDown: 'down', Space: 'jump', KeyK: 'k', KeyR: 'r', KeyP: 'auto', Enter: 'confirm', Escape: 'esc' };
+  const skillKeys = Object.fromEntries(Object.entries(ABILITIES).map(([id, ab]) => ['Key' + ab.key, id]));
+  addEventListener('keydown', e => {
+    Sfx.ensure();
+    if (e.code === 'KeyM' && !e.repeat) { Sfx.toggle(); return; }
+    if (menu.hidden && /^Digit[1-9]$/.test(e.code) && game.dialogue) { e.preventDefault(); if (!e.repeat) pressed.choice = Number(e.code.slice(5)); return; }
+    if (menu.hidden && skillKeys[e.code]) { e.preventDefault(); if (!e.repeat) pressed.skill = skillKeys[e.code]; return; }
+    const a = e.code === 'KeyE' ? 'talk' : bind[e.code]; if (!a) return;
+    e.preventDefault();
+    if (a === 'esc') { if (!e.repeat) toggleMenu(); return; }
+    if (!menu.hidden) return;
+    if (a in held) held[a] = true;
+    if (!e.repeat) pressed[a] = true;
+  });
+  addEventListener('keyup', e => { const a = bind[e.code]; if (a in held) held[a] = false; });
+  addEventListener('blur', () => { held.left = held.right = held.jump = held.down = false; });
+  canvas.addEventListener('pointerdown', () => window.focus());
+
+  // Touch controls write into the same held / pressed input as the keyboard.
+  const pad = document.getElementById('pad');
+  // Under loop rules a button appears only on the day its move does: K from the drink day, J from the shadow's,
+  // and E (drinking is by touch) never.
+  const padButtons = { skill: pad.querySelector('[data-pad="skill"]'), talk: pad.querySelector('[data-pad="talk"]'), k: pad.querySelector('[data-pad="k"]') };
+  function syncPad() {
+    const loop = game.looped;
+    padButtons.skill.hidden = loop && !game.hasShadow;
+    padButtons.talk.hidden = loop;
+    padButtons.k.hidden = loop && game.map.hud === false;
+  }
+  if (matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window) {
+    pad.hidden = false;
+    document.body.classList.add('touch');
+    const dpadDir = (el, e) => { const r = el.getBoundingClientRect(); return e.clientX < r.left + r.width / 2 ? 'left' : 'right'; };
+    const setDpad = (el, dir) => {
+      held.left = dir === 'left'; held.right = dir === 'right';
+      el.classList.toggle('left', dir === 'left'); el.classList.toggle('right', dir === 'right');
+    };
+    const tap = act => {
+      if (act === 'menu') { toggleMenu(); return; }
+      if (!menu.hidden) return;
+      if (act === 'skill') pressed.skill = 'wrestler';
+      else pressed[act] = true;
+      if (act === 'jump') held.jump = true;
+    };
+    for (const el of pad.querySelectorAll('[data-pad]')) {
+      const act = el.dataset.pad;
+      el.addEventListener('pointerdown', e => {
+        e.preventDefault(); Sfx.ensure();
+        try { el.setPointerCapture(e.pointerId); } catch (err) { /* synthetic pointers */ }
+        el.classList.add('on');
+        if (act === 'dpad') { if (menu.hidden) setDpad(el, dpadDir(el, e)); } else tap(act);
+      });
+      el.addEventListener('pointermove', e => { if (act === 'dpad' && el.classList.contains('on') && menu.hidden) setDpad(el, dpadDir(el, e)); });
+      const release = () => {
+        el.classList.remove('on');
+        if (act === 'dpad') setDpad(el, null);
+        if (act === 'jump') held.jump = false;
+      };
+      el.addEventListener('pointerup', release);
+      el.addEventListener('pointercancel', release);
+      el.addEventListener('lostpointercapture', release);
+      el.addEventListener('contextmenu', e => e.preventDefault());
+    }
+    // Tapping the picture continues day intros and day ends (Enter on a keyboard).
+    canvas.addEventListener('pointerdown', () => { Sfx.ensure(); if (menu.hidden) pressed.confirm = true; });
+  }
+
+  // P replays one room from its spawn. P hands control back; R also resets the room.
+  // autoQueued: P pressed during a room transition starts as soon as the next room is playable
+  // autoChain: keep playing room after room (cards stay up a moment, day ends are confirmed) until the last day ends
+  let auto = null, autoQueued = false, autoChain = false, puzzleRoutes = null, puzzleRouteState = 'idle';
+  // A single-file build (handoff/kit/build-beaverkit.mjs) embeds the puzzle rooms and routes.
+  const embedded = id => document.getElementById(id)?.textContent || null;
+  // ?chill=1 loads the main puzzle rooms, ?chill=single the single-skill test rooms, ?chill=loop the drink-use-sober loop
+  const chillParam = new URLSearchParams(location.search).get('chill');
+  const chillFiles = ['single', 'loop'].includes(chillParam)
+    ? { rooms: `chill-${chillParam}.json`, routes: `chill-${chillParam}-routes.json` } : { rooms: 'chill-puzzles.json', routes: 'chill-routes.json' };
+  function loadPuzzleRoutes() {
+    if (puzzleRouteState !== 'idle') return;
+    const inline = embedded('chill-routes-data');
+    if (inline) { puzzleRoutes = JSON.parse(inline); puzzleRouteState = 'ready'; return; }
+    puzzleRouteState = 'loading';
+    fetch(chillFiles.routes, { cache: 'no-store' }).then(response => {
+      if (!response.ok) throw new Error('Route unavailable');
+      return response.json();
+    }).then(data => { puzzleRoutes = data; puzzleRouteState = 'ready'; })
+      .catch(() => { puzzleRouteState = 'error'; });
+  }
+  function stopAuto() {
+    if (!auto) return;
+    const previous = auto; auto = null;
+    previous.game.autoplay = false;
+    if (previous.tuning) Object.assign(TUNING, previous.tuning);
+    held.left = held.right = held.jump = held.down = false; pressed = {};
+  }
+  function toggleAuto() {
+    if (auto) { stopAuto(); return; }
+    if (game.phase === 'transition') { autoQueued = true; return; }
+    if (game.chill && game.phase === 'intro') game.phase = 'play';
+    if (game.phase !== 'play' || game.dialogue) return;
+    if (puzzleRouteState === 'error') puzzleRouteState = 'idle';   // a failed load is tried again
+    if (game.chill) loadPuzzleRoutes();
+    if (game.chill && puzzleRouteState !== 'ready') {
+      game.shout('body', [puzzleRouteState === 'loading' ? '等我一下……' : '路線沒讀到，重新整理試試。']); return;
+    }
+    const steps = game.chill ? AUTO.puzzleRoute(game, puzzleRoutes) : AUTO.route(game);
+    if (!steps) { game.shout('body', ['這間我也不知道怎麼過。']); return; }
+    const tuning = { ...TUNING }; Object.assign(TUNING, DEFAULTS);
+    game.enterRoom(game.room.id);
+    auto = { steps, frame: 0, acc: 0, room: game.room, game, body: game.body, puzzle: game.chill, tuning };
+    held.left = held.right = held.jump = held.down = false; pressed = {};
+    game.autoplay = true;
+  }
+  // One step of the chained run: start the next room's route once it is playable, let cards show for a moment,
+  // and confirm a day's end; stop after the last day or where no route exists.
+  function chainStep() {
+    if (game.phase === 'mapEnd') {
+      if (game.mapIndex + 1 >= game.campaign.maps.length) { autoChain = false; return; }
+      if (game.timer > 1.5) pressed.confirm = true;
+      return;
+    }
+    if (game.phase === 'intro' && game.timer < 3) return;
+    if (game.phase === 'transition' || game.state === 'dead' || game.dialogue) return;
+    toggleAuto();
+    if (!auto && puzzleRouteState !== 'loading') autoChain = false;
+  }
+
+  // Fixed 240 Hz steps, so the replay matches the run the route was verified with.
+  function runAuto(frame) {
+    auto.acc += frame;
+    while (auto && auto.acc >= AUTO.STEP_DT) {
+      if (auto.game !== game || auto.body !== game.body || game.phase !== 'play' || game.state === 'dead' || (auto.puzzle && auto.frame >= auto.steps.at(-1).end)) { stopAuto(); break; }
+      auto.acc -= AUTO.STEP_DT;
+      game.step(AUTO.STEP_DT, auto.puzzle ? AUTO.puzzleInput(auto.steps, auto.frame++) : AUTO.input(auto.steps, auto.frame++));
+      if (game.phase !== 'play' || game.room !== auto.room || game.state === 'dead') stopAuto();
+    }
+  }
+
+  // Simulate exactly the elapsed frame time, split into small sub-steps, so motion matches the display refresh.
+  let last = performance.now();
+  function loop(now) {
+    const frame = Math.min((now - last) / 1000, 1 / 20); last = now;
+    if (pressed.r) autoChain = false;   // R takes the run back
+    if (menu.hidden && frame > 0 && autoQueued && !auto && game.phase !== 'transition') { autoQueued = false; toggleAuto(); }
+    if (menu.hidden && frame > 0 && pressed.auto && autoChain) { autoChain = false; autoQueued = false; stopAuto(); pressed.auto = false; }
+    if (menu.hidden && frame > 0 && pressed.auto) toggleAuto();
+    if (menu.hidden && frame > 0 && autoChain && !auto) chainStep();
+    if (menu.hidden && frame > 0 && auto && pressed.r) { stopAuto(); pressed.r = true; }
+    if (menu.hidden && frame > 0 && auto) { pressed = {}; runAuto(frame); }
+    else if (menu.hidden && frame > 0) {
+      const n = Math.ceil(frame / (1 / 240)), dt = frame / n;
+      if (pressed.r && game.phase === 'play') { if (game.chill) game.enterRoom(game.room.id); else game.die(); }
+      for (let i = 0; i < n; i++) {
+        game.step(dt, { ...held, jumpPressed: pressed.jump, kPressed: pressed.k, skill: pressed.skill, confirmPressed: pressed.confirm, talkPressed: pressed.talk, choice: pressed.choice });
+        pressed = {};
+      }
+    }
+    for (const ev of new Set(game.events)) Sfx.play(ev);
+    game.events.length = 0;
+    draw();
+    if (!pad.hidden) syncPad();
+    const talk = document.getElementById('talk'), conversation = game.dialogue;
+    const nearby = game.phase === 'play' && game.nearbyNpc();
+    talk.hidden = !menu.hidden || (!conversation && !nearby?.data);
+    if (conversation) {
+      const node = conversation.data.nodes[conversation.node];
+      talk.textContent = `${conversation.data.name}\n${node.text}\n\n` + (node.choices?.length ? node.choices.map((c, i) => `${i + 1}. ${c.text}`).join('\n') : 'E / Enter：繼續');
+    } else talk.textContent = nearby?.data ? `E：與 ${nearby.data.name} 交談` : '';
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+  window.drunkDebug = { get game() { return game; }, draw };
+
+  // ---------- tuning panel (backquote key) ----------
+  const tune = document.getElementById('tune');
+  const KNOBS = [
+    ['run', '跑速', 150, 600, 5], ['jump', '跳躍力', 400, 1000, 5], ['gravity', '重力', 1000, 3500, 50],
+    ['apexHang', '頂點滯空（越小越飄）', 0.2, 1, 0.05], ['releaseGravity', '放開跳鍵下墜', 1, 4, 0.1], ['maxFall', '最大落速', 500, 1600, 25],
+    ['accelAir', '空中轉向', 600, 4000, 50], ['cardInterval', '換卡間隔', 0.08, 0.6, 0.01],
+    ['liftTime', '舉起停留', 0.1, 1.2, 0.05], ['throwVX', '投擲水平', 300, 1100, 10], ['throwVY', '投擲向上', 500, 1300, 10], ['recover', '落地硬直', 0, 0.5, 0.02],
+    ['chargeSpeed', '衝刺速度', 300, 1400, 10], ['chargeTurn', '掉頭所需時間', 0, 1, 0.02],
+    ['directMode', '直按模式（1 J/L 直按，0 K 抽卡）', 0, 1, 1], ['slowmo', '抽卡時世界速度', 0.05, 1, 0.05], ['airDraws', '空中可抽次數', 0, 3, 1], ['airCharge', '空中衝刺滯空', 0, 1.2, 0.05], ['holdTime', '喝完可等幾秒', 1, 10, 0.5],
+    ['patrolSpeed', '巡邏速度', 40, 300, 5], ['belt', '輸送帶速度', 60, 400, 10], ['crumbleDelay', '紙箱撐多久', 0.1, 1.2, 0.05],
+  ];
+  const DEFAULTS = { ...TUNING };
+  try { Object.assign(TUNING, JSON.parse(localStorage.getItem('drunk-tuning-v3') || '{}')); } catch (e) { /* storage blocked in some embeds */ }
+  function buildTune() {
+    tune.innerHTML = '<b>手感</b>' + KNOBS.map(([k, label, min, max, step]) =>
+      `<label>${label}<input type="range" data-k="${k}" min="${min}" max="${max}" step="${step}" value="${TUNING[k]}"><span>${TUNING[k]}</span></label>`).join('') +
+      '<div><button data-t="reset">還原</button><button data-t="copy">複製數值</button></div><textarea readonly hidden></textarea>';
+  }
+  tune.addEventListener('input', e => {
+    const k = e.target.dataset.k; if (!k) return;
+    TUNING[k] = +e.target.value; e.target.nextElementSibling.textContent = e.target.value;
+    try { localStorage.setItem('drunk-tuning-v3', JSON.stringify(TUNING)); } catch (err) { /* ignore */ }
+  });
+  tune.addEventListener('click', e => {
+    const t = e.target.dataset.t; if (!t) return;
+    if (t === 'reset') { Object.assign(TUNING, DEFAULTS); try { localStorage.removeItem('drunk-tuning-v3'); } catch (err) { /* ignore */ } buildTune(); }
+    if (t === 'copy') {
+      const json = JSON.stringify(Object.fromEntries(KNOBS.map(([k]) => [k, TUNING[k]])));
+      const area = tune.querySelector('textarea'); area.hidden = false; area.value = json; area.select();
+      if (navigator.clipboard) navigator.clipboard.writeText(json).catch(() => {});
+    }
+    e.target.blur();
+  });
+  addEventListener('keydown', e => { if (e.code === 'Backquote' && !e.repeat) { stopAuto(); tune.hidden = !tune.hidden; if (!tune.hidden) buildTune(); } });
+
+  // ---------- menu & level loading ----------
+  function toggleMenu(force) {
+    menu.hidden = force !== undefined ? !force : !menu.hidden;
+    if (!menu.hidden) updateInstructions();
+    held.left = held.right = held.jump = held.down = false; pressed = {};
+    menuMsg.textContent = '';
+  }
+  function load(textData, name) {
+    try {
+      const campaign = parseCampaign(textData); stopAuto(); game = new Game(campaign); roomKey = '';
+      // ?room=<id> starts straight in that room, for testing and screenshots
+      const roomId = new URLSearchParams(location.search).get('room'), mi = campaign.maps.findIndex(m => m.rooms.some(r => r.id === roomId));
+      if (mi >= 0) { game.startMap(mi); game.enterRoom(roomId); game.phase = 'play'; }
+      // ?grade=1 shows the room drunk: its hallucinated tiles in place
+      const grade = Number(new URLSearchParams(location.search).get('grade'));
+      if (mi >= 0 && grade > 0 && game.cells) { game.booze = Math.min(grade, game.cells); game.applyStage(game.targetStage(), true); }
+      if (game.chill) loadPuzzleRoutes(); updateInstructions(); toggleMenu(false);
+    }
+    catch (err) { toggleMenu(true); menuMsg.textContent = `${name} 讀不進來：\n${err.message}`; }
+  }
+  menu.addEventListener('click', e => {
+    const roomId = e.target.dataset?.room;
+    const mapIndex = Number(e.target.dataset?.map ?? game.mapIndex);
+    if (roomId && game.chill && game.campaign.maps[mapIndex]?.rooms.some(room => room.id === roomId)) {
+      stopAuto(); if (mapIndex !== game.mapIndex) game.startMap(mapIndex); game.enterRoom(roomId); game.phase = 'play'; roomKey = ''; toggleMenu(false); return;
+    }
+    const act = e.target.dataset && e.target.dataset.act; if (!act) return;
+    if (act === 'resume') toggleMenu(false);
+    if (act === 'retry') { stopAuto(); autoChain = false; toggleMenu(false); if (game.chill) { game.enterRoom(game.room.id); game.phase = 'play'; } else game.die(); }
+    if (act === 'restart') { stopAuto(); autoChain = false; game.startMap(0); toggleMenu(false); }
+    if (act === 'autoAll') { stopAuto(); game.startMap(0); autoChain = true; toggleMenu(false); }
+    if (act === 'autoHere') { stopAuto(); autoChain = true; toggleMenu(false); }
+    if (act === 'default') { stopAuto(); game = new Game(previewCampaign || window.DEFAULT_CAMPAIGN); roomKey = ''; updateInstructions(); toggleMenu(false); }
+    if (act === 'load') fileInput.click();
+  });
+  fileInput.addEventListener('change', () => { const f = fileInput.files[0]; if (f) f.text().then(t => load(t, f.name)); fileInput.value = ''; });
+  const originalInstructions = menu.querySelector('small').innerHTML;
+  let previewCampaign = null;
+  const roomPicker = document.createElement('div');
+  roomPicker.style.cssText = 'display:flex;flex-wrap:wrap;justify-content:center;gap:4px;margin-top:12px';
+  menu.appendChild(roomPicker);
+  // The controls a day actually has. Under loop rules nothing later is named before its day:
+  // the prologue walks and jumps, the drink day adds K, the shadow's day adds J.
+  function controlsText() {
+    if (!game.looped) return 'A / D 移動　空白跳躍　E 喝一口升階　K 放屁降階　J 醉影<br>P 自動通過本間，再按 P 接手　R 重來<br>清醒時叫不出醉影；換階後技能立刻變，世界晚 3 秒才跟上。';
+    const drinks = game.map.hud !== false, shadow = game.hasShadow;
+    return 'A / D 移動　空白跳躍' + (drinks ? '　K 放屁' : '') + (shadow ? '　J 醉影' : '') + '<br>P 自動通過本間，再按 P 接手　R 重來'
+      + (drinks ? '<br>碰到酒就會喝；幻覺三秒後才出現，放屁醒一點，幻覺三秒後才散。' : '')
+      + (shadow ? '<br>醉影出手一次，醉意就少一階。' : '');
+  }
+  function updateInstructions() {
+    menu.querySelector('small').innerHTML = game.chill ? controlsText() : originalInstructions;
+    canvas.setAttribute('aria-label', game.chill ? '醉隱。' + controlsText().replace(/<br>/g, '。') : '醉隱遊戲');
+    roomPicker.replaceChildren();
+    // ?all=1 lists every room, for testing; players only see the days they have reached
+    const all = new URLSearchParams(location.search).get('all') === '1';
+    if (game.chill) game.campaign.maps.forEach((map, mi) => (all || mi <= (game.reached ?? 0)) && map.rooms.forEach((room, ri) => {
+      const button = document.createElement('button'); button.dataset.room = room.id; button.dataset.map = mi;
+      button.textContent = game.looped ? `${mi + 1}-${ri + 1}` : `${mi + 1}-${ri + 1} ${room.name}`; button.style.fontSize = '17px'; roomPicker.appendChild(button);
+    }));
+  }
+  if (embedded('chill-puzzles-data')) {
+    const source = embedded('chill-puzzles-data');
+    previewCampaign = parseCampaign(source);
+    load(source, '醉態解謎');
+  } else if (['1', 'single', 'loop'].includes(chillParam)) {
+    toggleMenu(true); menuMsg.textContent = '載入中……';
+    fetch(chillFiles.rooms, { cache: 'no-store' }).then(response => {
+      if (!response.ok) throw new Error('解謎關卡讀取失敗');
+      return response.text();
+    }).then(source => {
+      previewCampaign = parseCampaign(source);
+      load(source, '醉態解謎');
+    }).catch(err => { toggleMenu(true); menuMsg.textContent = err.message; });
+  }
+  if (new URLSearchParams(location.search).get('editorTest') === '1' && parent !== window) {
+    addEventListener('message', e => {
+      if (e.source !== parent || e.data?.type !== 'drunk-editor-test') return;
+      try {
+        const campaign = parseCampaign(e.data.campaign);
+        const map = campaign.maps[e.data.mapIndex];
+        if (!map || !map.rooms.some(r => r.id === e.data.roomId)) throw new Error('找不到試玩房間');
+        const preview = new Game(campaign);
+        preview.startMap(e.data.mapIndex);
+        preview.enterRoom(e.data.roomId);
+        preview.phase = 'play';
+        stopAuto(); game = preview;
+        if (game.chill) loadPuzzleRoutes(); updateInstructions();
+        roomKey = '';
+        toggleMenu(false);
+      } catch (err) { toggleMenu(true); menuMsg.textContent = `試玩讀不進來：\n${err.message}`; }
+    });
+    parent.postMessage({ type: 'drunk-test-ready' }, '*');
+  }
+  addEventListener('dragover', e => e.preventDefault());
+  addEventListener('drop', e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) f.text().then(t => load(t, f.name)); });
+})();
+</script>
+</body>
+</html>

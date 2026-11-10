@@ -274,7 +274,7 @@ export const day3 = [
   // back at the bottle, sober, and the bridge goes three seconds later. Run it and jump to the body before it does, and
   // straight on to the drop: the same three seconds bring a sober wall down onto the body. Down below, hop the glass and
   // the block; the guard walks a short beat between you and the way down: drink and K over him.
-  artRoom('L3-4', '斷橋', 'lobby', 0, [], [
+  { ...artRoom('L3-4', '斷橋', 'lobby', 0, [], [
     FLOOR,
     ...Array(2).fill('#..............................#'),
     '...............................#',
@@ -282,17 +282,16 @@ export const day3 = [
     '.P...............######........#',
     '#####..........................#',
     '#####..........................#',
-    '#####..........................#',
     '#####^^^^^^^^^^^^^^^^^^^.......#',
     '########################.......#',
-    ...Array(4).fill('#..............................#'),
+    ...Array(5).fill('#..............................#'),
     '#........R.....#..............D#',
     '##..################^^##########',
     '##..############################',
   ], {
     1: [...Array(4).fill(EMPTY), ...Array(2).fill('.................______.........'),
       '.....###..###...................', ...Array(11).fill(EMPTY)],
-  }),
+  }), patrol: 'guard' },
 
   // Home time. Off the ledge over the glass (a box that gives way is a step on the way down), onto the belt and the two bottles on it. The ledge out is a jump and a double jump too high, and a
   // jump from the body is not enough either: run off the belt, leave the body out over the glass, wake at the first
@@ -593,10 +592,10 @@ export const plans = {
     leap(r, 0, 1150, 640);
     r.until(g => g.targetStage() > 0, 3, { right: true });
     // over the block behind the guard as he walks off, and K over him when he turns back
-    r.until(g => guard(g).dir < 0 && guard(g).x < 480, 10);
+    r.until(g => guard(g).dir < 0 && guard(g).x < 480 && guard(g).x > 420, 12);
     leap(r, 920, 760, 640);   // over the glass
     leap(r, 720, 560, 640);
-    r.until(g => guard(g).dir > 0 && g.body.x - guard(g).x < 230, 6);
+    r.until(g => guard(g).dir > 0 && g.body.x - guard(g).x < 240, 8);
     leap(r, 0, 320, 640, 1, 1);
     r.finish({ left: true });
   },
@@ -683,7 +682,8 @@ export const campaign = {
     rooms: connect(day2.map((room, i) => [0, 1, 5, 6].includes(i) ? shaft(room) : room), [[12, 15], [12, 15], [8, 11], [6, 9], [10, 13], [12, 15], [12, 15], [6, 9]]),
   }, {
     id: 'day-3', name: '第三天　醉影', cells: 1, abilities: ['wrestler'], zui: 'corpse',
-    rooms: climb(day3, ['right', 'top', 'right', 'bottom', 'right']),
+    // painted backgrounds (prototype/art/day3, drawn from handoff/art-day3); redraw them when a room's tiles change
+    rooms: climb(day3, ['right', 'top', 'right', 'bottom', 'right']).map(room => ({ ...room, background: `art/day3/map-${room.id}.webp` })),
   }],
 };
 

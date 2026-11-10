@@ -275,14 +275,15 @@
       this.entities = [];
       this.crumbles = new Map();
       this.sensors = []; this.doors = []; this.beams = []; this.sensed = false;
-      const street = (this.room.theme || 'street') === 'street';
+      // street rooms have guards and signs, indoor ones chairs and tubes; a room may ask for guards ("patrol": "guard")
+      const street = (this.room.theme || 'street') === 'street', guards = street || this.room.patrol === 'guard';
       for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
         const t = this.tiles[y][x];
         if (t === 'P') this.spawn = { x: x * T + T / 2, y: (y + 1) * T };
         if (t === 'H') this.sensors.push({ x: x * T, y: y * T, w: T, h: T });
         if (t === 'G' || t === 'g') { this.doors.push({ x, y, bridge: t === 'g' }); this.tiles[y][x] = t === 'G' ? 'G' : '.'; }
         if (t === 'V') this.beams.push({ x, y });
-        if (t === 'R') { this.entities.push({ kind: 'patrol', x: x * T + T / 2, y: (y + 1) * T, dir: -1, alive: true, w: street ? 44 : 40, h: street ? 110 : 34, skin: street ? 'guard' : 'chair', t: 0 }); this.tiles[y][x] = '.'; }
+        if (t === 'R') { this.entities.push({ kind: 'patrol', x: x * T + T / 2, y: (y + 1) * T, dir: -1, alive: true, w: guards ? 44 : 40, h: guards ? 110 : 34, skin: guards ? 'guard' : 'chair', t: 0 }); this.tiles[y][x] = '.'; }
         if (t === 'L') { this.entities.push({ kind: 'faller', x: x * T + T / 2, y: y * T, vy: 0, phase: 'idle', t: 0, w: 72, h: street ? 30 : 14, skin: street ? 'sign' : 'tube' }); this.tiles[y][x] = '.'; }
         if (t === 'D') { this.entities.push({ kind: 'bottle', x: x * T + T / 2, y: y * T + T / 2, got: false }); this.tiles[y][x] = '.'; }
         // a cart is two tiles wide with its deck on the top of its tile, rolling right first; a room may set its speed
@@ -2225,6 +2226,29 @@
     img[k] = i;
   }
   const ok = i => i && i.complete && i.naturalWidth;
+  // Painted rooms: a room with a "background" picture (a path next to the page) is drawn from it instead of the
+  // greybox, and its things use the painted sprites below. Rooms without one stay greybox.
+  // A single-file build says where each picture lives ("art-data": path -> address); otherwise it loads from the path.
+  let artData = null;
+  const ART = {}, artOf = path => {
+    if (!ART[path]) {
+      artData ??= JSON.parse(document.getElementById('art-data')?.textContent || '{}');
+      ART[path] = new Image(); ART[path].src = artData[path] || path;
+    }
+    return ART[path];
+  };
+  const SPRITE = Object.fromEntries(['bottle', 'bottle-empty', 'cart', 'guard', 'chair', 'body', 'boxes', 'hallu'].map(k => [k, `art/day3/${k}.webp`]));
+  const painted = () => game.room.background && ok(artOf(game.room.background));
+  const spriteOf = k => { const i = artOf(SPRITE[k]); return ok(i) ? i : null; };
+  // a sprite scaled to `w` wide, centred on x, with its bottom on `bottom`; flipped when face < 0
+  function drawSprite(k, x, bottom, w, face = 1, alpha = 1) {
+    const i = spriteOf(k);
+    if (!i) return false;
+    const h = w * i.naturalHeight / i.naturalWidth;
+    ctx.save(); ctx.globalAlpha = alpha; ctx.translate(x, bottom); ctx.scale(face < 0 ? -1 : 1, 1);
+    ctx.drawImage(i, -w / 2, -h, w, h); ctx.restore();
+    return true;
+  }
 
   let game = new Game(window.DEFAULT_CAMPAIGN);
 
@@ -2244,6 +2268,17 @@
   function buildLayer() {
     const c = layer.getContext('2d'), tiles = game.tiles;
     c.clearRect(0, 0, W, H);
+    if (painted()) {
+      // the painting holds only what never changes; a cell the drunk or sober world changes is left out of it and
+      // drawn here while it is solid, as a hallucination block
+      c.drawImage(artOf(game.room.background), 0, 0, W, H);
+      const block = spriteOf('hallu'), stages = Object.values(game.room.stages || {});
+      for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+        if (tiles[y][x] !== '#' || !stages.some(rows => rows[y][x] !== '.')) continue;
+        if (block) c.drawImage(block, x * T, y * T, T, T); else { c.fillStyle = '#8a5ad6'; c.fillRect(x * T, y * T, T, T); }
+      }
+      return;
+    }
     c.fillStyle = GREY.bg; c.fillRect(0, 0, W, H);
     for (let x = 0; x <= COLS; x++) { c.fillStyle = x % 5 ? GREY.grid : GREY.grid5; c.fillRect(x * T, 0, 1, H); }
     for (let y = 0; y <= ROWS; y++) { c.fillStyle = y % 5 ? GREY.grid : GREY.grid5; c.fillRect(0, y * T, W, 1); }
@@ -2394,12 +2429,15 @@
         ctx.strokeRect(tx + 6, ty - T + 6, T - 12, T * 2 - 6);
         ctx.globalAlpha = 1; ctx.font = `bold 11px ${FONT}`; ctx.textAlign = 'center'; ctx.fillStyle = GREY.exit;
         ctx.fillText('EXIT', tx + T / 2, ty - T - 4);
+      } else if (t === 'C' && painted() && spriteOf('boxes')) {
+        const c = g.crumbles.get(x + ',' + y), jx = c ? (Math.random() - 0.5) * 4 : 0;
+        ctx.drawImage(spriteOf('boxes'), tx + jx - 2, ty - 4, T + 4, T + 4);
       } else if (t === 'C') {
         // crumbling boxes: a dashed crate, shaking once stood on
         const c = g.crumbles.get(x + ',' + y), jx = c ? (Math.random() - 0.5) * 4 : 0;
         ctx.fillStyle = 'rgba(217,137,59,.45)'; ctx.fillRect(tx + 2 + jx, ty + 2, T - 4, T - 4);
         ctx.setLineDash([5, 4]); ctx.strokeStyle = GREY.crate; ctx.lineWidth = 2; ctx.strokeRect(tx + 2 + jx, ty + 2, T - 4, T - 4); ctx.setLineDash([]);
-      } else if (t === '<' || t === '>') {
+      } else if ((t === '<' || t === '>') && !painted()) {
         const d = t === '>' ? 1 : -1, off = ((g.time * TUNING.belt * d) % 20 + 20) % 20;
         ctx.fillStyle = GREY.belt; ctx.fillRect(tx, ty, T, T);
         ctx.save(); ctx.beginPath(); ctx.rect(tx, ty, T, 12); ctx.clip();
@@ -2426,8 +2464,22 @@
 
   // Entities as their hit boxes: a guard or chair is the box that kills, with an arrow for where it walks.
   function drawEntities() {
-    const g = game;
+    const g = game, art = painted();
     for (const e of g.entities) {
+      // painted rooms: the same things at the same collision sizes, drawn from the sprite sheet
+      if (art && e.kind === 'patrol' && drawSprite(e.skin === 'chair' ? 'chair' : 'guard', e.x, e.y + 4, e.skin === 'chair' ? 58 : 120, e.dir, e.alive ? 1 : 0.6)) continue;
+      if (art && e.kind === 'cart' && drawSprite('cart', e.x, e.y + e.h + 12, 104, e.dir)) continue;
+      if (art && e.kind === 'corpse' && drawSprite('body', e.x, e.y + TUNING.corpseH + 6, 112, e.face, 0.92)) continue;
+      if (art && e.kind === 'bottle' && (!e.got || g.looped) && drawSprite(e.got ? 'bottle-empty' : 'bottle', e.x, e.y + 20, e.got ? 18 : 26, 1, e.got ? 0.45 : 1)) {
+        if (e.corpse) {
+          ctx.save(); ctx.strokeStyle = GREY.corpse; ctx.globalAlpha = 0.35; ctx.lineWidth = 2; ctx.setLineDash([6, 6]);
+          ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.lineTo(e.corpse.x, e.corpse.y + TUNING.corpseH / 2); ctx.stroke(); ctx.restore();
+        } else if (e === g.anchor && g.targetStage() === 1) {
+          ctx.save(); ctx.strokeStyle = GREY.corpse; ctx.globalAlpha = 0.35 + 0.25 * Math.sin(g.mapTime * 6); ctx.lineWidth = 2;
+          ctx.setLineDash([4, 5]); ctx.beginPath(); ctx.arc(e.x, e.y, 24, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+        }
+        continue;
+      }
       if (e.kind === 'patrol') {
         ctx.save(); ctx.translate(e.x, e.y - e.h / 2);
         if (!e.alive) ctx.rotate(e.t * 9 * Math.sign(e.vx || 1));
@@ -2504,6 +2556,7 @@
     return tags;
   }
   function drawTags() {
+    if (painted()) return;
     const g = game, tags = tileTagsNow(g).slice();
     for (const e of g.entities) {
       if (e.kind === 'patrol' && e.alive) tags.push([e.skin === 'chair' ? '轉椅' : '警衛', e.x, e.y - e.h - 6]);
@@ -2518,7 +2571,8 @@
   }
 
   const SHOT = new URLSearchParams(location.search).get('shot') === '1';
-  const roomNumber = g => `${g.mapIndex + 1}-${g.map.rooms.indexOf(g.room) + 1}`;
+  // the day comes from the map's id ("day-3"), so a build holding one day still numbers its rooms 3-1, 3-2...
+  const roomNumber = g => `${g.map.id.match(/\d+$/)?.[0] ?? g.mapIndex + 1}-${g.map.rooms.indexOf(g.room) + 1}`;
 
   function drawBubbles() {
     const g = game;
@@ -2688,7 +2742,7 @@
 
   function draw() {
     const g = game, b = g.body;
-    const key = g.room.id + ':' + g.tilesVersion + ':' + g.mapIndex;
+    const key = g.room.id + ':' + g.tilesVersion + ':' + g.mapIndex + ':' + !!painted() + !!spriteOf('hallu');
     if (!g.pan) panFrom = '';
     if (key !== roomKey) {
       if (g.pan && g.pan.from !== panFrom) { const c = prevLayer.getContext('2d'); c.clearRect(0, 0, W, H); c.drawImage(layer, 0, 0); panFrom = g.pan.from; }
