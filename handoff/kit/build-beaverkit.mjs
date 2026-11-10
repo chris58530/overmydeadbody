@@ -1,10 +1,10 @@
 // Single-file build for BeaverKit (and phones): game.html with the drink-loop rooms and P routes
 // embedded, so it opens straight into the loop campaign without a server or ?chill=loop.
 // Each day is also built on its own, as its own BeaverKit work: beaverkit-day1.html and so on hold just that day.
-// Painted rooms read their pictures from art/ next to the page. BeaverKit keeps only the page, so a build holding any
-// painted room points each picture at its copy in the BeaverKit asset library instead: the library names a file by the
-// SHA-256 of its bytes, so the address comes from the file itself. Upload a new or changed picture to the library
-// (素材庫) before uploading the page, or it shows as greybox.
+// Painted rooms read their pictures, and every day its voices and music, from art/ next to the page. BeaverKit keeps
+// only the page, so each build points every file under art/ at its copy in the BeaverKit asset library instead: the
+// library names a file by the SHA-256 of its bytes, so the address comes from the file itself. Upload a new or changed
+// picture or sound to the library (素材庫) before uploading the page, or it shows as greybox (or stays silent).
 // node handoff/kit/build-beaverkit.mjs   ->  prototype/beaverkit.html, prototype/beaverkit-day{1,2,3}.html
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -26,11 +26,10 @@ export function buildBeaverkit(day) {
     campaign = { ...campaign, maps: [map] };
     routes = { ...routes, rooms: Object.fromEntries(Object.entries(routes.rooms).filter(([key]) => key.startsWith(map.id + ':'))) };
   }
-  const painted = campaign.maps.some(map => map.rooms.some(room => room.background));
-  return html.slice(0, at) + inline('chill-puzzles-data', campaign) + inline('chill-routes-data', routes) + (painted ? inline('art-data', artData()) : '') + html.slice(at);
+  return html.slice(0, at) + inline('chill-puzzles-data', campaign) + inline('chill-routes-data', routes) + inline('art-data', artData()) + html.slice(at);
 }
 
-// every picture under prototype/art, as path -> its address in the asset library (the folder game.html uses for Jim)
+// every picture and sound under prototype/art, as path -> its address in the asset library (the folder game.html uses for Jim)
 const LIBRARY = 'https://assets.beaverkit.io/8b8492c8-d4c0-4051-abac-cb6fe421fa89/';
 function artData() {
   const out = {}, root = new URL('../../prototype/art/', import.meta.url);

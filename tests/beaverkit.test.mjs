@@ -28,6 +28,12 @@ test('every painted room has its picture next to the page', () => {
   }
 });
 
+test('every voice and music loop the game plays is next to the page', () => {
+  const html = read('game.html'), clips = html.match(/const CLIPS = \{([\s\S]*?)\};/)[1].match(/'(?:jim|guard)-[a-z0-9-]+'/g).map(s => s.slice(1, -1));
+  assert.ok(clips.length > 10);
+  for (const name of [...new Set(clips), 'bgm-sober', 'bgm-drunk']) assert.ok(existsSync(new URL(`../prototype/art/audio/${name}.mp3`, import.meta.url)), name);
+});
+
 test('the single file embeds both puzzle files and keeps the engine script first', () => {
   const html = read('beaverkit.html');
   const block = id => JSON.parse(html.match(new RegExp(`<script type="application/json" id="${id}">([\\s\\S]*?)</script>`))[1]);
