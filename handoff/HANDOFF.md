@@ -8,10 +8,11 @@
 - 分支：`drink-loop-prototype`。
 - 主力版本：`prototype/game.html?chill=loop`，關卡定義在 [kit/chill-loop.mjs](kit/chill-loop.mjs)。
 - 線上版（知道連結才能看，2026-11-10 起每天一個作品）：
-  - 第一天：https://beaverkit.io/p/RvZ4sJ5VAO5
-  - 第二天：https://beaverkit.io/p/NcigPXytBzO
-  - 第三天（有背景圖和物件圖，開場先載完圖片）：https://beaverkit.io/p/yoIvfrPm4Ll
-  - 第三天前一版（開場會先閃灰盒子），不再更新：https://beaverkit.io/p/KQ4lpzEi66h
+  - 第一天（有配音和配樂）：https://beaverkit.io/p/2y7I9W6gLW6
+  - 第二天（有配音和配樂）：https://beaverkit.io/p/iZO2aZ71Nob
+  - 第三天（背景圖、物件圖、配音和配樂）：https://beaverkit.io/p/2gsEMMGtVtG
+  - 沒有聲音的前一版，不再更新：第一天 https://beaverkit.io/p/RvZ4sJ5VAO5、第二天 https://beaverkit.io/p/NcigPXytBzO、第三天 https://beaverkit.io/p/yoIvfrPm4Ll
+  - 第三天更早一版（開場會先閃灰盒子），不再更新：https://beaverkit.io/p/KQ4lpzEi66h
 - 三天合在一起的舊作品，不再更新：https://beaverkit.io/p/fHZ2olD1P6y（第三天五間、灰盒子）、https://beaverkit.io/p/gnDV8xOZcCI（第三天十間）。
 - 舊連結，都不再更新：https://beaverkit.io/p/ffS8YGlc9yi（第三天七間）、https://beaverkit.io/p/ngneLMrUCiZ（舊版第三天）、https://beaverkit.io/p/I6IdRlKpC2B（15 間解謎版）。要不要刪由使用者決定。
 
