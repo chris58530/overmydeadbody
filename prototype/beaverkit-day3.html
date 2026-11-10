@@ -3072,9 +3072,28 @@
     }
   }
 
+  // Painted rooms: every picture the campaign uses is fetched up front, and play waits until they are in (at most
+  // ART_WAIT ms, then greybox stands in), so a room never shows greybox first and then pops into its painting.
+  const ART_WAIT = 8000;
+  let artCampaign = null, artPaths = [], artSince = 0;
+  function artPending(now) {
+    if (artCampaign !== game.campaign) {
+      artCampaign = game.campaign; artSince = now;
+      const backgrounds = game.campaign.maps.flatMap(map => map.rooms.map(room => room.background).filter(Boolean));
+      artPaths = backgrounds.length ? [...backgrounds, ...Object.values(SPRITE)] : [];
+      artPaths.forEach(artOf);
+    }
+    return now - artSince < ART_WAIT && artPaths.some(path => !artOf(path).complete);
+  }
+  function drawLoading() {
+    ctx.fillStyle = '#0e0b1a'; ctx.fillRect(0, 0, W, H);
+    text(`載入中…　${artPaths.filter(path => artOf(path).complete).length} / ${artPaths.length}`, W / 2, H / 2, 26, 'center', 0.9);
+  }
+
   // Simulate exactly the elapsed frame time, split into small sub-steps, so motion matches the display refresh.
   let last = performance.now();
   function loop(now) {
+    if (artPending(now)) { last = now; drawLoading(); requestAnimationFrame(loop); return; }
     const frame = Math.min((now - last) / 1000, 1 / 20); last = now;
     if (pressed.r) autoChain = false;   // R takes the run back
     if (menu.hidden && frame > 0 && autoQueued && !auto && game.phase !== 'transition') { autoQueued = false; toggleAuto(); }

@@ -10,7 +10,8 @@
 - 線上版（知道連結才能看，2026-11-10 起每天一個作品）：
   - 第一天：https://beaverkit.io/p/RvZ4sJ5VAO5
   - 第二天：https://beaverkit.io/p/NcigPXytBzO
-  - 第三天（有背景圖和物件圖）：https://beaverkit.io/p/KQ4lpzEi66h
+  - 第三天（有背景圖和物件圖，開場先載完圖片）：https://beaverkit.io/p/yoIvfrPm4Ll
+  - 第三天前一版（開場會先閃灰盒子），不再更新：https://beaverkit.io/p/KQ4lpzEi66h
 - 三天合在一起的舊作品，不再更新：https://beaverkit.io/p/fHZ2olD1P6y（第三天五間、灰盒子）、https://beaverkit.io/p/gnDV8xOZcCI（第三天十間）。
 - 舊連結，都不再更新：https://beaverkit.io/p/ffS8YGlc9yi（第三天七間）、https://beaverkit.io/p/ngneLMrUCiZ（舊版第三天）、https://beaverkit.io/p/I6IdRlKpC2B（15 間解謎版）。要不要刪由使用者決定。
 
@@ -38,8 +39,9 @@ node --test tests/*.test.mjs
 
 1. 第一行錄製並重播每間的 P 路線，寫入 `chill-loop.json`、`chill-loop-routes.json`。每間都必須有 P 路線，有調酒的房間 P 要拿到。
 2. 第二行重建單檔版；`game.html` 或關卡有改就要跑。它寫出 `beaverkit.html`（三天合一）和 `beaverkit-day1/2/3.html`（每天一個，上傳 BeaverKit 用這三個）。
-3. 有背景圖的房間：圖放在 `prototype/art/day3/`（WebP），本機直接讀；單檔版改讀 BeaverKit 素材庫的網址，網址是檔案內容的 SHA-256，由建置算出。**圖片改了或新增了，要先上傳到 BeaverKit 素材庫，否則線上版會變回灰盒子。**
-4. 目前 137 個測試全過。
+3. 有背景圖的房間：圖放在 `prototype/art/day3/`（WebP），本機直接讀；單檔版改讀 BeaverKit 素材庫的網址，網址是檔案內容的 SHA-256，由建置算出。**圖片改了或新增了，要先上傳到 BeaverKit 素材庫，否則線上版會變回灰盒子。** 開場會先下載全部圖片，畫面顯示「載入中」，載完才開始（最多等 8 秒，之後用灰盒子頂替），所以不會先閃灰盒子再跳成圖片。
+4. **更新既有作品：** 自動化打開既有作品的編輯頁再匯入，頁面一定會凍結（2026-11-04、11-05、11-10 都是）。自動化只能從工作室「建立」開新作品（會拿到新連結）；要保留連結，請使用者自己在編輯頁按「匯入」選 zip 再按「更新」。
+5. 目前 137 個測試全過。
 
 **捷徑檢查的限制：** `node handoff/kit/chill-probe.mjs <房間id> --campaign=loop --mode=full` 在屍體房的 bug 已修，但束寬 800、12 秒的上限連 3-1、3-3 的已知解法都找不到，所以「NO」不能當作沒有捷徑。要確認某條路能不能走，請自己寫腳本掃起跳點和按鍵時機（`3-2` 就是這樣驗的）。
 
