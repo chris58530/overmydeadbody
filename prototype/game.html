@@ -255,7 +255,6 @@
     get map() { return this.campaign.maps[this.mapIndex]; }
 
     startMap(index) {
-      this.events.push('mapStart');
       this.mapIndex = index;
       this.reached = Math.max(this.reached ?? 0, index);   // the room picker lists only days already reached
       this.mapDeaths = 0;
@@ -1076,7 +1075,6 @@
 
     die(cause) {
       if (this.state === 'dead') return;
-      if (cause === 'guard' || cause === 'crush') this.events.push(cause === 'guard' ? 'caught' : 'crush');
       this.berry = null;
       const b = this.body;
       this.state = 'dead';
@@ -1100,7 +1098,7 @@
       this.carryBooze = this.booze;
       for (const k of this.roomCaps) this.capsGot.add(k);
       this.roomCaps = [];
-      if (target === null) { this.phase = 'mapEnd'; this.timer = 0; this.events.push('mapEnd'); return; }
+      if (target === null) { this.phase = 'mapEnd'; this.timer = 0; return; }
       const from = this.room, to = this.map.rooms.find(r => r.id === target);
       if (side && from.at && to?.at) { this.panTo(side, to); return; }
       this.phase = 'transition';
@@ -2872,7 +2870,7 @@
     if (!document.hasFocus()) text('點一下畫面就能玩', W / 2, H / 2, 26, 'center', 0.9);
   }
 
-  // ---------- sound (WebAudio synth, nothing to download) ----------
+  // ---------- synth sound (WebAudio): events with no recording in Sound below ----------
   const Sfx = (() => {
     let ac = null, out = null, muted = false;
     function ensure() {
@@ -2928,41 +2926,38 @@
     };
   })();
 
-  // ---------- voices and music (made with Gemini under art/audio: Jim and the guard, wordless; a sober and a drunk loop) ----------
-  // Plain <audio>, not WebAudio: a single-file build loads them from the asset library like the pictures, and that
-  // library allows no fetch. The two loops play together and cross-fade as the world turns drunk or sober.
-  const Voice = (() => {
-    const CLIPS = {
-      drink: ['jim-drink-1', 'jim-drink-2'], stageUp: ['jim-hic-1', 'jim-hic-2'], stageDown: ['jim-sigh'],
-      fart: ['jim-chuckle-1', 'jim-chuckle-2'], bigfart: ['jim-relief'], warp: ['jim-whoa'], recall: ['jim-hmm'], deny: ['jim-tsk'],
-      die: ['jim-ouch-1'], crush: ['jim-ouch-1'], caught: ['guard-hey'], knock: ['guard-yelp-1', 'guard-yelp-2'],
-      mapStart: ['jim-yawn'], mapEnd: ['jim-hum'],
+  // ---------- recorded effects and music (art/sfx, art/music) ----------
+  // Effects are real CC0 recordings (Kenney, OpenGameArt; see handoff/audio-candidates/SOURCES.md), roughened a little
+  // toward pixel; an event with no recording keeps its synth sound above. The music is a sneaky small-band loop from
+  // Gemini (Lyria) in a sober and a drunk mix, which play together and cross-fade as the world turns drunk or sober.
+  // Plain <audio>, not WebAudio: a single-file build loads these from the asset library like the pictures, and that
+  // library allows no fetch.
+  const Sound = (() => {
+    const TAKES = {
+      jump: 2, land: 2, bounce: 1, warp: 1, recall: 1, tick: 1, warn: 1, ready: 1, reveal: 1, deny: 1, cap: 1, break: 2, knock: 1,
+      die: 1, crash: 1, crumble: 1, lift: 1, throw: 1, stageUp: 1, stageDown: 1, gulp: 2, fart: 3, bigfart: 1, drink: 1,
     };
-    // one line at a time, the first of these a frame holds; the urgent ones cut in, the rest wait for quiet
-    const ORDER = ['caught', 'crush', 'die', 'knock', 'mapEnd', 'mapStart', 'warp', 'recall', 'bigfart', 'drink', 'stageUp', 'stageDown', 'fart', 'deny'];
-    const URGENT = new Set(['caught', 'crush', 'die', 'knock', 'mapEnd']);
-    const MUSIC = 0.35, FADE = 1.2;
-    const clips = {}, clip = name => clips[name] ??= Object.assign(new Audio(assetUrl(`art/audio/${name}.mp3`)), { preload: 'auto' });
-    const music = {}, level = { sober: 0, drunk: 0 }, said = {};
-    let muted = false, line = null, started = false;
+    const MUSIC = 0.3, FADE = 1.2, PLAYERS = 3;
+    const pools = {}, music = {}, level = { sober: 0, drunk: 0 };
+    let muted = false, started = false, fadedAt = 0;
+    // a few players per take, so a quick repeat (steps, landings) does not cut itself off
+    const player = name => {
+      const pool = pools[name] ??= Array.from({ length: PLAYERS }, () => Object.assign(new Audio(assetUrl(`art/sfx/${name}.mp3`)), { preload: 'auto' }));
+      return pool.find(a => a.paused || a.ended) ?? pool[0];
+    };
     function start() {   // on the first key or tap: browsers play nothing before one
       if (started) return;
       started = true;
-      for (const k in level) music[k] = Object.assign(new Audio(assetUrl(`art/audio/bgm-${k}.mp3`)), { loop: true, volume: 0, muted: true, preload: 'auto' });
-      Object.values(CLIPS).flat().forEach(clip);
+      for (const k in level) music[k] = Object.assign(new Audio(assetUrl(`art/music/bgm-${k}.mp3`)), { loop: true, volume: 0, muted: true, preload: 'auto' });
+      for (const ev in TAKES) for (let i = 1; i <= TAKES[ev]; i++) player(`${ev}-${i}`);
       if (!document.hidden) for (const k in music) music[k].play().catch(() => {});
     }
-    function hear(events, now) {
-      if (muted || !started) return;
-      const ev = ORDER.find(e => events.has(e));
-      if (!ev || now - (said[ev] ?? -1e9) < 800) return;
-      if (line && !line.paused && !line.ended) { if (!URGENT.has(ev)) return; line.pause(); }
-      const names = CLIPS[ev];
-      line = clip(names[Math.floor(Math.random() * names.length)]);
-      line.currentTime = 0; line.volume = 0.9; line.play().catch(() => {});
-      said[ev] = now;
+    // false when the event has no recording, so the caller plays the synth one
+    function play(ev) {
+      if (!TAKES[ev]) return false;
+      if (started && !muted) { const a = player(`${ev}-${1 + Math.floor(Math.random() * TAKES[ev])}`); a.currentTime = 0; a.play().catch(() => {}); }
+      return true;
     }
-    let fadedAt = 0;
     function update(drunk, now) {   // by the clock, not the capped game frame, so a slow tab still fades in FADE seconds
       const dt = Math.min((now - fadedAt) / 1000, 1); fadedAt = now;
       if (!started) return;
@@ -2974,7 +2969,7 @@
       }
     }
     addEventListener('visibilitychange', () => { for (const k in music) document.hidden ? music[k].pause() : music[k].play().catch(() => {}); });
-    return { start, hear, update, mute(m) { muted = m; if (m && line) line.pause(); } };
+    return { start, play, update, mute(m) { muted = m; } };
   })();
 
   // ---------- input & loop ----------
@@ -2983,8 +2978,8 @@
   const bind = { KeyA: 'left', ArrowLeft: 'left', KeyD: 'right', ArrowRight: 'right', KeyW: 'jump', ArrowUp: 'jump', KeyS: 'down', ArrowDown: 'down', Space: 'jump', KeyK: 'k', KeyR: 'r', KeyP: 'auto', Enter: 'confirm', Escape: 'esc' };
   const skillKeys = Object.fromEntries(Object.entries(ABILITIES).map(([id, ab]) => ['Key' + ab.key, id]));
   addEventListener('keydown', e => {
-    Sfx.ensure(); Voice.start();
-    if (e.code === 'KeyM' && !e.repeat) { Voice.mute(Sfx.toggle()); return; }
+    Sfx.ensure(); Sound.start();
+    if (e.code === 'KeyM' && !e.repeat) { Sound.mute(Sfx.toggle()); return; }
     if (menu.hidden && /^Digit[1-9]$/.test(e.code) && game.dialogue) { e.preventDefault(); if (!e.repeat) pressed.choice = Number(e.code.slice(5)); return; }
     if (menu.hidden && skillKeys[e.code]) { e.preventDefault(); if (!e.repeat) pressed.skill = skillKeys[e.code]; return; }
     const a = e.code === 'KeyE' ? 'talk' : bind[e.code]; if (!a) return;
@@ -3027,7 +3022,7 @@
     for (const el of pad.querySelectorAll('[data-pad]')) {
       const act = el.dataset.pad;
       el.addEventListener('pointerdown', e => {
-        e.preventDefault(); Sfx.ensure(); Voice.start();
+        e.preventDefault(); Sfx.ensure(); Sound.start();
         try { el.setPointerCapture(e.pointerId); } catch (err) { /* synthetic pointers */ }
         el.classList.add('on');
         if (act === 'dpad') { if (menu.hidden) setDpad(el, dpadDir(el, e)); } else tap(act);
@@ -3044,7 +3039,7 @@
       el.addEventListener('contextmenu', e => e.preventDefault());
     }
     // Tapping the picture continues day intros and day ends (Enter on a keyboard).
-    canvas.addEventListener('pointerdown', () => { Sfx.ensure(); Voice.start(); if (menu.hidden) pressed.confirm = true; });
+    canvas.addEventListener('pointerdown', () => { Sfx.ensure(); Sound.start(); if (menu.hidden) pressed.confirm = true; });
   }
 
   // P replays one room from its spawn. P hands control back; R also resets the room.
@@ -3157,9 +3152,8 @@
       }
     }
     const events = new Set(game.events);
-    for (const ev of events) Sfx.play(ev);
-    Voice.hear(events, now);
-    Voice.update(game.stage > 0, now);
+    for (const ev of events) if (!Sound.play(ev)) Sfx.play(ev);
+    Sound.update(game.stage > 0, now);
     game.events.length = 0;
     draw();
     if (!pad.hidden) syncPad();

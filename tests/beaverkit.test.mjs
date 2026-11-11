@@ -28,10 +28,13 @@ test('every painted room has its picture next to the page', () => {
   }
 });
 
-test('every voice and music loop the game plays is next to the page', () => {
-  const html = read('game.html'), clips = html.match(/const CLIPS = \{([\s\S]*?)\};/)[1].match(/'(?:jim|guard)-[a-z0-9-]+'/g).map(s => s.slice(1, -1));
-  assert.ok(clips.length > 10);
-  for (const name of [...new Set(clips), 'bgm-sober', 'bgm-drunk']) assert.ok(existsSync(new URL(`../prototype/art/audio/${name}.mp3`, import.meta.url)), name);
+test('every recorded effect and music loop the game plays is next to the page', () => {
+  const html = read('game.html'), takes = Object.fromEntries([...html.match(/const TAKES = \{([\s\S]*?)\};/)[1].matchAll(/(\w+): (\d+)/g)].map(m => [m[1], +m[2]]));
+  assert.ok(Object.keys(takes).length > 15);
+  for (const [ev, n] of Object.entries(takes)) for (let i = 1; i <= n; i++) {
+    assert.ok(existsSync(new URL(`../prototype/art/sfx/${ev}-${i}.mp3`, import.meta.url)), `${ev}-${i}`);
+  }
+  for (const mix of ['sober', 'drunk']) assert.ok(existsSync(new URL(`../prototype/art/music/bgm-${mix}.mp3`, import.meta.url)), mix);
 });
 
 test('the single file embeds both puzzle files and keeps the engine script first', () => {
