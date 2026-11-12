@@ -10,6 +10,7 @@
 - 線上版（知道連結才能看，2026-11-10 起每天一個作品）：
   - 第一天（第二版音效和配樂）：https://beaverkit.io/p/q0b1cNzuiP3
   - 第二天（第二版音效和配樂）：https://beaverkit.io/p/mFZg09j7wX3
+  - 第三天十間・靜音測關卡（AUDIO = false，全部聲音關掉，現在測關卡用這個）：https://beaverkit.io/p/dVpJoN5jWtO
   - 第三天十間・順暢版（音效改成 WebAudio、嵌在頁面裡，修 BeaverKit 卡頓）：https://beaverkit.io/p/iv5CeEGPeNZ
   - 第三天十間（舊版，音效用約 100 個 <audio>，會卡）：https://beaverkit.io/p/exSZtiO3pQu
   - 第三天只有五間的版本，不再更新：https://beaverkit.io/p/3UrOnMS9uMD
