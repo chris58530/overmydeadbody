@@ -126,6 +126,10 @@
     sofa: 900, sofaKeep: 1.2, sofaMax: 1150, cartSpeed: 120,
     // booze comes back by itself (cells per second), after a pause once J has spent it; a chain runs on its own
     regen: 0.4, regenDelay: 0.8, chainAscend: 0.45, chainCharge: 0.7,
+    // spilt booze: how fast a held direction speeds Jim up on it (px/s²); holding the other way does nothing, so he slides on
+    slick: 420,
+    // shutters: a room's beat is open seconds, then the drop, shut seconds, then the lift; the light blinks shutterWarn before the drop
+    shutterOpen: 1.4, shutterShut: 0.9, shutterDrop: 0.16, shutterLift: 0.3, shutterWarn: 0.4,
   };
 
   const ABILITIES = {
@@ -138,9 +142,12 @@
   // S sofa (bounces Jim up)  M cart (a moving platform that rolls until something solid turns it)
   // H sensor (works the room's doors while Jim, a body or a chair is in it)  G door (open while sensed)  g bridge (solid while sensed)
   // V beam fixture (a beam runs straight down from it to the first solid or body, and kills)
-  const TILE_CHARS = '.#^=BCP<>RL*ONDSMHGgV';
+  // ~ spilt booze (ground Jim slides on: nothing stops him but a wall or a jump; from a stand a direction gets him going slowly)
+  // Z shutter housing (a steel shutter drops from it to the floor below on the room's beat; shut it is a wall, and it
+  //   kills whoever it comes down on; it takes no notice of a body)
+  const TILE_CHARS = '.#^=BCP<>RL*ONDSMHGgV~Z';
   // stage overlays: '.' keeps the tile below, '_' clears it, anything else replaces it
-  const STAGE_CHARS = '.#^=BC<>S_';
+  const STAGE_CHARS = '.#^=BC<>S_~';
   // the drunk shadow's moves, one per cell: the last cell left is always the throw
   const ZUI = { 1: { name: '丟', tint: '#e0605a' }, 2: { name: '衝', tint: '#5aa7d6' }, 3: { name: '升天', tint: '#b5c25a' } };
   // how drunk Jim is, by grade: his glow, the gauge, and the fart that lets it out all wear this colour
@@ -165,7 +172,7 @@
     other: ['再一杯……', '嗝。', '這不算！', '加班加到眼花了'],
   };
   const GUARD_LINES = ['下班了還想去哪？', '這裡不能過。', '你是不是喝酒了？'];
-  const SOLID = '#BC<>SGV';
+  const SOLID = '#BC<>SGV~Z';
   const SIDES = ['left', 'right', 'top', 'bottom'];
   const THEMES = ['office', 'pantry', 'elevator', 'lobby', 'street'];
 
@@ -201,6 +208,14 @@
           }
         }
         if (room.theme !== undefined && !THEMES.includes(room.theme)) errors.push(`${rat} 未知場景 "${room.theme}"`);
+        if (room.shutter !== undefined) {
+          const sh = room.shutter, num = v => v === undefined || (typeof v === 'number' && v >= 0 && v <= 10);
+          if (!sh || typeof sh !== 'object' || Array.isArray(sh) || !num(sh.open) || !num(sh.shut)) errors.push(`${rat} shutter 必須是 { open, shut, offsets }，秒數 0～10`);
+          else for (const [key, v] of Object.entries(sh.offsets || {})) {
+            const [x, y] = key.split(',').map(Number);
+            if (key !== `${x},${y}` || room.tiles[y]?.[x] !== 'Z' || !num(v)) errors.push(`${rat} 鐵捲門位置 ${key} 無效`);
+          }
+        }
         const exits = room.exits || {};
         if (room.npcs !== undefined) {
           if (!room.npcs || typeof room.npcs !== 'object' || Array.isArray(room.npcs)) errors.push(`${rat} npcs must be an object`);
@@ -278,7 +293,7 @@
       this.exits = this.room.exits || {};
       this.entities = [];
       this.crumbles = new Map();
-      this.sensors = []; this.doors = []; this.beams = []; this.sensed = false;
+      this.sensors = []; this.doors = []; this.beams = []; this.shutters = []; this.shutterT = 0; this.sensed = false;
       // street rooms have guards and signs, indoor ones chairs and tubes; a room may ask for guards ("patrol": "guard")
       const street = (this.room.theme || 'street') === 'street', guards = street || this.room.patrol === 'guard';
       for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
@@ -287,6 +302,7 @@
         if (t === 'H') this.sensors.push({ x: x * T, y: y * T, w: T, h: T });
         if (t === 'G' || t === 'g') { this.doors.push({ x, y, bridge: t === 'g' }); this.tiles[y][x] = t === 'G' ? 'G' : '.'; }
         if (t === 'V') this.beams.push({ x, y });
+        if (t === 'Z') this.shutters.push({ x, y, offset: this.room.shutter?.offsets?.[`${x},${y}`] || 0 });
         if (t === 'R') { this.entities.push({ kind: 'patrol', x: x * T + T / 2, y: (y + 1) * T, dir: -1, alive: true, w: guards ? 44 : 40, h: guards ? 110 : 34, skin: guards ? 'guard' : 'chair', t: 0 }); this.tiles[y][x] = '.'; }
         if (t === 'L') { this.entities.push({ kind: 'faller', x: x * T + T / 2, y: y * T, vy: 0, phase: 'idle', t: 0, w: 72, h: street ? 30 : 14, skin: street ? 'sign' : 'tube' }); this.tiles[y][x] = '.'; }
         if (t === 'D') { this.entities.push({ kind: 'bottle', x: x * T + T / 2, y: y * T + T / 2, got: false }); this.tiles[y][x] = '.'; }
@@ -582,6 +598,33 @@
       }
     }
 
+    // A shutter's beat: where it is in its cycle (seconds) and how far down it hangs (0 up, 1 shut).
+    shutterBeat(s) {
+      const sh = this.room.shutter || {}, open = sh.open ?? TUNING.shutterOpen, shut = sh.shut ?? TUNING.shutterShut;
+      const period = open + TUNING.shutterDrop + shut + TUNING.shutterLift, t = ((this.shutterT + s.offset) % period + period) % period;
+      const down = t < open ? 0 : t < open + TUNING.shutterDrop ? (t - open) / TUNING.shutterDrop
+        : t < open + TUNING.shutterDrop + shut ? 1 : 1 - (t - open - TUNING.shutterDrop - shut) / TUNING.shutterLift;
+      return { down, warn: t < open && t > open - TUNING.shutterWarn, period, t };
+    }
+    // The steel hanging from a shutter's housing down to the first solid under it, or null while it is up.
+    shutterRect(s) {
+      const down = this.shutterBeat(s).down;
+      if (down <= 0) return null;
+      let cy = s.y + 1;
+      while (cy < ROWS && !this.solid(s.x, cy)) cy++;
+      const top = (s.y + 1) * T;
+      return { x: s.x * T + 6, y: top, w: T - 12, h: (cy * T - top) * down };
+    }
+    shutterHit(box) {
+      for (const s of this.shutters) { const r = this.shutterRect(s); if (r && overlap(box, r)) return r; }
+      return null;
+    }
+    // a shutter coming down on Jim kills him (the steel keeps him out of it otherwise, so only its drop can reach him)
+    updateShutters() {
+      const bb = this.box(this.body), hurt = { x: bb.x + 6, y: bb.y + 6, w: bb.w - 12, h: bb.h - 6 };
+      if (this.shutterHit(hurt)) this.die('crush');
+    }
+
     // A body across a walker's way turns him back like a wall; it reaches the floor under it, arms hanging.
     bodyAhead(e, nx) {
       const box = { x: nx - e.w / 2, y: e.y - e.h, w: e.w, h: e.h };
@@ -642,6 +685,14 @@
         b.vx = 0;
         return true;
       }
+      // a hanging shutter is a wall too, from whichever side he comes
+      // (only walking into it: one already under him when it came down is the drop's, and kills)
+      const slab = b === this.body && dx && this.shutterHit(this.box(b));
+      if (slab && !overlap(this.box({ ...b, x: b.x - dx }), slab)) {
+        b.x = dx > 0 ? slab.x - BODY_W / 2 : slab.x + slab.w + BODY_W / 2;
+        b.vx = 0;
+        return true;
+      }
       return false;
     }
 
@@ -662,6 +713,11 @@
         // any sofa under his feet throws him, whichever side the other floor is on
         if (dy > 0 && b === this.body) for (let sx = x0; sx <= x1; sx++) if (this.tileAt(sx, y) === 'S') { this.bounce(fall); break; }
         return true;
+      }
+      // jumping up into a hanging shutter stops his head on its bottom edge
+      if (dy < 0 && b === this.body) {
+        const slab = this.shutterHit(this.box(b));
+        if (slab && prevBottom - (b.h || BODY_H) >= slab.y + slab.h - 0.01) { b.y = slab.y + slab.h + (b.h || BODY_H); b.vy = 0; return true; }
       }
       // Jim lands on a cart's deck, or a body he left behind, from above, like a plank; beltUnder makes a cart carry him
       if (dy > 0 && b === this.body) {
@@ -1225,6 +1281,7 @@
       if (this.hitStop > 0) { this.hitStop -= dt; return; }
       const slowed = !!this.slot || this.drinkT > 0;
       if (slowed) { input = { ...input, jumpPressed: false }; dt *= TUNING.slowmo; }   // A/D still steer, at the slowed pace
+      this.shutterT += dt;
 
       b.animTime += dt;
       b.landT = Math.max(0, (b.landT || 0) - dt);
@@ -1264,12 +1321,14 @@
         // in the air, speed above a run (a charge jump-out) fades slowly while held; letting go only drifts to a stop.
         // a belt or cart push carried into the jump counts as part of the run, so holding its way keeps it
         const top = TUNING.run + (Math.sign(push) === dir ? Math.abs(push) : 0);
+        const slick = b.grounded && this.tileAt(Math.floor(b.x / T), Math.round(b.y / T)) === '~';
         if (!b.grounded && dir && Math.sign(b.vx) === dir && Math.abs(b.vx) > top) b.vx -= dir * Math.min(Math.abs(b.vx) - top, TUNING.overDecel * dt);
+        else if (slick) { if (dir && dir * b.vx >= 0) b.vx += clamp(dir * TUNING.run - b.vx, -TUNING.slick * dt, TUNING.slick * dt); }
         else {
           const acc = (b.grounded ? TUNING.accelGround : TUNING.accelAir * (dir || push ? 1 : TUNING.airDrag)) * dt;
           b.vx += clamp(dir * TUNING.run + push - b.vx, -acc, acc);
         }
-        if (b.grounded && !dir && !push) b.vx *= Math.pow(0.001, dt);
+        if (b.grounded && !dir && !push && !slick) b.vx *= Math.pow(0.001, dt);
         this.coyote = b.grounded ? TUNING.coyote : Math.max(0, this.coyote - dt);
         if (this.jumpBuf > 0 && this.coyote > 0) {
           b.vy = -TUNING.jump;
@@ -1372,6 +1431,7 @@
         this.updateEntities(dt);
         this.updateDoors();
         if (this.state !== 'dead') this.updateBeams();
+        if (this.state !== 'dead' && this.shutters.length) this.updateShutters();
         this.updateBerry(dt);
       }
       if (this.state !== 'dead' && this.drunk) {
@@ -2266,7 +2326,8 @@
   const GREY = { bg: '#2a2d36', grid: 'rgba(255,255,255,.05)', grid5: 'rgba(255,255,255,.13)', label: 'rgba(255,255,255,.35)',
     solid: '#70747f', solidEdge: '#4b4f59', glass: '#e0484d', plank: '#a3a9b5', crate: '#d9893b', crateInk: '#7a4518',
     belt: '#4d515c', exit: '#f3f1ea', patrol: '#d8504a', faller: '#e8c34a', bottle: '#5fbf6a', cap: '#f2c24f', shadow: '#9b7be0',
-    sensor: '#4fd1c5', beam: '#ff4d6d', sofa: '#b06ab3', sofaInk: '#5e2f61', cart: '#5fa8d3', cartInk: '#24506b', corpse: '#c9d3e6', corpseInk: '#6b7487' };
+    sensor: '#4fd1c5', beam: '#ff4d6d', sofa: '#b06ab3', sofaInk: '#5e2f61', cart: '#5fa8d3', cartInk: '#24506b', corpse: '#c9d3e6', corpseInk: '#6b7487',
+    spill: '#e8a93a', shutter: '#9aa3b2', shutterInk: '#4a5160' };
   function buildLayer() {
     const c = layer.getContext('2d'), tiles = game.tiles;
     c.clearRect(0, 0, W, H);
@@ -2301,6 +2362,12 @@
         for (let i = 0; i < 4; i++) { c.beginPath(); c.moveTo(tx + i * 10, ty + T); c.lineTo(tx + i * 10 + 5, ty + T - 16); c.lineTo(tx + i * 10 + 10, ty + T); c.closePath(); c.fill(); }
       } else if (t === '=') {
         c.fillStyle = GREY.plank; c.fillRect(tx, ty, T, 8);
+      } else if (t === '~') {
+        // spilt booze: ground with a glossy amber puddle on top
+        c.fillStyle = GREY.solid; c.fillRect(tx, ty, T, T);
+        c.strokeStyle = GREY.solidEdge; c.lineWidth = 1; c.strokeRect(tx + 0.5, ty + 0.5, T - 1, T - 1);
+        c.fillStyle = GREY.spill; c.fillRect(tx, ty, T, 7);
+        c.fillStyle = 'rgba(255,255,255,.55)'; c.fillRect(tx + 6 + (x % 3) * 8, ty + 2, 9, 2);
       } else if (t === 'S') {
         // sofa: a cushion over a spring
         c.fillStyle = GREY.sofa; c.fillRect(tx + 1, ty + 4, T - 2, 14);
@@ -2419,6 +2486,13 @@
       } else if (t === 'G') {
         ctx.fillStyle = GREY.sensor; ctx.fillRect(tx + 1, ty + 1, T - 2, T - 2);
         ctx.fillStyle = 'rgba(10,50,48,.55)'; for (let i = 0; i < 3; i++) ctx.fillRect(tx + 1, ty + 6 + i * 12, T - 2, 4);
+      } else if (t === 'Z') {
+        // shutter housing: a steel box with a light that blinks red before the drop
+        const s = g.shutters.find(s => s.x === x && s.y === y), beat = s && g.shutterBeat(s);
+        ctx.fillStyle = GREY.shutterInk; ctx.fillRect(tx, ty, T, T);
+        ctx.fillStyle = GREY.shutter; ctx.fillRect(tx + 3, ty + T - 8, T - 6, 8);
+        ctx.fillStyle = beat?.warn ? (Math.floor(g.time * 12) % 2 ? '#ff4d4d' : '#5a1a1a') : beat?.down ? '#ff4d4d' : '#5fd17a';
+        ctx.fillRect(tx + T / 2 - 5, ty + 8, 10, 10);
       } else if (t === 'V') {
         ctx.fillStyle = '#2b2d36'; ctx.fillRect(tx, ty, T, T);
         ctx.fillStyle = GREY.beam; ctx.fillRect(tx + T / 2 - 7, ty + T - 10, 14, 10);
@@ -2456,6 +2530,13 @@
     ctx.save(); ctx.strokeStyle = GREY.sensor; ctx.globalAlpha = 0.4; ctx.lineWidth = 2; ctx.setLineDash([5, 5]);
     for (const d of g.doors) if (g.tiles[d.y][d.x] !== 'G') ctx.strokeRect(d.x * T + 2, d.y * T + 2, T - 4, T - 4);
     ctx.restore();
+    for (const s of g.shutters) {
+      const r = g.shutterRect(s);
+      if (!r) continue;
+      ctx.fillStyle = GREY.shutter; ctx.fillRect(r.x, r.y, r.w, r.h);
+      ctx.fillStyle = GREY.shutterInk; for (let yy = r.y + 8; yy < r.y + r.h; yy += 10) ctx.fillRect(r.x, yy, r.w, 2);
+      ctx.fillStyle = '#e8c34a'; ctx.fillRect(r.x, r.y + r.h - 5, r.w, 5);
+    }
     for (const v of g.beams) {
       const top = (v.y + 1) * T, end = g.beamEnd(v), cx = v.x * T + T / 2;
       ctx.fillStyle = GREY.beam; ctx.globalAlpha = 0.25 + 0.1 * Math.sin(g.time * 20); ctx.fillRect(cx - 5, top, 10, end - top);

@@ -151,7 +151,7 @@ test('days 1 and 2 are one map side by side; day 3 climbs and falls, each room l
   });
   const day3 = campaign.maps[2].rooms, step = { right: [1, 0], top: [0, -1], bottom: [0, 1] };
   const wayOf = room => Object.keys(step).find(side => room.exits[side] !== undefined);
-  assert.equal(day3.length, 10);
+  assert.equal(day3.length, 15);
   day3.forEach((room, i) => {
     const next = day3[i + 1], way = wayOf(room);
     assert.ok(!room.tiles.join('').includes('O'), `${room.id} has no door`);
@@ -350,6 +350,46 @@ test('a body turns a walker back like a wall', () => {
   let right = 0;
   for (let n = 0; n < 12 * 240; n++) { game.step(DT, {}); right = Math.max(right, chair.x); }
   assert.ok(right < 600 - 42 && chair.alive, `kept to its side of the body (got to ${right.toFixed(0)})`);
+});
+
+test('spilt booze: Jim slides on whatever he holds, and from a stand gets going only slowly', () => {
+  const spill = '#'.repeat(5) + '~'.repeat(22) + '#'.repeat(5);
+  const slide = floor => {
+    const game = sandbox([...Array(15).fill(E), '.P..............................', floor, F]);
+    run(game, 0.6, { right: true });   // up to a run
+    const x0 = game.body.x;
+    run(game, 0.3, {});
+    return game.body.x - x0;
+  };
+  assert.ok(slide(F) < 15, 'dry floor: stops at once');
+  assert.ok(slide(spill) > 100, 'spill: keeps going');
+  const game = sandbox([...Array(15).fill(E), '.P..............................', spill, F]);
+  run(game, 0.6, { right: true });
+  const v = game.body.vx;
+  run(game, 0.3, { left: true });
+  assert.equal(game.body.vx, v, 'holding the other way does not slow him');
+  const still = sandbox([...Array(15).fill(E), '.P..............................', '#' + '~'.repeat(30) + '#', F]);
+  run(still, 0.3, { right: true });
+  assert.ok(still.body.vx < 150, `slow to get going (${still.body.vx.toFixed(0)})`);
+});
+
+test('a shutter drops on its beat: walk under while it is up, shut it is a wall, and it kills whoever it comes down on', () => {
+  const rows = [...Array(10).fill(E), '................Z...............', ...Array(4).fill(E), '.P..............................', F, F];
+  const game = sandbox(rows), s = game.shutters[0];
+  assert.equal(game.shutterRect(s), null, 'up at the start');
+  game.body.x = 660;   // under it
+  run(game, 1.3, {});
+  assert.notEqual(game.state, 'dead', 'safe while it is up');
+  assert.ok(game.shutterBeat(s).warn, 'its light blinks before the drop');
+  run(game, 0.3, {});
+  assert.equal(game.state, 'dead', 'crushed');
+  const wall = sandbox(rows);
+  wall.body.x = 560;
+  run(wall, 1.7, {});
+  assert.ok(wall.shutterBeat(wall.shutters[0]).down === 1, 'shut');
+  run(wall, 0.6, { right: true });
+  assert.notEqual(wall.state, 'dead');
+  assert.ok(wall.body.x <= 646 - 22 + 0.01, `stopped at the steel (at ${wall.body.x.toFixed(1)})`);
 });
 
 // Nothing the jump home cannot fix is left: from every spot Jim can get to on his feet, sober, with no body out,
