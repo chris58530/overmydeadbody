@@ -2871,9 +2871,12 @@
   }
 
   // ---------- synth sound (WebAudio): events with no recording in Sound below ----------
+  // Sound is off while the levels are being tested: nothing is decoded, loaded or played. Set to true to bring it back.
+  const AUDIO = false;
   const Sfx = (() => {
     let ac = null, out = null, muted = false;
     function ensure() {
+      if (!AUDIO) return;
       if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); out = ac.createGain(); out.gain.value = 0.5; out.connect(ac.destination); } catch (e) { ac = null; } }
       if (ac && ac.state === 'suspended') ac.resume().catch(() => {});
     }
@@ -2951,7 +2954,7 @@
     }
     let sfxData = {};
     function start() {   // on the first key or tap: browsers play nothing before one
-      if (started) return;
+      if (started || !AUDIO) return;
       started = true;
       ac = Sfx.context();
       try { sfxData = JSON.parse(document.getElementById('sfx-data')?.textContent || '{}'); } catch (e) { /* none */ }
