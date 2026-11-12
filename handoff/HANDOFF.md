@@ -10,7 +10,8 @@
 - 線上版（知道連結才能看，2026-11-10 起每天一個作品）：
   - 第一天（第二版音效和配樂）：https://beaverkit.io/p/q0b1cNzuiP3
   - 第二天（第二版音效和配樂）：https://beaverkit.io/p/mFZg09j7wX3
-  - 第三天（背景圖、物件圖、第二版音效和配樂）：https://beaverkit.io/p/3UrOnMS9uMD
+  - 第三天十間（前五間有背景圖，後五間灰盒子；第二版音效和配樂）：https://beaverkit.io/p/exSZtiO3pQu
+  - 第三天只有五間的版本，不再更新：https://beaverkit.io/p/3UrOnMS9uMD
   - 第一版 AI 人聲和 lo-fi 配樂的版本，使用者覺得不好聽，不再更新：第一天 https://beaverkit.io/p/2y7I9W6gLW6、第二天 https://beaverkit.io/p/iZO2aZ71Nob、第三天 https://beaverkit.io/p/2gsEMMGtVtG
   - 沒有聲音的版本，不再更新：第一天 https://beaverkit.io/p/RvZ4sJ5VAO5、第二天 https://beaverkit.io/p/NcigPXytBzO、第三天 https://beaverkit.io/p/yoIvfrPm4Ll
   - 第三天更早一版（開場會先閃灰盒子），不再更新：https://beaverkit.io/p/KQ4lpzEi66h
