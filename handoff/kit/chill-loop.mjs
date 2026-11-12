@@ -287,7 +287,7 @@ export const day3 = [
     ...Array(5).fill('#..............................#'),
     '#........R.....#..............D#',
     '##..################^^##########',
-    '##..############################',
+    '#...############################',
   ], {
     1: [...Array(4).fill(EMPTY), ...Array(2).fill('.................______.........'),
       '.....###..###...................', ...Array(11).fill(EMPTY)],
@@ -297,7 +297,7 @@ export const day3 = [
   // jump from the body is not enough either: run off the belt, leave the body out over the glass, wake at the first
   // bottle, drink the second on the way, jump onto the body and K up onto the ledge.
   artRoom('L3-5', '下班', 'street', 0, [], [
-    '##..############################',
+    '#...############################',
     ...Array(6).fill('#..............................#'),
     '#.P.............................',
     '#######.........................',
@@ -309,6 +309,124 @@ export const day3 = [
     '#^^^^^^^^^^#>>>>>>>^^^^^^^^#####',
     FLOOR,
   ]),
+  // The guard's well. The block on the right is a jump and a K too high from the well floor, and too far from the
+  // ledge. Follow the guard down to the wall and leave the body over him at the top of a jump: he is shut in against
+  // the wall, and the body is a step. Wake at one ledge bottle, take the other, go down again, K onto the body, and up.
+  // (A bottle hanging in the well would let you jump, K, drink and K again straight up the block.) The cocktail
+  // hangs over the body. Then over the glass, across the boxes before they give, the belt, and up the step. Shelves on
+  // the left wall of the well climb back to the ledge, so the well is never a dead end.
+  { ...artRoom('L3-6', '轉角', 'lobby', 0, [], [
+    FLOOR,
+    ...Array(5).fill('#..............................#'),
+    '#...............................',
+    '...............*................',
+    '................................',
+    '.PDD..........................##',
+    '####..............##^##^CCC>>>##',
+    '####==............######...#####',
+    '####..............######...#####',
+    '####==............######...#####',
+    '####.R............######...#####',
+    '##################^^^^^^^^^^#####'.slice(0, 18) + '######^^^#####',
+    FLOOR, FLOOR,
+  ]), patrol: 'guard' },
+  // The lift shaft. The shelf out of the door is there only sober: drink and go before it goes (the cocktail is over
+  // it, if you are quick). K up onto the landing. The way out is a jump and a K too high from there: drink the bottle on
+  // the landing (wake here, not down at the door), jump out over the shaft and leave the body at the top. Back on the
+  // landing, the other bottle there, K onto the body, and up through the ledge under the hatch. (A bottle in the air
+  // over the landing would let you jump, K, drink and K again up to the ledge.)
+  artRoom('L3-7', '電梯井', 'elevator', 0, [], [
+    '#########################......#',
+    '#..............................#',
+    '#........................======#',
+    ...Array(2).fill('#..............................#'),
+    '#.........*....................#',
+    '...............................#',
+    '.....................DD........#',
+    '.P.D................####.......#',
+    '#####....===...................#',
+    ...Array(5).fill('#####..........................#'),
+    '#####^^^^^^^^^^^^^^^^^^^^^^^^^^#',
+    FLOOR, FLOOR,
+  ], {
+    1: [...Array(9).fill(EMPTY), '.........___....................', ...Array(8).fill(EMPTY)],
+  }),
+  // The sensor. Up from the shaft at the bottom right; the way out is the top right, behind a door that opens only
+  // while something is in the sensor, and the sensor hangs in the air over the sofa. Drink, hop the chair, and at the
+  // top of the bounce leave the body in the sensor: the door opens and the bridge comes. Wake by the bottle, bounce
+  // again onto the bridge, up the shelves (the cocktail over the second), the quick cart over the glass, and out.
+  { ...artRoom('L3-8', '感應門', 'office', 0, [], [
+    FLOOR,
+    '#..............................#',
+    '#.............................G.',
+    '#.............................G.',
+    '#......*......................G.',
+    '#............#####M.......######',
+    '#.........==...................#',
+    '#.................^^^^^^^^.....#',
+    '#......==......................#',
+    '#..............................#',
+    '#.H........==..................#',
+    '#..............................#',
+    '#....ggggggggg.................#',
+    ...Array(2).fill('#..............................#'),
+    '#.............#.R.......#.D.P..#',
+    '#SSS#####################======#',
+    '#########################======#',
+  ]), cartSpeed: 200 },
+  // Downhill, at a run. The walkway is there only sober and the belt under its end only drunk: drink at the door, run the
+  // walkway over the glass, and drop off its end just before the world turns, so you land as the belt comes. The belt
+  // throws you off onto the sofa; K at the top of the bounce to reach the shelf over the glass, and down the hole.
+  // Miss the sofa and the shelves on the right wall climb back up to the walkway.
+  artRoom('L3-9', '下坡', 'street', 0, [], [
+    FLOOR,
+    '#..............................#',
+    '...............................#',
+    '...............................#',
+    '.P.D...........................#',
+    '###########^#####^#####........#',
+    '#......................L.==....#',
+    '#..............................#',
+    '#...#####....................==#',
+    '#..............................#',
+    '#............................==#',
+    '#................*.............#',
+    '#............................==#',
+    '#..............................#',
+    '#............................==#',
+    '#..............................#',
+    '#...^^^^^^^^^^SSS###############',
+    '#...############################',
+  ], {
+    1: [...Array(5).fill(EMPTY), '......_________________.........', ...Array(3).fill(EMPTY), '....................<<<<<<<<<...', ...Array(8).fill(EMPTY)],
+  }),
+  // Home. The bridge over the glass is there only while something stands in the sensor at the end of the guard's beat,
+  // and he only walks through it. From the shelf, drop in behind him as he reaches it and leave the body at his back:
+  // he paces on the sensor for good and holds the bridge for you. Wake on the ledge, take the second bottle there,
+  // and run: shelf, wall, bridge (the sign over it lets go as you pass). The last step up is there only drunk:
+  // three seconds after that bottle. K up onto it, and out. Shelves up the left wall lead back to the ledge and its
+  // bottles from anywhere below.
+  { ...artRoom('L3-10', '回家', 'street', 0, [], [
+    '#...############################',
+    '#..............................#',
+    '#........................L.....#',
+    '#...............................',
+    '#.P.DD..........................',
+    '#######.........................',
+    '#......==..........*............',
+    '#..............................#',
+    '#.....==.......................#',
+    '#..............................#',
+    '#...==..########...#ggggggggg..#',
+    '#..................#...........#',
+    '#.==...............#...........#',
+    '#.........#R......H#...........#',
+    '####################...........#',
+    '####################^^^^^^^^^^^#',
+    FLOOR, FLOOR,
+  ], {
+    1: [...Array(6).fill(EMPTY), '..............................##', ...Array(11).fill(EMPTY)],
+  }) },
 ];
 
 // run toward the target until past `from` (0: jump where Jim stands), jump, and steer in the air to land at (x, y), letting go of jump after `hold` seconds
@@ -609,6 +727,116 @@ export const plans = {
     leap(r, 755, x, deck(r));
     leap(r, 0, 1180, 400, 1, 1);
     r.finish();
+  },  'L3-6': r => {
+    drunk(r, { right: true });   // the ledge bottle: this is the one to wake at
+    // down into the well behind the guard as he walks to the wall; jump behind him and leave the body at the top
+    r.until(g => guard(g).dir > 0 && guard(g).x > 260, 20);
+    // keep three tiles behind him; jump as he reaches the wall
+    for (let n = 0; n < 8 * STEP_HZ && !(guard(r.game).x >= 650 && r.game.body.y >= 600); n++) r.tick(r.game.body.x < guard(r.game).x - 120 ? { right: true } : {});
+    r.tick({ jump: true, jumpPressed: true });
+    r.until(g => g.body.vy >= 0, 2, { jump: true });
+    r.skill();
+    assert.ok(r.game.entities.some(e => e.kind === 'corpse'), 'no body left behind');
+    const x = plank(r), y = deck(r);
+    // awake on the ledge: the other bottle, down again, and K onto the body
+    r.until(g => g.targetStage() > 0, 2, { right: true });
+    r.until(g => g.body.x >= 300 && g.body.y >= 600, 4, { right: true });
+    leap(r, 420, x - 10, y, 1, 1);
+    fetch(r, 620, 760, 400);   // up through the cocktail and onto the block
+    leap(r, 770, 880, 400, 0.2);   // over the glass
+    leap(r, 890, 1000, 400, 0.2);   // and the next
+    r.until(g => g.body.x >= 1150, 2, { right: true });   // across the boxes and the belt
+    leap(r, 0, 1220, 360);   // up the step and out
+    r.finish();
+  },  'L3-7': r => {
+    drunk(r, { right: true });   // the shelf goes three seconds after this
+    leap(r, 190, 420, 360, 0.3);
+    fetch(r, 420, 420, 360);   // straight up for the cocktail
+    leap(r, 470, 830, 320, 1, 1);   // K up onto the landing, sober again
+    r.until(g => g.targetStage() > 0, 2, { right: true });   // the landing bottle: wake here
+    jumpThrow(r, 960);
+    r.skill();
+    const x = plank(r), y = deck(r);
+    r.until(g => g.targetStage() > 0, 2, { right: true });   // the other bottle on the landing
+    leap(r, 0, x + 10, y, 1, 1);   // K at the top onto the body
+    leap(r, 0, x + 20, 80);   // straight up through the ledge under the hatch
+    out(r);
+  },  'L3-8': r => {
+    const chair = () => r.game.entities.find(e => e.kind === 'patrol');
+    // over the curb, across the chair's beat (hop him as he comes, keep back while he rolls away), down off the next
+    // curb, under the bridge, and onto the sofa
+    const toTheSofa = () => {
+      r.until(g => chair().dir < 0 && chair().x < 800, 12);
+      leap(r, 0, 900, 640, 0.3);
+      for (let n = 0; n < 10 * STEP_HZ && r.game.body.x > 660; n++) {
+        const b = r.game.body, gap = b.x - chair().x, ahead = gap > 0;
+        if (ahead && chair().dir > 0 && gap < 105 && b.grounded) r.tick({ left: true, jump: true, jumpPressed: true });
+        else if (!b.grounded) r.tick({ left: true, jump: true });
+        else r.tick(ahead && chair().dir < 0 && gap < 140 ? {} : { left: true });
+      }
+      r.until(g => g.body.vy < -TUNING.sofa + 1, 4, { left: true });   // off the curb, under the bridge, and the sofa throws him up
+      assert.ok(r.game.body.vy < -TUNING.sofa + 1, 'missed the sofa');
+    };
+    drunk(r, { left: true });   // the bottle by the shaft: wake here
+    toTheSofa();
+    r.until(g => g.body.y <= 440, 2);   // rising through the sensor
+    r.skill();
+    assert.ok(r.game.sensed, 'the body is not in the sensor');
+    toTheSofa();   // awake by the bottle: the same way again
+    landOn(r, 300, 480);   // off the top of the bounce onto the bridge
+    leap(r, 0, 480, 400);
+    leap(r, 0, 300, 320);
+    fetch(r, 300, 300, 320);   // straight up for the cocktail
+    leap(r, 0, 440, 240);
+    leap(r, 0, 560, 200);
+    r.until(g => g.body.x >= 660, 2, { right: true });
+    r.until(g => g.body.grounded && Math.abs(g.body.vx) < 5, 1);
+    r.until(g => cart(g).dir < 0 && cart(g).x < 830, 12);   // wait at the edge for the cart to come back
+    hopOnCart(r);
+    r.until(g => cart(g).x >= 1000, 10);
+    leap(r, 0, 1120, 200);
+    r.finish();
+  },  'L3-9': r => {
+    drunk(r, { right: true });   // the walkway goes in three seconds, and the belt comes
+    for (const [from, x] of [[410, 520], [650, 760]]) leap(r, from, x, 200, 0.3);   // over the glass
+    r.until(g => g.body.x >= 890, 2, { right: true });
+    r.until(g => Math.abs(g.body.vx) < 5, 1);
+    r.until(g => g.stageWarn && g.stageWarn.t < 0.45, 3);   // drop off the end just before the world turns
+    leap(r, 0, 960, 360, 0.1);
+    for (let n = 0; n < 4 * STEP_HZ && !(r.game.body.vy < -TUNING.sofa + 1); n++) {
+      const dx = 620 - r.game.body.x - r.game.body.vx * 0.12;
+      r.tick(dx > 6 ? { right: true } : dx < -6 ? { left: true } : {});
+    }
+    assert.ok(r.game.body.vy < -TUNING.sofa + 1, 'missed the sofa');
+    // K at the top of the bounce over to the shelf
+    const b = r.game.body;
+    for (let n = 0; n < 4 * STEP_HZ && !(b.grounded && n > 4); n++) {
+      const dx = 260 - b.x - b.vx * 0.12, input = {};
+      if (dx > 6) input.right = true; else if (dx < -6) input.left = true;
+      if (b.vy >= 0 && r.game.targetStage() > 0) input.kPressed = true;
+      r.tick(input);
+    }
+    assert.ok(b.y === 320, `the shelf missed: (${b.x.toFixed(0)}, ${b.y.toFixed(0)})`);
+    r.finish({ left: true });   // off its end and down the hole
+  },  'L3-10': r => {
+    drunk(r, { right: true });   // the first bottle on the ledge: wake here
+    leap(r, 270, 480, 400);   // down onto the shelf
+    // step off its end behind the guard as he walks onto the sensor, and leave the body at his back as you drop
+    r.until(g => guard(g).dir > 0 && guard(g).x > 650, 20);
+    r.until(g => g.body.x >= 655, 2, { right: true });
+    r.until(g => g.body.vy > 0 && g.body.y >= 420, 2);
+    r.skill();
+    r.wait(0.5);
+    assert.ok(r.game.sensed, 'the guard is not held on the sensor');
+    // awake on the ledge: the second bottle, and three seconds to the step
+    r.until(g => g.targetStage() > 0, 2, { right: true });
+    leap(r, 270, 480, 400);
+    leap(r, 590, 780, 400);   // onto the wall through the cocktail
+    r.until(g => g.body.x >= 1080, 3, { right: true });
+    r.until(g => Math.abs(g.body.vx) < 5, 1);
+    r.until(g => g.stage > 0 || (g.stageWarn && g.stageWarn.t < 0.3), 3);   // jump as the step comes, clear of its edge
+    leap(r, 0, 1220, 240, 1, 1);
+    r.finish();
   },
 };
 
@@ -672,6 +900,9 @@ function climb(list, ways) {
   return rooms;
 }
 
+// day-3 rooms with a painted background so far; the rest are greybox until their pictures are drawn
+const PAINTED = new Set(['L3-1', 'L3-2', 'L3-3', 'L3-4', 'L3-5']);
+
 export const campaign = {
   format: 'drunken-rooms', version: 2, rules: 'chill-puzzle', skills: 'single', bottles: 'drink',
   maps: [{
@@ -683,7 +914,8 @@ export const campaign = {
   }, {
     id: 'day-3', name: '第三天　醉影', cells: 1, abilities: ['wrestler'], zui: 'corpse',
     // painted backgrounds (prototype/art/day3, drawn from handoff/art-day3); redraw them when a room's tiles change
-    rooms: climb(day3, ['right', 'top', 'right', 'bottom', 'right']).map(room => ({ ...room, background: `art/day3/map-${room.id}.webp` })),
+    rooms: climb(day3, ['right', 'top', 'right', 'bottom', 'right', 'right', 'top', 'right', 'bottom', 'right'].slice(0, day3.length))
+      .map(room => PAINTED.has(room.id) ? { ...room, background: `art/day3/map-${room.id}.webp` } : room),
   }],
 };
 

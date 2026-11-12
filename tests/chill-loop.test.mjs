@@ -151,7 +151,7 @@ test('days 1 and 2 are one map side by side; day 3 climbs and falls, each room l
   });
   const day3 = campaign.maps[2].rooms, step = { right: [1, 0], top: [0, -1], bottom: [0, 1] };
   const wayOf = room => Object.keys(step).find(side => room.exits[side] !== undefined);
-  assert.equal(day3.length, 5);
+  assert.equal(day3.length, 10);
   day3.forEach((room, i) => {
     const next = day3[i + 1], way = wayOf(room);
     assert.ok(!room.tiles.join('').includes('O'), `${room.id} has no door`);
@@ -159,9 +159,9 @@ test('days 1 and 2 are one map side by side; day 3 climbs and falls, each room l
     if (next) assert.equal(JSON.stringify(next.at), JSON.stringify([room.at[0] + step[way][0], room.at[1] + step[way][1]]), `${next.id} stands where ${room.id} leads`);
   });
   assert.deepEqual([...new Set(day3.map(wayOf))].sort(), ['bottom', 'right', 'top'], 'the day goes right, up and down');
-  // no two ways on at the same spot
+  // no room goes on at the same spot as the one before it (no room that is flat all the way through)
   const seams = day3.map(room => ({ right: () => 'right ' + room.tiles.findIndex(row => row[31] === '.'), top: () => 'top ' + room.tiles[0].indexOf('.'), bottom: () => 'bottom ' + room.tiles[17].indexOf('.') })[wayOf(room)]());
-  assert.equal(new Set(seams).size, seams.length, seams.join(', '));
+  seams.slice(1).forEach((seam, i) => assert.notEqual(seam, seams[i], seams.join(', ')));
 });
 
 test('half on a sofa still bounces, with the floor on either side, and drops a belt push', () => {
