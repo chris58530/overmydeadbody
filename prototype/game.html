@@ -2921,6 +2921,7 @@
     };
     return {
       ensure,
+      context: () => (ensure(), ac),
       play(name) { if (!muted && ac && bank[name]) try { bank[name](); } catch (e) { /* ignore */ } },
       toggle() { muted = !muted; return muted; },
     };
@@ -2930,32 +2931,39 @@
   // Effects are real CC0 recordings (Kenney, OpenGameArt; see handoff/audio-candidates/SOURCES.md), roughened a little
   // toward pixel; an event with no recording keeps its synth sound above. The music is a sneaky small-band loop from
   // Gemini (Lyria) in a sober and a drunk mix, which play together and cross-fade as the world turns drunk or sober.
-  // Plain <audio>, not WebAudio: a single-file build loads these from the asset library like the pictures, and that
-  // library allows no fetch.
+  // Effects play through WebAudio from decoded buffers: one cheap node per hit, where a pool of <audio> players (about a
+  // hundred media pipelines) made the game stutter, worst on phones. The asset library allows no fetch, so a
+  // single-file build carries the effects in the page itself ("sfx-data": name -> base64 mp3); game.html fetches them.
+  // The two music loops are long, so they stay plain <audio> from the library.
   const Sound = (() => {
     const TAKES = {
       jump: 2, land: 2, bounce: 1, warp: 1, recall: 1, tick: 1, warn: 1, ready: 1, reveal: 1, deny: 1, cap: 1, break: 2, knock: 1,
       die: 1, crash: 1, crumble: 1, lift: 1, throw: 1, stageUp: 1, stageDown: 1, gulp: 2, fart: 3, bigfart: 1, drink: 1,
     };
-    const MUSIC = 0.3, FADE = 1.2, PLAYERS = 3;
-    const pools = {}, music = {}, level = { sober: 0, drunk: 0 };
-    let muted = false, started = false, fadedAt = 0;
-    // a few players per take, so a quick repeat (steps, landings) does not cut itself off
-    const player = name => {
-      const pool = pools[name] ??= Array.from({ length: PLAYERS }, () => Object.assign(new Audio(assetUrl(`art/sfx/${name}.mp3`)), { preload: 'auto' }));
-      return pool.find(a => a.paused || a.ended) ?? pool[0];
-    };
+    const MUSIC = 0.3, FADE = 1.2;
+    const buffers = {}, music = {}, level = { sober: 0, drunk: 0 }, set = {};
+    let muted = false, started = false, fadedAt = 0, ac = null;
+    const bytes = b64 => Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
+    async function load(name) {
+      const inline = sfxData[name];
+      const data = inline ? bytes(inline) : await (await fetch(`art/sfx/${name}.mp3`)).arrayBuffer();
+      buffers[name] = await new Promise((ok, no) => ac.decodeAudioData(data, ok, no));
+    }
+    let sfxData = {};
     function start() {   // on the first key or tap: browsers play nothing before one
       if (started) return;
       started = true;
+      ac = Sfx.context();
+      try { sfxData = JSON.parse(document.getElementById('sfx-data')?.textContent || '{}'); } catch (e) { /* none */ }
+      if (ac) for (const ev in TAKES) for (let i = 1; i <= TAKES[ev]; i++) load(`${ev}-${i}`).catch(() => {});
       for (const k in level) music[k] = Object.assign(new Audio(assetUrl(`art/music/bgm-${k}.mp3`)), { loop: true, volume: 0, muted: true, preload: 'auto' });
-      for (const ev in TAKES) for (let i = 1; i <= TAKES[ev]; i++) player(`${ev}-${i}`);
       if (!document.hidden) for (const k in music) music[k].play().catch(() => {});
     }
     // false when the event has no recording, so the caller plays the synth one
     function play(ev) {
       if (!TAKES[ev]) return false;
-      if (started && !muted) { const a = player(`${ev}-${1 + Math.floor(Math.random() * TAKES[ev])}`); a.currentTime = 0; a.play().catch(() => {}); }
+      const buf = buffers[`${ev}-${1 + Math.floor(Math.random() * TAKES[ev])}`];
+      if (!muted && buf) { const src = ac.createBufferSource(); src.buffer = buf; src.connect(ac.destination); src.start(); }
       return true;
     }
     function update(drunk, now) {   // by the clock, not the capped game frame, so a slow tab still fades in FADE seconds
@@ -2963,7 +2971,9 @@
       if (!started) return;
       for (const k in music) {
         const want = !muted && (k === 'drunk') === drunk ? MUSIC : 0;
+        if (level[k] === want && set[k] === want) continue;   // touch the players only while a fade is on
         level[k] += Math.sign(want - level[k]) * Math.min(Math.abs(want - level[k]), MUSIC * dt / FADE);
+        set[k] = level[k];
         music[k].volume = level[k];
         music[k].muted = level[k] < 0.005;   // iOS ignores volume, so the quiet loop is muted outright
       }

@@ -4,7 +4,9 @@
 // Painted rooms read their pictures, and every day its voices and music, from art/ next to the page. BeaverKit keeps
 // only the page, so each build points every file under art/ at its copy in the BeaverKit asset library instead: the
 // library names a file by the SHA-256 of its bytes, so the address comes from the file itself. Upload a new or changed
-// picture or sound to the library (素材庫) before uploading the page, or it shows as greybox (or stays silent).
+// picture or music loop to the library (素材庫) before uploading the page, or it shows as greybox (or stays silent).
+// The short effects (art/sfx) ride inside the page instead ("sfx-data"), because the game decodes them with WebAudio
+// and the library allows no fetch.
 // node handoff/kit/build-beaverkit.mjs   ->  prototype/beaverkit.html, prototype/beaverkit-day{1,2,3}.html
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -26,7 +28,7 @@ export function buildBeaverkit(day) {
     campaign = { ...campaign, maps: [map] };
     routes = { ...routes, rooms: Object.fromEntries(Object.entries(routes.rooms).filter(([key]) => key.startsWith(map.id + ':'))) };
   }
-  return html.slice(0, at) + inline('chill-puzzles-data', campaign) + inline('chill-routes-data', routes) + inline('art-data', artData()) + html.slice(at);
+  return html.slice(0, at) + inline('chill-puzzles-data', campaign) + inline('chill-routes-data', routes) + inline('art-data', artData()) + inline('sfx-data', sfxData()) + html.slice(at);
 }
 
 // every picture and sound under prototype/art, as path -> its address in the asset library (the folder game.html uses for Jim)
@@ -38,6 +40,12 @@ function artData() {
     out[`art/${dir}/${file}`] = LIBRARY + createHash('sha256').update(bytes).digest('hex') + '.' + file.split('.').pop();
   }
   return out;
+}
+
+// every effect under prototype/art/sfx, as name (jump-1) -> its mp3 in base64
+function sfxData() {
+  const root = new URL('../../prototype/art/sfx/', import.meta.url);
+  return Object.fromEntries(readdirSync(root).filter(f => f.endsWith('.mp3')).sort().map(f => [f.slice(0, -4), readFileSync(new URL(f, root)).toString('base64')]));
 }
 
 export const DAYS = 3;

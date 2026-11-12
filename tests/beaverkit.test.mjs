@@ -34,6 +34,8 @@ test('every recorded effect and music loop the game plays is next to the page', 
   for (const [ev, n] of Object.entries(takes)) for (let i = 1; i <= n; i++) {
     assert.ok(existsSync(new URL(`../prototype/art/sfx/${ev}-${i}.mp3`, import.meta.url)), `${ev}-${i}`);
   }
+  const inlined = JSON.parse(read('beaverkit.html').match(/<script type="application\/json" id="sfx-data">([\s\S]*?)<\/script>/)[1]);
+  for (const [ev, n] of Object.entries(takes)) for (let i = 1; i <= n; i++) assert.ok(inlined[`${ev}-${i}`], `${ev}-${i} inside the single file`);
   for (const mix of ['sober', 'drunk']) assert.ok(existsSync(new URL(`../prototype/art/music/bgm-${mix}.mp3`, import.meta.url)), mix);
 });
 
