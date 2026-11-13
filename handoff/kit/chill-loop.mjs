@@ -374,8 +374,9 @@ export const day3 = [
     '#SSS#####################======#',
     '#########################======#',
   ]), cartSpeed: 200 },
-  // Downhill, at a run. The walkway is there only sober and the belt under its end only drunk: drink at the door, run the
-  // walkway over the glass, and drop off its end just before the world turns, so you land as the belt comes. The belt
+  // Downhill, at a run. The walkway (a step up from the door) is there only sober past its first four tiles, and the belt
+  // under its end only drunk: drink at the door, run the walkway over the glass, and drop off its end just before the
+  // world turns, so you land as the belt comes. (Those first four tiles stay, over the shelf, so no one drops onto it.) The belt
   // throws you off onto the sofa; K at the top of the bounce to reach the shelf over the glass, and down the hole.
   // Miss the sofa and it is glass all the way to the wall.
   artRoom('L3-9', '下坡', 'street', 0, [], [
@@ -383,8 +384,8 @@ export const day3 = [
     '#..............................#',
     '...............................#',
     '...............................#',
-    '.P.D...........................#',
-    '###########^#####^#####........#',
+    '.P.D..#####^#####^#####........#',
+    '######.........................#',
     '#......................L.......#',
     '#..............................#',
     '#...#####......................#',
@@ -398,7 +399,7 @@ export const day3 = [
     '#...^^^^^^^^^^SSS^^^^^^^^^^^^^^#',
     '#...############################',
   ], {
-    1: [...Array(5).fill(EMPTY), '......_________________.........', ...Array(3).fill(EMPTY), '..................<<<<<<<.......', ...Array(8).fill(EMPTY)],
+    1: [...Array(4).fill(EMPTY), '..........' + '_'.repeat(13) + '.........', ...Array(4).fill(EMPTY), '..................<<<<<<<.......', ...Array(8).fill(EMPTY)],
   }),
   // Home. The bridge over the glass is there only while something stands in the sensor at the end of the guard's beat,
   // and he only walks through it. From the shelf, drop in behind him as he reaches it and leave the body at his back:
@@ -937,7 +938,8 @@ export const plans = {
     r.finish();
   },  'L3-9': r => {
     drunk(r, { right: true });   // the walkway goes in three seconds, and the belt comes
-    for (const [from, x] of [[410, 520], [650, 760]]) leap(r, from, x, 200, 0.3);   // over the glass
+    leap(r, 0, 290, 160, 0.3);   // up onto the walkway
+    for (const [from, x] of [[410, 520], [650, 760]]) leap(r, from, x, 160, 0.3);   // over the glass
     r.until(g => g.body.x >= 890, 2, { right: true });
     r.until(g => Math.abs(g.body.vx) < 5, 1);
     r.until(g => g.stageWarn && g.stageWarn.t < 0.45, 3);   // drop off the end just before the world turns
