@@ -377,7 +377,8 @@ export const day3 = [
   // Downhill, at a run. The walkway is there only sober and the belt under its end only drunk: drink at the door, run the
   // walkway over the glass, and drop off its end just before the world turns, so you land as the belt comes. The belt
   // throws you off onto the sofa; K at the top of the bounce to reach the shelf over the glass, and down the hole.
-  // Miss the sofa and the shelves on the right wall climb back up to the walkway.
+  // Miss the sofa and the shelves on the right wall climb back up to the walkway; they are there only sober, so there is
+  // no waiting on them for the belt.
   artRoom('L3-9', '下坡', 'street', 0, [], [
     FLOOR,
     '#..............................#',
@@ -385,12 +386,12 @@ export const day3 = [
     '...............................#',
     '.P.D...........................#',
     '###########^#####^#####........#',
-    '#......................L.==....#',
+    '#......................L...==..#',
     '#..............................#',
     '#...#####....................==#',
     '#..............................#',
     '#............................==#',
-    '#................*.............#',
+    '#..............*...............#',
     '#............................==#',
     '#..............................#',
     '#............................==#',
@@ -398,7 +399,9 @@ export const day3 = [
     '#...^^^^^^^^^^SSS###############',
     '#...############################',
   ], {
-    1: [...Array(5).fill(EMPTY), '......_________________.........', ...Array(3).fill(EMPTY), '....................<<<<<<<<<...', ...Array(8).fill(EMPTY)],
+    1: [...Array(5).fill(EMPTY), '......_________________.........', '...........................__...', EMPTY,
+      '.............................__.', '..................<<<<<<<.......', '.............................__.', EMPTY,
+      '.............................__.', EMPTY, '.............................__.', ...Array(3).fill(EMPTY)],
   }),
   // Home. The bridge over the glass is there only while something stands in the sensor at the end of the guard's beat,
   // and he only walks through it. From the shelf, drop in behind him as he reaches it and leave the body at his back:
