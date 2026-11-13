@@ -392,9 +392,10 @@ test('a shutter drops on its beat: walk under while it is up, shut it is a wall,
   assert.ok(wall.body.x <= 646 - 22 + 0.01, `stopped at the steel (at ${wall.body.x.toFixed(1)})`);
 });
 
-// Nothing the jump home cannot fix is left: from every spot Jim can get to on his feet, sober, with no body out,
-// he can walk or jump to a bottle or a way out without dying. Bottles and ways out end the search.
-test('day 3 has no dead ends: no room makes you die to start over', () => {
+// A miss kills, it never leaves Jim alive and stuck: from every spot he can get to on his feet, sober, with no body
+// out, he can walk or jump to a bottle or a way out without dying, or a guard walks there and gets him, or a step off
+// either side kills him. Bottles and ways out end the search.
+test('day 3 has no dead ends: a miss kills, it never leaves Jim alive and stuck', () => {
   const STEP = 1 / 120, cellOf = g => [Math.floor(g.body.x / 40), Math.round(g.body.y / 40)];
   for (const room of campaign.maps[2].rooms) {
     const fresh = (x, y, booze) => {
@@ -421,7 +422,7 @@ test('day 3 has no dead ends: no room makes you die to start over', () => {
         const input = { ...(n < steer ? key : {}), jump: jump > n };
         if (!farted && g.body.vy >= 0 && !g.body.grounded) { input.kPressed = true; farted = true; }
         g.step(STEP, input);
-        if (g.state === 'dead') return null;
+        if (g.state === 'dead') return 'dead';
         if (!fart && atGoal(g)) return 'goal';
         if (g.phase !== 'play' || g.room.id !== room.id) return 'goal';
         // a cart always rolls back to where it set off: riding it is never stuck
@@ -435,18 +436,30 @@ test('day 3 has no dead ends: no room makes you die to start over', () => {
     const seen = new Set([start]), edges = new Map();
     const parse = k => k.split(',').map(Number);
     for (const k of seen) {
-      const out = moves(parse(k)).filter(Boolean);
+      const out = moves(parse(k)).filter(v => v && v !== 'dead');
       // a double jump gets further on a sip; what it reaches counts as somewhere Jim can be, not as a way back
-      const further = [[1, 90, 180, 1], [-1, 90, 180, 1], [0, 90, 0, 1]].map(([d, j, s, f]) => move(parse(k), d, j, s, f)).filter(v => v && v !== 'goal');
+      const further = [[1, 90, 180, 1], [-1, 90, 180, 1], [0, 90, 0, 1]].map(([d, j, s, f]) => move(parse(k), d, j, s, f)).filter(v => v && v !== 'goal' && v !== 'dead');
       edges.set(k, out);
-      for (const v of [...out, ...further]) if (v !== 'goal') seen.add(v);
+      for (const v of [...out, ...further]) if (v !== 'goal' && v !== 'dead') seen.add(v);
     }
     const good = new Set(), reverse = [...edges];
     for (let changed = true; changed;) {
       changed = false;
       for (const [k, out] of reverse) if (!good.has(k) && out.some(v => v === 'goal' || good.has(v))) { good.add(k); changed = true; }
     }
-    const stuck = [...seen].filter(k => !good.has(k));
+    // the floor cells a guard walks over in his beat (only the guards move, for 20 s)
+    const beat = new Set(), gw = make(room.id);
+    for (let n = 0; n < 20 * 120; n++) {
+      gw.updateEntities(STEP);
+      for (const e of gw.entities) if (e.kind === 'patrol' && e.alive) for (let x = Math.floor((e.x - e.w / 2) / 40); x <= Math.floor((e.x + e.w / 2 - 1e-6) / 40); x++) beat.add(`${x},${Math.round(e.y / 40)}`);
+    }
+    // walking off either way kills him: the way to give up, so that spot is a miss, not a trap
+    const walkToDeath = k => [{ right: true }, { left: true }].some(input => {
+      const [cx, cy] = parse(k), g = fresh(cx * 40 + 20, cy * 40, false);
+      for (let n = 0; n < 4 * 120 && g.state !== 'dead' && g.phase === 'play'; n++) g.step(STEP, input);
+      return g.state === 'dead';
+    });
+    const stuck = [...seen].filter(k => !good.has(k) && !beat.has(k) && !walkToDeath(k));
     assert.deepEqual(stuck, [], `${room.id}: stuck at`);
   }
 });

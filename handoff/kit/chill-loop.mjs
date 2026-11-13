@@ -313,8 +313,8 @@ export const day3 = [
   // ledge. Follow the guard down to the wall and leave the body over him at the top of a jump: he is shut in against
   // the wall, and the body is a step. Wake at one ledge bottle, take the other, go down again, K onto the body, and up.
   // (A bottle hanging in the well would let you jump, K, drink and K again straight up the block.) The cocktail
-  // hangs over the body. Then over the glass, across the boxes before they give, the belt, and up the step. Shelves on
-  // the left wall of the well climb back to the ledge, so the well is never a dead end.
+  // hangs over the body. Then over the glass, across the boxes before they give, the belt, and up the step. There is no
+  // climbing back out of the well: stuck in it, the guard walks into you.
   { ...artRoom('L3-6', '轉角', 'lobby', 0, [], [
     FLOOR,
     ...Array(5).fill('#..............................#'),
@@ -323,9 +323,9 @@ export const day3 = [
     '................................',
     '.PDD..........................##',
     '####..............##^##^CCC>>>##',
-    '####==............######...#####',
     '####..............######...#####',
-    '####==............######...#####',
+    '####..............######...#####',
+    '####..............######...#####',
     '####.R............######...#####',
     '##################^^^^^^^^^^#####'.slice(0, 18) + '######^^^#####',
     FLOOR, FLOOR,
@@ -377,8 +377,7 @@ export const day3 = [
   // Downhill, at a run. The walkway is there only sober and the belt under its end only drunk: drink at the door, run the
   // walkway over the glass, and drop off its end just before the world turns, so you land as the belt comes. The belt
   // throws you off onto the sofa; K at the top of the bounce to reach the shelf over the glass, and down the hole.
-  // Miss the sofa and the shelves on the right wall climb back up to the walkway; they are there only sober, so there is
-  // no waiting on them for the belt.
+  // Miss the sofa and it is glass all the way to the wall.
   artRoom('L3-9', '下坡', 'street', 0, [], [
     FLOOR,
     '#..............................#',
@@ -386,29 +385,26 @@ export const day3 = [
     '...............................#',
     '.P.D...........................#',
     '###########^#####^#####........#',
-    '#......................L...==..#',
+    '#......................L.......#',
     '#..............................#',
-    '#...#####....................==#',
+    '#...#####......................#',
     '#..............................#',
-    '#............................==#',
+    '#..............................#',
     '#..............*...............#',
-    '#............................==#',
     '#..............................#',
-    '#............................==#',
     '#..............................#',
-    '#...^^^^^^^^^^SSS###############',
+    '#..............................#',
+    '#..............................#',
+    '#...^^^^^^^^^^SSS^^^^^^^^^^^^^^#',
     '#...############################',
   ], {
-    1: [...Array(5).fill(EMPTY), '......_________________.........', '...........................__...', EMPTY,
-      '.............................__.', '..................<<<<<<<.......', '.............................__.', EMPTY,
-      '.............................__.', EMPTY, '.............................__.', ...Array(3).fill(EMPTY)],
+    1: [...Array(5).fill(EMPTY), '......_________________.........', ...Array(3).fill(EMPTY), '..................<<<<<<<.......', ...Array(8).fill(EMPTY)],
   }),
   // Home. The bridge over the glass is there only while something stands in the sensor at the end of the guard's beat,
   // and he only walks through it. From the shelf, drop in behind him as he reaches it and leave the body at his back:
   // he paces on the sensor for good and holds the bridge for you. Wake on the ledge, take the second bottle there,
   // and run: shelf, wall, bridge (the sign over it lets go as you pass). The last step up is there only drunk:
-  // three seconds after that bottle. K up onto it, and out. Shelves up the left wall lead back to the ledge and its
-  // bottles from anywhere below.
+  // three seconds after that bottle. K up onto it, and out. Below the shelf is glass.
   { ...artRoom('L3-10', '回家', 'street', 0, [], [
     '#...############################',
     '#..............................#',
@@ -416,15 +412,15 @@ export const day3 = [
     '#...............................',
     '#.P.DD..........................',
     '#######.........................',
-    '#......==..........*............',
+    '#..................*............',
     '#..............................#',
-    '#.....==.......................#',
     '#..............................#',
-    '#...==..########...#ggggggggg..#',
+    '#..............................#',
+    '#.......########...#ggggggggg..#',
     '#..................#...........#',
-    '#.==...............#...........#',
+    '#..................#...........#',
     '#.........#R......H#...........#',
-    '####################...........#',
+    '#^^^^^^^^^##########...........#',
     '####################^^^^^^^^^^^#',
     FLOOR, FLOOR,
   ], {
@@ -434,7 +430,7 @@ export const day3 = [
   // sober; drunk, two puddles of booze stand in it, and you cross by never stopping: land, slide, jump. The ledge out is
   // too high even for a jump and K from the puddle under it, so the body has to stand under it first, low: J early in
   // a jump off the puddle as you slide at the glass (at the top of the jump it lies too high to climb onto). Wake at
-  // your bottle, drink the other, cross again, onto the body, jump and K. The bottle on the far puddle is the way home.
+  // your bottle, drink the other, cross again, onto the body, jump and K.
   artRoom('L3-11', '酒灘', 'pantry', 0, [], [
     FLOOR,
     '#..............................#',
@@ -451,7 +447,7 @@ export const day3 = [
     '#..............................#',
     '#..............................#',
     '#..............................#',
-    '#..D.D..................D......#',
+    '#..D.D.........................#',
     '#######^^^^^^^^^^^^^^^^~~~~~^^^#',
     FLOOR,
   ], {
@@ -481,7 +477,7 @@ export const day3 = [
   // stand on it and wait for the next shutter), under it, and drop into the end. The way out is a door that opens only
   // while something is in the sensor hanging in the air, well short of the door, so you cannot jump through it into the
   // door either. So: drink, slide down, step off the last plank and J as you fall past the sensor. Wake at the top,
-  // and run the slide again, sober, onto the body and out. Planks up the left of the end lead back to the top.
+  // and run the slide again, sober, onto the body and out. Most of the floor short of the door is glass.
   { ...artRoom('L3-13', '滑道', 'elevator', 0, [], [
     FLOOR,
     FLOOR,
@@ -497,9 +493,9 @@ export const day3 = [
     '#############~~~~~~~~.......####',
     '#####################==HH...G...',
     '#####################..HH...G...',
-    '#####################==.....G.*.',
+    '#####################.......G.*.',
     '#####################.......G...',
-    '#####################~~~~~~~####',
+    '#####################^^^^^~~####',
     FLOOR,
   ]), shutter: { open: 1.0, shut: 1.0, offsets: { '7,3': 0, '19,7': 0.5 } } },
   // The guard's bridge. The bridge is there only while something is in the sensor at the end of the guard's beat, and
