@@ -151,7 +151,7 @@ test('days 1 and 2 are one map side by side; day 3 climbs and falls, each room l
   });
   const day3 = campaign.maps[2].rooms, step = { right: [1, 0], top: [0, -1], bottom: [0, 1] };
   const wayOf = room => Object.keys(step).find(side => room.exits[side] !== undefined);
-  assert.equal(day3.length, 18);
+  assert.equal(day3.length, 20);
   day3.forEach((room, i) => {
     const next = day3[i + 1], way = wayOf(room);
     assert.ok(!room.tiles.join('').includes('O'), `${room.id} has no door`);

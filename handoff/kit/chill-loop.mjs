@@ -628,6 +628,62 @@ export const day3 = [
     '################################',
     '################################',
   ]), groups: { '29,3': 1, '1,4': 1, '2,4': 1, '30,9': 1, '30,10': 1, '9,15': 2, '7,11': 2, '8,11': 2, '9,11': 2, '10,11': 2, '11,11': 2, '12,11': 2, '13,11': 2, '14,11': 2, '15,11': 2, '16,11': 2, '17,11': 2, '18,11': 2, '19,11': 2, '20,11': 2 } },
+  // Lag. The world is what Jim was three seconds ago, and every step up here is there only one way. The shelf over the
+  // door is there drunk, the one above it only sober, and too high to reach from the first: drink, climb onto the drunk
+  // shelf and leave the body there, wake at the door, and when the world sobers up the shelf goes but the body stays:
+  // up the body onto the sober shelf. Drink the bottle there, and three seconds later that shelf goes and the long one
+  // above comes: jump as it turns. (It is too far from the corridor's end for a jump and K before it comes.) Then the
+  // belt, the booze under the shutter, and off the end onto the sofa: it throws you up, and down past the wall you
+  // steer into the hole between the glass.
+  artRoom('L3-19', '時差', 'pantry', 0, [], [
+    '#######################Z########',
+    '#..............................#',
+    '#..............................#',
+    '#....*.........................#',
+    '#..............##>>>>~~~~~.....#',
+    '#.D............###########.....#',
+    '###............###########.....#',
+    '#..............###########.....#',
+    '#..............###########.....#',
+    '...............###########.....#',
+    '.P.D...........###########..SS.#',
+    '####################...........#',
+    '####################...........#',
+    '####################...........#',
+    '####################...........#',
+    '####################...........#',
+    '####################^^^^...^^^^#',
+    '#..#####################...#####',
+  ], {
+    1: [EMPTY, EMPTY, EMPTY, EMPTY, '.....##########.................', EMPTY, '.__.............................', EMPTY, EMPTY, '....###.........................', EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
+  }),
+  // Home. The cart rolls between the ledge you fall in on and the shelf across the pit, with the guard pacing the pit's
+  // floor: ride it over. Drink at the shelf, jump back out over the pit and J in the sensor hanging over it: three steps
+  // come up, over the pit, back over the shelf, and higher again. Wake on the shelf and climb them. The last bottle is
+  // on the top one, and the wall into the narrow shaft beside it is there only sober: drink, wait for it to go, and step
+  // in: the sofa at the shaft's foot throws you up and out through the roof. (No jump or K from below reaches that gap.)
+  { ...artRoom('L3-20', '回家', 'street', 0, [], [
+    '#..#####################...#####',
+    '#..#...........................#',
+    '#..#...........................#',
+    '#..#..*........................#',
+    '#..#.D.........................#',
+    '#..#ggg........................#',
+    '#..#...........................#',
+    '#..#.ggg.......................#',
+    '#SS#....................P......#',
+    '####......gg...........#########',
+    '####...D......HH..M....#########',
+    '#########.....HH.......#########',
+    '#########..............#########',
+    '#########..............#########',
+    '#########..............#########',
+    '#########.....R........#########',
+    '################################',
+    '################################',
+  ], {
+    1: [EMPTY, EMPTY, EMPTY, '..._............................', '..._............................', ...Array(13).fill(EMPTY)],
+  }), cartSpeed: 200 },
 ];
 
 // run toward the target until past `from` (0: jump where Jim stands), jump, and steer in the air to land at (x, y), letting go of jump after `hold` seconds
@@ -1291,6 +1347,63 @@ export const plans = {
     // across the bridge, the belt, and through the door
     r.until(g => g.body.x >= 980, 4, { right: true });
     r.finish({ right: true, jump: true, ...(r.game.body.grounded ? { jumpPressed: true } : {}) });
+  },  'L3-19': r => {
+    r.until(g => g.targetStage() > 0, 2, { right: true });   // the bottle by the door
+    r.until(g => Math.abs(g.body.vx) < 5, 1);
+    r.until(g => g.stage > 0, 4);   // the drunk shelf comes
+    leap(r, 0, 200, 360);
+    r.until(g => Math.abs(g.body.vx) < 5, 1);
+    r.skill();   // the body on it, and wake at the door
+    r.until(g => g.stage === 0 && !g.stageWarn, 5);   // sober: the shelf goes, the body stays, the sober shelf comes
+    leap(r, 0, plank(r), deck(r));   // up onto the body
+    r.until(g => g.body.x >= 200, 1, { right: true });
+    r.until(g => Math.abs(g.body.vx) < 5, 1);
+    leap(r, 0, 80, 240);   // and up off it onto the sober shelf and its bottle
+    assert.ok(r.game.targetStage() > 0, 'missed the bottle on the sober shelf');
+    r.until(g => g.stageWarn && g.stageWarn.t < 0.3, 4);   // jump as the shelf goes and the long one comes
+    leap(r, 0, 330, 160, 1);
+    r.until(g => g.body.x >= 620, 3, { right: true });
+    r.until(g => Math.abs(g.body.vx) < 5, 1);
+    const sh = g => g.shutterBeat(g.shutters[0]);
+    r.until(g => sh(g).down > 0, 3);
+    r.until(g => sh(g).down === 0, 3);
+    r.until(g => !g.body.grounded, 3, { right: true });   // belt, booze, under the shutter and off the end
+    toSofaFall(r, 1140);
+    const b = r.game.body;
+    for (let n = 0; n < 4 * STEP_HZ && r.game.phase === 'play'; n++) { const dx = (b.vy < 0 ? 1100 : 1020) - b.x - b.vx * 0.12; r.tick(dx > 6 ? { right: true } : dx < -6 ? { left: true } : {}); }
+  },  'L3-20': r => {
+    // onto the cart as it turns at the ledge, and ride it over the pit to the shelf
+    r.until(g => cart(g).dir < 0 && cart(g).x >= 860, 8);
+    r.until(g => g.body.cart >= 0, 2, { left: true });
+    r.until(g => cart(g).x <= 230, 8);
+    r.until(g => g.body.grounded && g.body.y === 440, 2, { left: true });
+    r.until(g => g.targetStage() > 0, 2, { right: true });   // its bottle
+    r.until(g => g.body.x >= 352, 2, { right: true });
+    r.until(g => Math.abs(g.body.vx) < 5, 1);
+    // back out over the pit, and J in the sensor as the jump comes down through it
+    r.until(g => cart(g).x > 700, 8);
+    r.tick({ right: true, jump: true, jumpPressed: true });
+    r.until(g => g.body.vy > 0 && g.body.y >= 420 && g.body.x >= 540, 2, { right: true, jump: true });
+    r.skill();
+    assert.ok(r.game.sensed, 'the body is not in the sensor');
+    // the steps: over the pit, back left, up left onto the last bottle
+    r.until(g => g.body.x >= 372, 2, { right: true });
+    r.until(g => Math.abs(g.body.vx) < 5, 1);
+    r.tick({ jump: true, jumpPressed: true });
+    r.until(g => g.body.vy >= 0, 1, { jump: true });
+    landOn(r, 440, 360);
+    leap(r, 0, 300, 280);
+    r.until(g => g.body.x >= 312, 1, { right: true });   // out from under the top step
+    r.until(g => Math.abs(g.body.vx) < 5, 1);
+    r.tick({ jump: true, jumpPressed: true });
+    r.until(g => g.body.vy >= 0, 1, { jump: true });
+    landOn(r, 230, 200);
+    r.until(g => g.targetStage() > 0, 2, { left: true });
+    r.until(g => g.stage > 0, 4);   // the wall into the shaft goes
+    r.until(g => !g.body.grounded, 2, { left: true });
+    toSofaFall(r, 80);
+    const b = r.game.body;
+    for (let n = 0; n < 3 * STEP_HZ && r.game.phase === 'play'; n++) { const dx = 80 - b.x - b.vx * 0.12; r.tick(dx > 6 ? { right: true } : dx < -6 ? { left: true } : {}); }
   },
 };
 
@@ -1368,7 +1481,7 @@ export const campaign = {
   }, {
     id: 'day-3', name: '第三天　醉影', cells: 1, abilities: ['wrestler'], zui: 'corpse',
     // painted backgrounds (prototype/art/day3, drawn from handoff/art-day3); redraw them when a room's tiles change
-    rooms: climb(day3, ['right', 'top', 'right', 'bottom', 'right', 'right', 'top', 'right', 'bottom', 'right', 'right', 'right', 'right', 'top', 'right', 'right', 'bottom', 'right'].slice(0, day3.length))
+    rooms: climb(day3, ['right', 'top', 'right', 'bottom', 'right', 'right', 'top', 'right', 'bottom', 'right', 'right', 'right', 'right', 'top', 'right', 'right', 'bottom', 'right', 'bottom', 'top'].slice(0, day3.length))
       .map(room => PAINTED.has(room.id) ? { ...room, background: `art/day3/map-${room.id}.webp` } : room),
   }],
 };
