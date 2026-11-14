@@ -551,6 +551,83 @@ export const day3 = [
     '########~~~~^^~~~~^^~~~~~~##===#',
     '############################===#',
   ]), shutter: { open: 1.0, shut: 0.9, offsets: { '10,5': 0, '17,5': 0.6, '24,10': 0.3 } } },
+  // The loop. Drink at the door and the floor gives way: down the shaft (its foot is dry: wait there for the shutter),
+  // along the booze under it, off the end onto the sofa, and J at the top of the bounce: the body hangs in the sensor
+  // and the door up top opens. Wake at the door and go the other way, over the shaft and through it: the last bottle
+  // sits on the first of the boxes that give way over the glass, and the ledge out is too high for a jump without K:
+  // drink, and box, box, box, never stopping, and a jump and K up.
+  { ...artRoom('L3-16', '環線', 'office', 0, [], [
+    '################################',
+    '......G........................#',
+    '......G.........................',
+    '.P.D..G.........*...............',
+    '####..#...................######',
+    '####..#........................#',
+    '####..#...D....................#',
+    '####..#..CC..CC..CC..CC........#',
+    '####..#^^^^^^^^^^^^^^^^^^^^^^^^#',
+    '####..#####Z####################',
+    '####..................HH.......#',
+    '####..................HH.......#',
+    '######~~~~~~~~~~~~.............#',
+    '##################.............#',
+    '##################.............#',
+    '##################.............#',
+    '##################^^SS^^^^^^^^^#',
+    '################################',
+  ]), shutter: { open: 1.0, shut: 1.0, offsets: {} } },
+  // The chair. Drink at the bottle up top and drop into the chair's yard as it rolls back to the sensor by the wall;
+  // J low at its back as you fall: the body keeps it rolling on the sensor and the bridge up top is there for good.
+  // Wake at the bottle, run the bridge and drop down the shaft onto the second bottle. The low way on is a pit with a
+  // floor drunk, then floor that is there only sober: wait for the pit floor, cross it, K, and stand on the seam until
+  // the world turns back under you. Up onto the pillar, onto the cart as it comes back, ride it over the glass and step off into the hole.
+  { ...artRoom('L3-17', '轉椅', 'office', 0, [], [
+    '################################',
+    '#..............................#',
+    '...............................#',
+    '.P.........D...................#',
+    '##############gggggggggggg#....#',
+    '##############............#....#',
+    '##############............#....#',
+    '##############............#....#',
+    '##############............#....#',
+    '##############H.....R.....#....#',
+    '###########################....#',
+    '#.................#########....#',
+    '#.................#########....#',
+    '#.......*.........########.....#',
+    '#...........M..#...............#',
+    '#..............#............D..#',
+    '#...^^^^^^^^^^^######^^^^^######',
+    '#...############################',
+  ], {
+    1: [...Array(16).fill(EMPTY), '.................^^^^#####......', EMPTY],
+  }), cartSpeed: 200 },
+  // Two doors, two bodies. Drink at the top and run the belt over the glass, past the shutter and over more glass to
+  // the sensor at the end of the corridor: J standing in it, and the hatch at the bottle and the door out both open
+  // (they are its group). Wake at the bottle, drop through the hatch, drink the second bottle by the guard's yard, and
+  // pin him on his sensor with the second body: the bridge over his yard is that sensor's. Wake by the yard, cross the
+  // bridge under the sign, and off the belt through the open door. Both bodies have to stay where they are.
+  { ...artRoom('L3-18', '兩扇門', 'street', 0, [], [
+    '#...###############Z############',
+    '#..............................#',
+    '#..............................#',
+    '#..P.D.......................H.#',
+    '#GG###>>>>>>>>^^#######^^#######',
+    '#..##################..........#',
+    '#..##################..........#',
+    '#..##################.......*..#',
+    '#..##################..........#',
+    '#.............L...............G.',
+    '#....D........................G.',
+    '#######gggggggggggggg##>>^^^^^##',
+    '#########...........############',
+    '#########...........############',
+    '#########...........############',
+    '#########H....R.....############',
+    '################################',
+    '################################',
+  ]), groups: { '29,3': 1, '1,4': 1, '2,4': 1, '30,9': 1, '30,10': 1, '9,15': 2, '7,11': 2, '8,11': 2, '9,11': 2, '10,11': 2, '11,11': 2, '12,11': 2, '13,11': 2, '14,11': 2, '15,11': 2, '16,11': 2, '17,11': 2, '18,11': 2, '19,11': 2, '20,11': 2 } },
 ];
 
 // run toward the target until past `from` (0: jump where Jim stands), jump, and steer in the air to land at (x, y), letting go of jump after `hold` seconds
@@ -671,6 +748,16 @@ const climbLedge = r => {
   leap(r, 0, 84, 560);
   leap(r, 0, 120, 480);
   leap(r, 0, 290, 440);
+};
+
+// falling (off an edge), steer onto the sofa at x until it throws Jim up
+const toSofaFall = (r, x) => {
+  const b = r.game.body;
+  for (let n = 0; n < 3 * STEP_HZ && !(b.vy < -TUNING.sofa + 1); n++) {
+    const dx = x - b.x - b.vx * 0.12;
+    r.tick(dx > 6 ? { right: true } : dx < -6 ? { left: true } : {});
+  }
+  assert.ok(b.vy < -TUNING.sofa + 1, 'missed the sofa');
 };
 
 export const plans = {
@@ -1123,6 +1210,87 @@ export const plans = {
     r.tick({ jump: true, kPressed: true });
     r.until(g => g.body.y < 150, 1, { jump: true });
     r.finish({ right: true, jump: true });
+  },  'L3-16': r => {
+    r.until(g => g.body.y >= 480 && g.body.grounded, 3, { right: true });   // the bottle, and down the shaft
+    r.until(g => Math.abs(g.body.vx) < 5, 1);   // its foot is dry: wait there for the shutter
+    const sh = g => g.shutterBeat(g.shutters[0]);
+    r.until(g => sh(g).down > 0, 3);
+    r.until(g => sh(g).down === 0, 3);
+    r.until(g => !g.body.grounded, 4, { right: true });   // under it and off the end of the booze
+    toSofaFall(r, 840);
+    // up off the sofa and J at the top, in the sensor
+    const b = r.game.body;
+    for (let n = 0; n < 2 * STEP_HZ && !(b.vy >= 0); n++) { const dx = 920 - b.x - b.vx * 0.12; r.tick(dx > 6 ? { right: true } : dx < -6 ? { left: true } : {}); }
+    r.skill();
+    assert.ok(r.game.sensed, 'the body is not in the sensor');
+    r.until(g => g.body.grounded, 2);
+    leap(r, 172, 262, 160);   // over the shaft into the doorway (low ceiling: from the very edge)
+    leap(r, 0, 400, 280);   // down onto the first box: the last bottle
+    leap(r, 0, 560, 280);
+    leap(r, 0, 720, 280);
+    leap(r, 0, 880, 280);
+    leap(r, 0, 1100, 160, 1, 1);   // and up onto the ledge before it goes
+    r.finish();
+  },  'L3-17': r => {
+    const chair = g => g.entities.find(e => e.kind === 'patrol');
+    r.until(g => g.targetStage() > 0, 3, { right: true });   // the bottle by the yard
+    r.until(g => g.body.x >= 500, 1, { right: true });
+    r.until(g => Math.abs(g.body.vx) < 5, 1);
+    // as the chair rolls back to the sensor, drop in behind it and J low at its back
+    r.until(g => chair(g).dir < 0 && chair(g).x <= 690, 12);
+    r.until(g => !g.body.grounded, 1, { right: true });
+    const b = r.game.body;
+    for (let n = 0; n < 2 * STEP_HZ && !(b.y >= 340 && Math.abs(b.x - 662) < 14); n++) { const dx = 662 - b.x - b.vx * 0.12; r.tick(dx > 6 ? { right: true } : dx < -6 ? { left: true } : {}); }
+    r.skill();
+    r.wait(0.8);
+    assert.ok(r.game.sensed, 'the chair is not held on the sensor');
+    // over the bridge and down the shaft onto the second bottle
+    r.until(g => !g.body.grounded && g.body.x >= 1060, 4, { right: true });
+    landOn(r, 1140, 640);
+    assert.ok(r.game.targetStage() > 0, 'missed the second bottle');
+    r.until(g => Math.abs(g.body.vx) < 5, 1);
+    r.until(g => g.stage > 0, 4);   // the pit floor comes; the floor past it goes to glass
+    r.until(g => g.body.x <= 846, 3, { left: true });
+    r.until(g => Math.abs(g.body.vx) < 5, 1);
+    r.tick({ kPressed: true });   // sober: in three seconds the pit floor goes and the floor past it comes back
+    r.until(g => g.body.grounded, 1);
+    r.until(g => g.stage === 0, 4);
+    // out from under the low ceiling, up onto the pillar, onto the cart as it turns, and down the hole at the far end
+    leap(r, 663, 620, 560);
+    r.until(g => cart(g).x >= 545, 8);   // step onto it as it turns at the pillar
+    r.until(g => g.body.cart >= 0, 1, { left: true });
+    r.until(g => cart(g).dir < 0 && cart(g).x <= 110, 10);
+    r.finish({ left: true });
+  },  'L3-18': r => {
+    r.until(g => g.targetStage() > 0, 2, { right: true });   // the bottle at the top
+    // the belt over the glass, the shutter, more glass, and into the sensor at the end
+    leap(r, 540, 700, 160, 0.3);
+    r.until(g => Math.abs(g.body.vx) < 5, 1);
+    const sh = g => g.shutterBeat(g.shutters[0]);
+    r.until(g => sh(g).down > 0, 3);
+    r.until(g => sh(g).down === 0, 3);
+    leap(r, 935, 1060, 160, 0.3);   // low ceiling: from the very edge
+    r.until(g => g.body.x >= 1180, 2, { right: true });
+    r.until(g => Math.abs(g.body.vx) < 5, 1);
+    r.skill();
+    assert.ok(r.game.sensedBy[1], 'the first body is not in its sensor');
+    // through the hatch, the second bottle
+    r.until(g => g.body.y >= 440 && g.body.grounded, 3, { left: true });
+    r.until(g => g.targetStage() > 0, 2, { right: true });
+    r.until(g => g.body.x >= 290, 2, { right: true });   // down onto the top of the yard wall
+    r.until(g => g.body.grounded && g.body.y === 480, 2, {});
+    r.until(g => Math.abs(g.body.vx) < 5, 1);
+    r.until(g => Math.abs(g.body.vx) < 5, 1);
+    r.until(g => guard(g).dir < 0 && guard(g).x <= 430, 14);
+    r.until(g => !g.body.grounded, 1, { right: true });
+    const b = r.game.body;
+    for (let n = 0; n < 2 * STEP_HZ && !(b.y >= 500 && Math.abs(b.x - 466) < 14); n++) { const dx = 466 - b.x - b.vx * 0.12; r.tick(dx > 6 ? { right: true } : dx < -6 ? { left: true } : {}); }
+    r.skill();
+    r.wait(0.6);
+    assert.ok(r.game.sensedBy[2], 'the guard is not held on his sensor');
+    // across the bridge, the belt, and through the door
+    r.until(g => g.body.x >= 980, 4, { right: true });
+    r.finish({ right: true, jump: true, ...(r.game.body.grounded ? { jumpPressed: true } : {}) });
   },
 };
 
@@ -1200,7 +1368,7 @@ export const campaign = {
   }, {
     id: 'day-3', name: '第三天　醉影', cells: 1, abilities: ['wrestler'], zui: 'corpse',
     // painted backgrounds (prototype/art/day3, drawn from handoff/art-day3); redraw them when a room's tiles change
-    rooms: climb(day3, ['right', 'top', 'right', 'bottom', 'right', 'right', 'top', 'right', 'bottom', 'right', 'right', 'right', 'right', 'top', 'right'].slice(0, day3.length))
+    rooms: climb(day3, ['right', 'top', 'right', 'bottom', 'right', 'right', 'top', 'right', 'bottom', 'right', 'right', 'right', 'right', 'top', 'right', 'right', 'bottom', 'right'].slice(0, day3.length))
       .map(room => PAINTED.has(room.id) ? { ...room, background: `art/day3/map-${room.id}.webp` } : room),
   }],
 };

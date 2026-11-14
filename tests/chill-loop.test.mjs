@@ -151,7 +151,7 @@ test('days 1 and 2 are one map side by side; day 3 climbs and falls, each room l
   });
   const day3 = campaign.maps[2].rooms, step = { right: [1, 0], top: [0, -1], bottom: [0, 1] };
   const wayOf = room => Object.keys(step).find(side => room.exits[side] !== undefined);
-  assert.equal(day3.length, 15);
+  assert.equal(day3.length, 18);
   day3.forEach((room, i) => {
     const next = day3[i + 1], way = wayOf(room);
     assert.ok(!room.tiles.join('').includes('O'), `${room.id} has no door`);
@@ -302,6 +302,21 @@ test('a sensor works the door while Jim or a body is in it, and taking the body 
   game.step(DT, {});
   assert.ok(!game.entities.includes(corpse));
   assert.equal(door(), 'G');
+});
+
+test('sensors in groups work only their own doors', () => {
+  const rows = [...Array(13).fill(E), '..H.........G.......H.....g.....', '............G.............g.....', '.P..........G.............g.....', F, F];
+  rows[0] = '.'.repeat(31) + 'O';
+  const room = { id: 'T', name: 't', theme: 'office', booze: 0, tiles: rows, exits: {}, portalTarget: null, lines: [], groups: { '2,13': 1, '12,13': 1, '12,14': 1, '12,15': 1, '20,13': 2, '26,13': 2, '26,14': 2, '26,15': 2 } };
+  const game = new Game(parseCampaign(JSON.stringify({ format: 'drunken-rooms', version: 2, rules: 'chill-puzzle', skills: 'single', bottles: 'drink', maps: [{ id: 'd', name: 'd', cells: 1, abilities: [], rooms: [room] }] })));
+  game.startMap(0); game.enterRoom('T'); game.phase = 'play';
+  game.entities.push({ kind: 'corpse', x: 100, y: 540, w: 84, t: 0, face: 1 });   // in the first sensor only
+  run(game, 0.1, {});
+  assert.equal(game.tiles[14][12], '.', 'its own door opens');
+  assert.equal(game.tiles[14][26], '.', 'the other group\'s bridge stays away');
+  game.entities.push({ kind: 'corpse', x: 820, y: 540, w: 84, t: 0, face: 1 });
+  run(game, 0.1, {});
+  assert.equal(game.tiles[14][26], 'G', 'the second sensor brings its own bridge');
 });
 
 test('a door does not shut on Jim', () => {

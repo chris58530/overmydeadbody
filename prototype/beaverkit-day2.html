@@ -141,6 +141,8 @@
   // R patrol (office chair / night guard)  L falling light (tube / sign)  * bottle cap  P spawn  D a bottle of booze (bottles rules)
   // S sofa (bounces Jim up)  M cart (a moving platform that rolls until something solid turns it)
   // H sensor (works the room's doors while Jim, a body or a chair is in it)  G door (open while sensed)  g bridge (solid while sensed)
+  //   a room may pair them off ("groups": { "x,y": n } for sensors and doors): a sensor then works only the doors of its
+  //   own group; anything not listed is group 0
   // V beam fixture (a beam runs straight down from it to the first solid or body, and kills)
   // ~ spilt booze (ground Jim slides on: nothing stops him but a wall or a jump; from a stand a direction gets him going slowly)
   // Z shutter housing (a steel shutter drops from it to the floor below on the room's beat; shut it is a wall, and it
@@ -208,6 +210,13 @@
           }
         }
         if (room.theme !== undefined && !THEMES.includes(room.theme)) errors.push(`${rat} 未知場景 "${room.theme}"`);
+        if (room.groups !== undefined) {
+          if (!room.groups || typeof room.groups !== 'object' || Array.isArray(room.groups)) errors.push(`${rat} groups 必須是物件`);
+          else for (const [key, n] of Object.entries(room.groups)) {
+            const [x, y] = key.split(',').map(Number);
+            if (key !== `${x},${y}` || !'HGg'.includes(room.tiles[y]?.[x] || '.') || !Number.isInteger(n) || n < 0) errors.push(`${rat} 感應組 ${key} 無效`);
+          }
+        }
         if (room.shutter !== undefined) {
           const sh = room.shutter, num = v => v === undefined || (typeof v === 'number' && v >= 0 && v <= 10);
           if (!sh || typeof sh !== 'object' || Array.isArray(sh) || !num(sh.open) || !num(sh.shut)) errors.push(`${rat} shutter 必須是 { open, shut, offsets }，秒數 0～10`);
@@ -293,14 +302,15 @@
       this.exits = this.room.exits || {};
       this.entities = [];
       this.crumbles = new Map();
-      this.sensors = []; this.doors = []; this.beams = []; this.shutters = []; this.shutterT = 0; this.sensed = false;
+      this.sensors = []; this.doors = []; this.beams = []; this.shutters = []; this.shutterT = 0; this.sensed = false; this.sensedBy = {};
+      const group = (x, y) => this.room.groups?.[`${x},${y}`] || 0;
       // street rooms have guards and signs, indoor ones chairs and tubes; a room may ask for guards ("patrol": "guard")
       const street = (this.room.theme || 'street') === 'street', guards = street || this.room.patrol === 'guard';
       for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
         const t = this.tiles[y][x];
         if (t === 'P') this.spawn = { x: x * T + T / 2, y: (y + 1) * T };
-        if (t === 'H') this.sensors.push({ x: x * T, y: y * T, w: T, h: T });
-        if (t === 'G' || t === 'g') { this.doors.push({ x, y, bridge: t === 'g' }); this.tiles[y][x] = t === 'G' ? 'G' : '.'; }
+        if (t === 'H') this.sensors.push({ x: x * T, y: y * T, w: T, h: T, group: group(x, y) });
+        if (t === 'G' || t === 'g') { this.doors.push({ x, y, bridge: t === 'g', group: group(x, y) }); this.tiles[y][x] = t === 'G' ? 'G' : '.'; }
         if (t === 'V') this.beams.push({ x, y });
         if (t === 'Z') this.shutters.push({ x, y, offset: this.room.shutter?.offsets?.[`${x},${y}`] || 0 });
         if (t === 'R') { this.entities.push({ kind: 'patrol', x: x * T + T / 2, y: (y + 1) * T, dir: -1, alive: true, w: guards ? 44 : 40, h: guards ? 110 : 34, skin: guards ? 'guard' : 'chair', t: 0 }); this.tiles[y][x] = '.'; }
@@ -568,16 +578,20 @@
     // a door waits until he is clear of it.
     updateDoors() {
       if (!this.sensors.length) return;
-      const hit = box => this.sensors.some(s => overlap(box, s));
-      const sensed = hit(this.box(this.body)) || this.entities.some(e => e.kind === 'corpse' ? hit({ x: e.x - e.w / 2, y: e.y, w: e.w, h: TUNING.corpseH })
-        : e.kind === 'patrol' && e.alive && hit({ x: e.x - e.w / 2, y: e.y - e.h, w: e.w, h: e.h }));
-      if (sensed === this.sensed) return;
-      const solid = d => sensed === d.bridge, jim = this.box(this.body);
-      if (this.doors.some(d => solid(d) && overlap(jim, { x: d.x * T, y: d.y * T, w: T, h: T }))) return;
-      for (const d of this.doors) this.tiles[d.y][d.x] = solid(d) ? 'G' : '.';
-      this.tilesVersion++;
-      this.sensed = sensed;
-      this.events.push(sensed ? 'stageUp' : 'stageDown');
+      const hit = (box, group) => this.sensors.some(s => s.group === group && overlap(box, s));
+      const held = group => hit(this.box(this.body), group) || this.entities.some(e => e.kind === 'corpse' ? hit({ x: e.x - e.w / 2, y: e.y, w: e.w, h: TUNING.corpseH }, group)
+        : e.kind === 'patrol' && e.alive && hit({ x: e.x - e.w / 2, y: e.y - e.h, w: e.w, h: e.h }, group));
+      for (const group of new Set(this.sensors.map(s => s.group))) {
+        const sensed = held(group);
+        if (sensed === !!this.sensedBy[group]) continue;
+        const doors = this.doors.filter(d => d.group === group), solid = d => sensed === d.bridge, jim = this.box(this.body);
+        if (doors.some(d => solid(d) && overlap(jim, { x: d.x * T, y: d.y * T, w: T, h: T }))) continue;
+        for (const d of doors) this.tiles[d.y][d.x] = solid(d) ? 'G' : '.';
+        this.tilesVersion++;
+        this.sensedBy[group] = sensed;
+        this.events.push(sensed ? 'stageUp' : 'stageDown');
+      }
+      this.sensed = Object.values(this.sensedBy).some(Boolean);
     }
 
     // Where a beam stops: the first solid under its fixture, or a body lying across it.
@@ -2481,7 +2495,7 @@
       const t = g.tiles[y][x], tx = x * T, ty = y * T;
       if (t === 'H') {
         // a sensor glows while something is in it
-        ctx.save(); ctx.fillStyle = GREY.sensor; ctx.globalAlpha = g.sensed ? 0.4 : 0.14; ctx.fillRect(tx, ty, T, T);
+        ctx.save(); ctx.fillStyle = GREY.sensor; ctx.globalAlpha = g.sensedBy[g.room.groups?.[`${x},${y}`] || 0] ? 0.4 : 0.14; ctx.fillRect(tx, ty, T, T);
         ctx.globalAlpha = 0.7; ctx.strokeStyle = GREY.sensor; ctx.lineWidth = 1; ctx.setLineDash([4, 4]); ctx.strokeRect(tx + 1, ty + 1, T - 2, T - 2); ctx.restore();
       } else if (t === 'G') {
         ctx.fillStyle = GREY.sensor; ctx.fillRect(tx + 1, ty + 1, T - 2, T - 2);
