@@ -427,11 +427,11 @@ export const day3 = [
   ], {
     1: [...Array(6).fill(EMPTY), '..............................##', ...Array(11).fill(EMPTY)],
   }) },
-  // Spilt booze. You slide on it: let go and you keep going, and turning takes most of a second. The pit is all glass
-  // sober; drunk, two puddles of booze stand in it, and you cross by never stopping: land, slide, jump. The ledge out is
-  // too high even for a jump and K from the puddle under it, so the body has to stand under it first, low: J early in
-  // a jump off the puddle as you slide at the glass (at the top of the jump it lies too high to climb onto). Wake at
-  // your bottle, drink the other, cross again, onto the body, jump and K.
+  // Spilt booze. You slide on it: nothing stops you but a wall or a jump. The pit is all glass sober; drunk, two
+  // puddles of booze stand in it, and you cross by never stopping: land, slide, jump. The ledge out is too high even
+  // for a jump and K from the far side, so the body has to stand under it, low: J early in a jump off the booze at the
+  // glass (at the top of the jump it lies too high to climb onto). Over there you are still drunk from the first bottle:
+  // K it off, drink one of the two on the dry bit, leave the body, wake by them, drink the other, onto the body, K.
   artRoom('L3-11', '酒灘', 'pantry', 0, [], [
     FLOOR,
     '#..............................#',
@@ -448,8 +448,8 @@ export const day3 = [
     '#..............................#',
     '#..............................#',
     '#..............................#',
-    '#..D.D.........................#',
-    '#######^^^^^^^^^^^^^^^^~~~~~^^^#',
+    '#..D...................DD......#',
+    '#######^^^^^^^^^^^^^^^^##~~~^^^#',
     FLOOR,
   ], {
     1: [...Array(16).fill(EMPTY), '..........~~~.....~~~...........', EMPTY],
@@ -474,11 +474,11 @@ export const day3 = [
   ], {
     1: [...Array(7).fill(EMPTY), '...........................####.', EMPTY, EMPTY, '.......^^^^^^^^^^^^^^^^.........', ...Array(7).fill(EMPTY)],
   }), shutter: { open: 0.8, shut: 0.8, offsets: { '9,4': 0, '14,4': 0.7, '18,4': 0.4 } } },
-  // The slide. Both runs are spilt booze from the door down: under a shutter, hop the glass, drop onto a plank (you can
-  // stand on it and wait for the next shutter), under it, and drop into the end. The way out is a door that opens only
-  // while something is in the sensor hanging in the air, well short of the door, so you cannot jump through it into the
-  // door either. So: drink, slide down, step off the last plank and J as you fall past the sensor. Wake at the top,
-  // and run the slide again, sober, onto the body and out. Most of the floor short of the door is glass.
+  // The slide. Spilt booze from the door down: under a shutter, hop the glass, drop onto a plank (you can stand on it
+  // and wait for the next shutter), under it, and drop onto the plank at the end, where the bottle is. The way out is a
+  // door that opens only while something is in the sensor hanging in the air below, well short of the door (no jumping
+  // through it into the door). Drink, step off the plank and J as you fall past the sensor: you wake on the plank you
+  // drank on, step off again past the body and out. Most of the floor short of the door is glass.
   { ...artRoom('L3-13', '滑道', 'elevator', 0, [], [
     FLOOR,
     FLOOR,
@@ -486,12 +486,12 @@ export const day3 = [
     '.......Z########################',
     '...............#################',
     '...............#################',
-    '.P.D...........#################',
+    '.P.............#################',
     '#####~~~~~^^~.....#Z############',
     '#############..........#########',
     '#############==........#########',
     '#############...............####',
-    '#############~~~~~~~~.......####',
+    '#############~~~~~~~~.D.....####',
     '#####################==HH...G...',
     '#####################..HH...G...',
     '#####################.......G.*.',
@@ -526,11 +526,11 @@ export const day3 = [
     '################################',
   ]), shutter: { open: 1.2, shut: 0.8, offsets: {} } },
   // The last mile, two bodies at once. Up from the street onto the booze; slide left over the glass, under the shutter,
-  // to the bottle. The hatch up is shut until something is in the sensor hanging over the booze: slide back and leave
-  // the body in it at the top of the jump over the second gap. Wake at the bottle (step on it again and the body goes, and the hatch with
-  // it), climb, drink the bottle by the hatch and run the booze above under two shutters and a sign to the foot of the
-  // ledge out, too high for a jump and K: leave the second body low under it. Wake by the hatch, run the booze again,
-  // take the last bottle on the way, onto the body, jump and K, and home.
+  // to the bottle. The hatch up is shut until something is in the sensor over the bottle: drink, jump, and J at the top,
+  // and wake right there. (Step on the bottle again and the body goes, and the hatch with it.) Up the planks and through
+  // the hatch, and run the booze above, sober, under two shutters and a sign, to the two bottles at the foot of the
+  // ledge out, too high for a jump and K: drink, leave the second body low under the ledge, wake by the first bottle,
+  // drink the second, onto the body, jump and K, and home.
   { ...artRoom('L3-15', '最後一哩', 'street', 0, [], [
     '################################',
     '########################........',
@@ -541,11 +541,11 @@ export const day3 = [
     '#....................L.........#',
     '#............*.................#',
     '#..............................#',
-    '#....D................D........#',
+    '#.......................D....D.#',
     '#GG#####~~~~^^~~~~~^^~~~Z#######',
     '#..............................#',
     '#==............................#',
-    '#...................HH.........#',
+    '#....HH........................#',
     '#==............................#',
     '#.....D......................P.#',
     '########~~~~^^~~~~^^~~~~~~##===#',
@@ -1124,21 +1124,23 @@ export const plans = {
   },  'L3-11': r => {
     r.until(g => !g.body.grounded, 2, { right: true });   // off the ledge into the pantry
     r.until(g => g.body.grounded && g.body.y === 640, 3, { left: true });
-    r.until(g => g.targetStage() > 0, 3, { left: true });   // the first bottle
+    r.until(g => g.targetStage() > 0, 3, { left: true });   // the bottle
     r.until(g => g.body.x <= 120 && Math.abs(g.body.vx) < 5, 2, {});
     r.world();
     crossPuddles(r);
-    // sliding at the glass: jump and leave the body low, early in the jump
-    r.until(g => g.body.x >= 1010, 1, { right: true });
+    r.until(g => Math.abs(g.body.vx) < 5, 1);   // the far side is dry for two tiles
+    r.tick({ kPressed: true });   // K off the first bottle, and land on the next
+    r.until(g => g.body.grounded && g.targetStage() > 0, 2);
+    // jump at the glass and leave the body low, early in the jump
+    r.until(g => g.body.x >= 990, 1, { right: true });
     r.tick({ right: true, jump: true, jumpPressed: true });
-    r.until(g => g.body.y <= 566, 1, { jump: true });
+    r.until(g => g.body.y <= 566, 1, { right: true, jump: true });
     r.skill();
     assert.ok(Math.abs(deck(r) - 544) < 8, `body at ${deck(r)}`);
-    r.until(g => g.targetStage() > 0, 3, { right: true });   // the other bottle
-    r.until(g => Math.abs(g.body.vx) < 5, 2, {});
-    r.world();
-    crossPuddles(r);
-    leap(r, 0, plank(r), deck(r));   // off the puddle's edge as you land, up onto the body
+    r.until(g => g.body.grounded, 1);
+    r.until(g => g.targetStage() > 0, 2, { right: true });   // the other bottle
+    r.until(g => Math.abs(g.body.vx) < 5, 1);
+    leap(r, 0, plank(r), deck(r));
     leap(r, 0, 1200, 400, 1, 1);
     r.finish();
   },  'L3-12': r => {
@@ -1160,29 +1162,26 @@ export const plans = {
     leap(r, 1050, 1160, 280, 1, 1);
     r.finish();
   },  'L3-13': r => {
-    r.until(g => g.targetStage() > 0, 2, { right: true });
+    // the slide, sober: leave the door as the first shutter goes up, hop the glass, drop onto the plank, wait for the
+    // second, slide under it and drop onto the plank at the end and its bottle
+    r.until(g => g.body.x >= 150, 2, { right: true });
     r.until(g => Math.abs(g.body.vx) < 5, 1);
-    const run = () => {
-      // leave the door as the first shutter goes up, hop the glass, drop onto the plank
-      r.until(g => g.shutterBeat(g.shutters[0]).down > 0, 3);
-      r.until(g => g.shutterBeat(g.shutters[0]).down === 0, 3);
-      leap(r, 375, 500, 280, 0.2);
-      r.until(g => g.body.grounded && g.body.y === 360, 2, { right: true });
-      r.until(g => Math.abs(g.body.vx) < 5, 1);
-      // off the plank as the second shutter goes up, slide under it and drop onto the plank in the end
-      r.until(g => g.shutterBeat(g.shutters[1]).down > 0, 3);
-      r.until(g => g.shutterBeat(g.shutters[1]).down === 0, 3);
-      r.until(g => g.body.grounded && g.body.y === 480, 3, { right: true });
-      r.until(g => Math.abs(g.body.vx) < 5, 1);
-    };
-    run();
-    // step off its end and J as you fall past the sensor: the door opens for good
+    r.until(g => g.shutterBeat(g.shutters[0]).down > 0, 3);
+    r.until(g => g.shutterBeat(g.shutters[0]).down === 0, 3);
+    leap(r, 375, 500, 280, 0.2);
+    r.until(g => g.body.grounded && g.body.y === 360, 2, { right: true });
+    r.until(g => Math.abs(g.body.vx) < 5, 1);
+    r.until(g => g.shutterBeat(g.shutters[1]).down > 0, 3);
+    r.until(g => g.shutterBeat(g.shutters[1]).down === 0, 3);
+    r.until(g => g.body.grounded && g.body.y === 480, 3, { right: true });
+    r.until(g => Math.abs(g.body.vx) < 5, 1);
+    assert.ok(r.game.targetStage() > 0, 'missed the bottle on the end plank');
+    // step off its end and J as you fall past the sensor: the door opens for good, and you wake on the plank
     r.until(g => !g.body.grounded, 1, { right: true });
     r.until(g => g.body.y >= 530, 1);
     r.skill();
     assert.ok(r.game.sensed, 'the body is not in the sensor');
-    r.until(g => g.stage === 0 && !g.stageWarn, 5);
-    run();
+    r.until(g => g.body.grounded, 1);
     r.finish();
   },  'L3-14': r => {
     r.until(g => g.targetStage() > 0, 2, { right: true });   // the bottle by the door
@@ -1225,30 +1224,26 @@ export const plans = {
     leap(r, 830, 620, 640);
     leap(r, 590, 380, 640);
     r.until(g => g.targetStage() > 0, 2, { left: true });
+    r.until(g => g.body.x <= 250, 1, { left: true });
     r.until(g => Math.abs(g.body.vx) < 5, 1);
-    // back right, and at the top of the jump over the second gap leave the body in the sensor
-    r.until(g => g.body.x >= 470, 3, { right: true });
-    leap(r, 0, 680, 640);
-    r.until(g => g.body.x >= 705, 1, { right: true });
-    r.tick({ right: true, jump: true, jumpPressed: true });
-    r.until(g => g.body.vy >= 0, 1, { right: true, jump: true });
+    // straight up and J at the top: the body hangs in the sensor and the hatch opens; wake by the bottle
+    r.tick({ jump: true, jumpPressed: true });
+    r.until(g => g.body.vy >= 0, 1, { jump: true });
     r.skill();
     assert.ok(r.game.sensed, 'the body is not in the sensor');
-    // up the planks and through the hatch (keeping off the bottle), and the bottle by it
+    r.until(g => g.body.grounded, 1);
+    // up the planks and through the hatch, keeping off the bottle
     r.until(g => g.body.x <= 84, 2, { left: true });
     r.until(g => Math.abs(g.body.vx) < 5, 1);
     leap(r, 0, 80, 560);
     leap(r, 0, 80, 480);
     leap(r, 0, 170, 400);
-    r.until(g => g.targetStage() > 0, 2, { right: true });
+    // the booze above, sober, to the bottles at its end
+    opens('10,5');
+    leap(r, 470, 680, 400);
+    leap(r, 745, 990, 400);
     r.until(g => Math.abs(g.body.vx) < 5, 1);
-    const upper = () => {
-      opens('10,5');
-      leap(r, 470, 680, 400);
-      leap(r, 745, 990, 400);
-      r.until(g => Math.abs(g.body.vx) < 5, 1);
-    };
-    upper();
+    assert.ok(r.game.targetStage() > 0, 'missed the first bottle at the end');
     // the second body, low under the ledge
     r.until(g => g.body.x >= 1040, 2, { right: true });
     r.until(g => Math.abs(g.body.vx) < 5, 1);
@@ -1256,9 +1251,9 @@ export const plans = {
     r.until(g => g.body.y <= 340, 1, { jump: true });
     r.skill();
     assert.ok(Math.abs(deck(r) - 318) < 25, `second body at ${deck(r)}`);
+    r.until(g => g.body.grounded, 1);
+    r.until(g => g.targetStage() > 0, 2, { right: true });   // the other bottle
     r.until(g => Math.abs(g.body.vx) < 5, 1);
-    upper();
-    assert.ok(r.game.targetStage() > 0, 'missed the last bottle');
     leap(r, 0, plank(r) - 20, deck(r));
     // straight up off the body, K at the top, and over onto the ledge once clear of its edge
     r.tick({ jump: true, jumpPressed: true });
