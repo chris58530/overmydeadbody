@@ -236,8 +236,9 @@ test('day 3: one grade leaves the body as a plank and wakes Jim at his bottle; w
 test('day 3 holds Jim to one bottle: the world is only drunk or sober, and J is only ever the body', () => {
   assert.equal(campaign.maps[2].cells, 1);
   for (const room of campaign.maps[2].rooms) assert.ok(Object.keys(room.stages || {}).every(k => k === '1'), `${room.id}: one drunk world`);
-  const game = make('L3-2');
-  while (game.targetStage() === 0) game.step(DT, { right: true });
+  const game = make('L3-1');
+  for (let n = 0; n < 240 * 3 && game.targetStage() === 0; n++) game.step(DT, { right: true });
+  assert.equal(game.targetStage(), 1, 'drunk at the first bottle');
   game.step(DT, { skill: 'wrestler' });
   assert.ok(game.entities.some(e => e.kind === 'corpse'), 'the body');
   assert.notEqual(game.state, 'lift', 'not the throw');
